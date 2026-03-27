@@ -372,3 +372,123 @@ When estimating impact, use conservative CTR curves: position 1 ~27%, position
 2 ~15%, position 3 ~11%, position 4-5 ~5-8%, position 6-10 ~2-4%. Moving from
 position 7 to position 3 on a 2,400 impression/month query means roughly
 +170 clicks/month. Use real numbers from the data.
+
+---
+
+## Phase 7 — Content Generation (Optional)
+
+After delivering the report, if the Content Opportunities section identified
+actionable content gaps, offer to generate the content:
+
+> "I found [N] content opportunities. Want me to draft the content? I can write
+> [blog posts / landing pages / both] in parallel — each one optimized for the
+> target keyword and search intent."
+
+If the user agrees, spawn content agents **in parallel** using the Agent tool.
+Each agent writes one piece of content independently.
+
+### How to Spawn Content Agents
+
+For each content opportunity, determine the content type from the search intent:
+- **Informational / commercial investigation** → blog post agent
+- **Transactional / commercial** → landing page agent
+
+Spawn agents in parallel. Each agent receives:
+1. The content writing guidelines (located via find — see below)
+2. The specific opportunity data from the analysis
+
+Before spawning agents, locate the content writing reference:
+
+```bash
+CONTENT_REF=$(find ~/.claude/skills ~/.codex/skills .agents/skills -name "content-writing.md" -path "*content-writer*" 2>/dev/null | head -1)
+if [ -z "$CONTENT_REF" ]; then
+  echo "WARNING: content-writing.md not found. Content agents will use built-in knowledge only."
+else
+  echo "Content reference at: $CONTENT_REF"
+fi
+```
+
+Pass `$CONTENT_REF` as the path in each agent prompt below. If not found, omit
+the "Read the content writing guidelines" line — the agents will still produce
+good content using built-in knowledge.
+
+Use this prompt template for each agent:
+
+#### Blog Post Agent Prompt
+```
+You are a senior content strategist writing a blog post that ranks on Google.
+
+Read the content writing guidelines at: $CONTENT_REF
+Follow the "Blog Posts" section exactly.
+
+## Assignment
+
+Target keyword: [keyword]
+Current position: [position] (query ranked but no dedicated content)
+Monthly impressions: [impressions]
+Search intent: [informational / commercial investigation]
+Site context: [what the site is about, its audience]
+Existing pages to link to: [relevant internal pages from the analysis]
+[If available] Competitor context: [what currently ranks for this keyword]
+
+## Deliverables
+
+Write the complete blog post following the guidelines, including:
+1. Full post in markdown with proper heading hierarchy
+2. SEO metadata (title tag, meta description, URL slug)
+3. JSON-LD structured data (Article/BlogPosting + FAQPage if FAQ included)
+4. Internal linking plan (which existing pages to link to/from)
+5. Publishing checklist
+
+## Quality Gate
+Before finishing, verify:
+- Would the reader need to search again? (If yes, not done)
+- Does the post contain specific examples only an expert would include?
+- Does the format match what Google shows for this query?
+- Is every paragraph earning its place? (No filler)
+```
+
+#### Landing Page Agent Prompt
+```
+You are a senior conversion copywriter writing a landing page that ranks AND converts.
+
+Read the content writing guidelines at: $CONTENT_REF
+Follow the "Landing Pages" section exactly.
+
+## Assignment
+
+Target keyword: [keyword]
+Current position: [position]
+Monthly impressions: [impressions]
+Search intent: [transactional / commercial]
+Page type: [service / product / location / comparison]
+Site context: [what the site is about, value prop, target customer]
+Existing pages to link to: [relevant internal pages]
+[If available] Competitor context: [what currently ranks]
+
+## Deliverables
+
+Write the complete landing page following the guidelines, including:
+1. Full page copy in markdown with proper heading hierarchy and CTA placements
+2. SEO metadata (title tag, meta description, URL slug)
+3. Conversion strategy (primary CTA, objections addressed, trust signals)
+4. JSON-LD structured data
+5. Internal linking plan
+6. Publishing checklist
+
+## Quality Gate
+Before finishing, verify:
+- Would you convert after reading this? (If not, what's missing?)
+- Are there vague claims that should be replaced with specifics?
+- Is every objection addressed?
+- Is it clear what the visitor should do next?
+```
+
+### Spawning Rules
+
+- Spawn up to **5 content agents in parallel** (more than 5 gets unwieldy — prioritize by impact)
+- Prioritize opportunities by: impressions × position-improvement-potential
+- Each agent works independently — they don't need to coordinate
+- As agents complete, present each piece of content to the user with its metadata
+- After all agents finish, provide a summary: what was generated, suggested
+  publishing order (highest impact first), and any cross-linking between new pages
