@@ -4,6 +4,7 @@ Eval result persistence for toprank tests.
 Accumulates test results, writes them to ~/.toprank-evals/, prints a summary table.
 """
 
+import atexit
 import json
 import subprocess
 import sys
@@ -70,6 +71,8 @@ class EvalCollector:
         self.tier = tier
         self.tests: list[EvalTestEntry] = []
         self._finalized = False
+        # Register finalize() so results are persisted even on process crash.
+        atexit.register(self.finalize)
 
     def add_test(self, entry: EvalTestEntry) -> None:
         self.tests.append(entry)

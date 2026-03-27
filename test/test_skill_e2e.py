@@ -56,7 +56,7 @@ _collector = EvalCollector('e2e') if EVALS else None
 def _create_fixture_workdir() -> tuple[str, str]:
     """Create workdir with mock GSC scripts pre-installed."""
     workdir = create_skill_workdir(str(SKILL_PATH), 'seo-analysis')
-    _tmp_dirs.append(workdir)
+    _tmp_dirs.append(workdir)  # register before any further setup so cleanup runs on error
 
     skill_scripts_dir = Path(workdir) / '.claude' / 'skills' / 'seo-analysis' / 'scripts'
     shutil.copy(FIXTURES_DIR / 'mock-analyze-gsc.py', skill_scripts_dir / 'analyze_gsc.py')
@@ -76,7 +76,7 @@ def _create_fixture_workdir() -> tuple[str, str]:
 def test_seo_no_gsc_technical_audit():
     t0 = time.time()
     workdir = create_skill_workdir(str(SKILL_PATH), 'seo-analysis')
-    _tmp_dirs.append(workdir)
+    _tmp_dirs.append(workdir)  # register before run so cleanup happens on error
 
     result = run_skill_test(
         prompt=(

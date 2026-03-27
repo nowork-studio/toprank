@@ -16,7 +16,9 @@ from typing import Any, Optional
 
 # Strip these env var prefixes so nested sessions don't inherit outer context.
 # ANTHROPIC_API_KEY is re-added below — the subprocess needs it.
-_STRIP_PREFIXES = ('CLAUDE_',)
+# Strip ANTHROPIC_* too so ANTHROPIC_BASE_URL / ANTHROPIC_MODEL can't redirect
+# the subprocess to a different model or endpoint.
+_STRIP_PREFIXES = ('CLAUDE_', 'ANTHROPIC_')
 
 
 @dataclass

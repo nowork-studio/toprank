@@ -148,15 +148,29 @@ def _run_routing_test(prompt_config: dict, should_trigger: bool) -> None:
 @pytest.mark.skipif(not _should_run('routing-seo-triggers'), reason='not selected')
 @pytest.mark.timeout(10 * 60)
 def test_routing_seo_triggers():
+    # Run all prompts before asserting so one failure doesn't hide the rest.
+    failures: list[str] = []
     for p in SHOULD_TRIGGER:
-        _run_routing_test(p, True)
+        try:
+            _run_routing_test(p, True)
+        except AssertionError as e:
+            failures.append(str(e))
+    if failures:
+        raise AssertionError('\n'.join(failures))
 
 
 @pytest.mark.skipif(not _should_run('routing-seo-non-triggers'), reason='not selected')
 @pytest.mark.timeout(10 * 60)
 def test_routing_seo_non_triggers():
+    # Run all prompts before asserting so one failure doesn't hide the rest.
+    failures: list[str] = []
     for p in SHOULD_NOT_TRIGGER:
-        _run_routing_test(p, False)
+        try:
+            _run_routing_test(p, False)
+        except AssertionError as e:
+            failures.append(str(e))
+    if failures:
+        raise AssertionError('\n'.join(failures))
 
 
 def teardown_module(module):

@@ -26,7 +26,7 @@ def _get_client():
 
 
 def call_judge(prompt: str) -> dict:
-    """Call claude-sonnet-4-6, return parsed JSON. Retries once on rate limit."""
+    """Call claude-sonnet-4-6, return parsed JSON. Retries up to 3 times on rate limit."""
     client = _get_client()
 
     def make_request():
@@ -36,14 +36,19 @@ def call_judge(prompt: str) -> dict:
             messages=[{'role': 'user', 'content': prompt}],
         )
 
-    try:
-        response = make_request()
-    except Exception as e:
-        if getattr(e, 'status_code', None) == 429 or 'rate' in str(e).lower():
-            time.sleep(2)
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
             response = make_request()
-        else:
-            raise
+            break
+        except Exception as e:
+            if getattr(e, 'status_code', None) == 429 or 'rate' in str(e).lower():
+                last_exc = e
+                time.sleep(2 ** attempt)  # 1s, 2s, 4s
+            else:
+                raise
+    else:
+        raise last_exc  # all retries exhausted
 
     text = response.content[0].text if response.content[0].type == 'text' else ''
     match = re.search(r'\{[\s\S]*\}', text)
