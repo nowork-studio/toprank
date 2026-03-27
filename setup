@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# toprank setup — register skills with Claude Code
+set -e
+
+TOPRANK_DIR="$(cd "$(dirname "$0")" && pwd)"
+TOPRANK_NAME="$(basename "$TOPRANK_DIR")"
+SKILLS_DIR="$(dirname "$TOPRANK_DIR")"
+
+echo "toprank setup"
+echo "─────────────"
+echo ""
+
+# Discover skills (directories containing SKILL.md)
+linked=()
+for skill_dir in "$TOPRANK_DIR"/*/; do
+  [ -f "$skill_dir/SKILL.md" ] || continue
+  skill_name="$(basename "$skill_dir")"
+  target="$SKILLS_DIR/$skill_name"
+
+  # Create or update symlink; skip if a real file/directory exists
+  if [ -L "$target" ] || [ ! -e "$target" ]; then
+    ln -snf "$TOPRANK_NAME/$skill_name" "$target"
+    linked+=("$skill_name")
+  else
+    echo "  skipped $skill_name (real directory exists at $target)"
+  fi
+done
+
+if [ ${#linked[@]} -gt 0 ]; then
+  echo "  linked skills: ${linked[*]}"
+else
+  echo "  no new skills to link"
+fi
+
+echo ""
+echo "Done. Restart Claude Code and the skills are available."

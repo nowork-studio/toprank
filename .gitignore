@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Credentials — never commit these
+credentials.json
+token.json
+service-account*.json
+*-credentials.json
+.env
+.env.local
+
+# GSC output files
+/tmp/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
