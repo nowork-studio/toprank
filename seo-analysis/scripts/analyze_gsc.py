@@ -19,10 +19,15 @@ from datetime import date, timedelta
 
 
 def get_access_token():
-    result = subprocess.run(
-        ["gcloud", "auth", "application-default", "print-access-token"],
-        capture_output=True, text=True
-    )
+    try:
+        result = subprocess.run(
+            ["gcloud", "auth", "application-default", "print-access-token"],
+            capture_output=True, text=True
+        )
+    except FileNotFoundError:
+        print("ERROR: gcloud not found. Install it and authenticate:", file=sys.stderr)
+        print("  https://cloud.google.com/sdk/docs/install", file=sys.stderr)
+        sys.exit(1)
     if result.returncode != 0:
         print("ERROR: Not authenticated. Run:", file=sys.stderr)
         print("  gcloud auth application-default login \\", file=sys.stderr)
