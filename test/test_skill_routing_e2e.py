@@ -100,6 +100,22 @@ def _run_routing_test(prompt_config: dict, should_trigger: bool) -> None:
         test_name=prompt_config['name'],
     )
 
+    # Hard harness failure (timeout/crash) must not silently pass "should not trigger" tests
+    if result.exit_reason in ('timeout', 'error_api') or result.exit_reason.startswith('exit_code_'):
+        if _collector:
+            _collector.add_test(EvalTestEntry(
+                name=prompt_config['name'],
+                suite='should-trigger' if should_trigger else 'should-not-trigger',
+                tier='routing',
+                passed=False,
+                duration_ms=result.duration,
+                cost_usd=result.cost_estimate.estimated_cost,
+                exit_reason=result.exit_reason,
+                model=result.model,
+                error=f'Harness failure: {result.exit_reason}',
+            ))
+        assert False, f'Routing harness failed: {result.exit_reason}'
+
     triggered = _did_use_seo_skill(result)
     passed = triggered if should_trigger else not triggered
     label = 'SHOULD' if should_trigger else 'SHOULD NOT'

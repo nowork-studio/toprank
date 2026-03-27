@@ -8,9 +8,6 @@ if [[ "$*" == *"application-default print-access-token"* ]]; then
   exit 0
 fi
 
-# Fall through to real gcloud for anything else
-if command -v gcloud &>/dev/null; then
-  exec gcloud "$@"
-fi
-
+# Unknown subcommands: exit cleanly (don't fall through — mock is first in PATH
+# so `command -v gcloud` would resolve back to this script causing infinite recursion)
 exit 0
