@@ -31,28 +31,56 @@ cold.
 
 ## Phase 1 — Confirm Access to Google Search Console
 
-Check silently:
+Locate the scripts directory (works regardless of where the skill is installed):
 
 ```bash
-gcloud auth application-default print-access-token 2>&1
+SKILL_SCRIPTS=$(find ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
+echo "Scripts at: $SKILL_SCRIPTS"
 ```
 
-**If this succeeds** (returns a token): proceed to Phase 2.
+Run the site listing script as a single combined auth + access check:
 
-**If this fails**: ask the user which situation applies:
-- "I have gcloud installed but haven't set it up for GSC"
-- "I don't have gcloud"
-- "Skip GSC — just do a technical crawl audit of my URL"
+```bash
+python3 "$SKILL_SCRIPTS/list_gsc_sites.py"
+```
 
-Then guide accordingly — read `references/gsc_setup.md` for the full setup guide.
+This tests everything at once: whether gcloud exists, whether ADC is authenticated
+with the right scopes, and whether the authenticated account actually has GSC access.
 
-The most common case is gcloud already installed. In that case, run:
+**If it lists sites** → you're done; carry the site list into Phase 2 (skip running
+list_gsc_sites.py again).
+
+**If "No Search Console properties found"** → the authenticated account has no GSC
+properties. Most likely cause: gcloud is set up for the wrong Google account (work
+email vs personal, different org). But also possible: the site was never added to
+Search Console, or the user's access was revoked. Ask: "Which Google account has
+access to your Search Console? Go to https://search.google.com/search-console and
+check which account you're logged in as — that's the one to use." Then re-authenticate:
 ```bash
 gcloud auth application-default login \
   --scopes=https://www.googleapis.com/auth/webmasters.readonly
 ```
-This opens a browser, the user logs in with the Google account that owns Search
-Console, and that's it. No service accounts, no JSON files.
+
+**If "Could not get access token"** (gcloud not authenticated or wrong scopes) → run:
+```bash
+gcloud auth application-default login \
+  --scopes=https://www.googleapis.com/auth/webmasters.readonly
+```
+This is the common case where gcloud is installed but was set up for a different
+service (Firebase, GCS, etc.) without the webmasters scope. The browser opens,
+the user logs in, done.
+
+**If Python traceback mentioning "No such file or directory" or "gcloud"** → gcloud
+isn't installed (the script couldn't launch it). Ask if they want to install it
+(2 min) or skip GSC entirely. Read `references/gsc_setup.md` for install steps. If
+they want to skip: jump to Phase 5 (technical-only audit).
+
+**If HTTP 403** → could be wrong scopes, API not enabled, or no property access.
+Check the error body: "insufficient scope" → re-run `gcloud auth application-default
+login --scopes=...`; "API not enabled" → run `gcloud services enable
+searchconsole.googleapis.com`; "permission denied" → the account doesn't have GSC
+access for this property (verify at https://search.google.com/search-console →
+Settings → Users and permissions). Full details in `references/gsc_setup.md`.
 
 ---
 
@@ -76,15 +104,18 @@ Confirm with the user: "I found your site at `https://example.com` — is that r
 Ask: "What's your website URL? (e.g. https://yoursite.com)"
 
 ### Match to GSC property
-List the user's GSC properties and find the match:
+If Phase 1 already listed the user's GSC properties, use that output. Otherwise
+re-run (e.g., if GSC was skipped and the user has since authenticated):
 
 ```bash
-python3 "$(dirname "$0")/scripts/list_gsc_sites.py"
+python3 "$SKILL_SCRIPTS/list_gsc_sites.py"
 ```
 
 GSC properties can be domain properties (`sc-domain:example.com`) or URL-prefix
-properties (`https://example.com/`). The script handles both. If multiple matches
-exist, ask the user to confirm which one to use.
+properties (`https://example.com/`). The script handles both. If both a domain
+property and a URL-prefix property exist for the same site, prefer the domain
+property — it covers all subdomains, protocols, and subpaths, giving more complete
+data. If multiple matches exist and it's still ambiguous, ask the user to confirm.
 
 ---
 
@@ -93,7 +124,7 @@ exist, ask the user to confirm which one to use.
 Run the main analysis script with the confirmed site property:
 
 ```bash
-python3 "$(dirname "$0")/scripts/analyze_gsc.py" \
+python3 "$SKILL_SCRIPTS/analyze_gsc.py" \
   --site "sc-domain:example.com" \
   --days 90
 ```
