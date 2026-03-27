@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.4.0] — 2026-03-27
+
+### Added
+- **`content-writer` skill** — standalone SEO content creation, directly invocable without running a full SEO audit
+  - Handles three jobs: new blog posts, new landing pages, and improving existing pages
+  - 6-step workflow: determine job → gather context → read guidelines → research & plan → write → quality gate
+  - Follows Google's E-E-A-T and Helpful Content guidelines via shared reference doc
+  - Outputs publication-ready content with SEO metadata, JSON-LD structured data, internal linking plan, and publishing checklist
+  - Smart content type detection from user intent (informational → blog, transactional → landing page)
+- **`content-writing.md` reference doc** — single source of truth for Google content best practices (E-E-A-T framework, helpful content signals, blog/landing page templates, search intent matching, on-page SEO checklist, anti-patterns including AI content pitfalls)
+- **`seo-analysis` Phase 7** — optional content generation after audit; spawns up to 5 content agents in parallel when content gaps are identified, each reading the shared `content-writing.md` guidelines
+
+### Changed
+- **CONTRIBUTING.md** — expanded with detailed SKILL.md structure, script requirements, reference file guidelines, and skill ideas table
+- **README.md** — added `content-writer` to skills table and updated project description
+
+---
+
 ## [0.3.0] — 2026-03-27
 
 ### Added

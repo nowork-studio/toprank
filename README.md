@@ -30,6 +30,20 @@ A full SEO audit in one command. Connects to Google Search Console, auto-detects
 **How to trigger:**
 > "analyze my SEO", "SEO audit", "why is my traffic down", "what keywords am I ranking for", "check my search console", "improve my rankings", "technical SEO audit"
 
+### [`content-writer`](content-writer/) — SEO Content Creation
+
+Write blog posts, landing pages, or improve existing content following Google's E-E-A-T and Helpful Content guidelines. Works standalone or spawned automatically by `seo-analysis` when content gaps are found.
+
+**What it does:**
+- Determines content type from context (blog post, landing page, or content improvement)
+- Researches search intent and SERP landscape before writing
+- Produces publication-ready content with SEO metadata, JSON-LD structured data, and internal linking plan
+- Quality gate checks: "last click" test, E-E-A-T signals, anti-pattern detection
+- When spawned by `seo-analysis`, writes multiple pieces in parallel for identified content gaps
+
+**How to trigger:**
+> "write a blog post about X", "create a landing page for Y", "improve this page", "content for keyword X", "draft an article", "rewrite this page"
+
 ---
 
 ## Install — 30 seconds
@@ -42,11 +56,11 @@ A full SEO audit in one command. Connects to Google Search Console, auto-detects
 
 Open Claude Code and paste this. Claude does the rest.
 
-> Install toprank: run **`git clone --single-branch --depth 1 https://github.com/nowork-studio/toprank.git ~/.claude/skills/toprank && cd ~/.claude/skills/toprank && ./setup`** then add a "toprank" section to CLAUDE.md that lists the available skills: /seo-analysis.
+> Install toprank: run **`git clone --single-branch --depth 1 https://github.com/nowork-studio/toprank.git ~/.claude/skills/toprank && cd ~/.claude/skills/toprank && ./setup`** then add a "toprank" section to CLAUDE.md that lists the available skills: /seo-analysis, /content-writer.
 
 Add to your repo so teammates get it (optional):
 
-> Add toprank to this project: run **`cp -Rf ~/.claude/skills/toprank .claude/skills/toprank && cd .claude/skills/toprank && ./setup`** then add a "toprank" section to this project's CLAUDE.md that lists the available skills: /seo-analysis.
+> Add toprank to this project: run **`cp -Rf ~/.claude/skills/toprank .claude/skills/toprank && cd .claude/skills/toprank && ./setup`** then add a "toprank" section to this project's CLAUDE.md that lists the available skills: /seo-analysis, /content-writer.
 
 ### Codex
 
@@ -78,10 +92,14 @@ Skills are discovered automatically. Claude Code reads from `~/.claude/skills/`,
 toprank/
 ├── setup                 ← run this to register skills
 ├── seo-analysis/
-│   ├── SKILL.md          ← workflow instructions Claude follows
-│   ├── scripts/          ← Python scripts for API calls and data processing
-│   └── references/       ← guides and docs loaded as needed
-└── (future skills go here)
+│   ├── SKILL.md          ← SEO audit workflow
+│   ├── scripts/          ← Python scripts for GSC API
+│   └── references/       ← setup guides
+├── content-writer/
+│   ├── SKILL.md          ← content creation workflow
+│   └── references/       ← Google content best practices
+└── toprank-upgrade/
+    └── SKILL.md          ← auto-upgrade workflow
 ```
 
 ---
