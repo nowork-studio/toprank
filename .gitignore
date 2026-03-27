@@ -23,3 +23,6 @@ service-account*.json
 .vscode/
 .idea/
 *.swp
+
+# Test artifacts
+.pytest_cache/
