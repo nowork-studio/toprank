@@ -16,7 +16,7 @@ import urllib.parse
 from datetime import date, timedelta
 
 # Allow importing gsc_auth from the same directory
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gsc_auth import get_session
 
 
@@ -31,7 +31,7 @@ def gsc_query(session, site_url, body):
             if "SERVICE_DISABLED" in error_body or "API not enabled" in error_body:
                 print("GSC API not enabled. Run: gcloud services enable searchconsole.googleapis.com", file=sys.stderr)
                 return {"rows": []}
-            if "quota" in error_body.lower() or "project" in error_body.lower():
+            if "USER_PROJECT_DENIED" in error_body or "quota_project" in error_body.lower():
                 print("Quota project error. Run: gcloud auth application-default set-quota-project $(gcloud config get-value project)", file=sys.stderr)
                 return {"rows": []}
             print(f"GSC API error 403: {error_body}", file=sys.stderr)

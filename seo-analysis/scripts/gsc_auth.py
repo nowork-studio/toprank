@@ -31,7 +31,7 @@ def _ensure_quota_project(credentials):
         project = result.stdout.strip()
         if result.returncode == 0 and project:
             return credentials.with_quota_project(project)
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (FileNotFoundError, subprocess.TimeoutExpired, AttributeError):
         pass
     return credentials
 
