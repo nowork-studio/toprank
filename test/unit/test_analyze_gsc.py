@@ -348,6 +348,12 @@ class TestGscQueryErrorHandling(unittest.TestCase):
             result = gsc.gsc_query('fake-token', 'sc-domain:test.com', {'dimensions': ['query']})
             self.assertEqual(result, {'rows': []})
 
+    def test_network_exception_returns_empty_rows(self):
+        mock_session = MagicMock()
+        mock_session.post.side_effect = Exception("Network unreachable")
+        result = gsc.gsc_query(mock_session, 'sc-domain:test.com', {'dimensions': ['query']})
+        self.assertEqual(result, {'rows': []})
+
     def test_successful_response_parsed_correctly(self):
         mock_body = json.dumps({
             'rows': [

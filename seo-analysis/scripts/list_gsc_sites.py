@@ -2,8 +2,10 @@
 """List all Google Search Console properties for the authenticated account."""
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import urllib.request
 import urllib.error
 
@@ -68,9 +70,10 @@ def main():
         print(f"     Type: {ptype} | Permission: {level}")
 
     # Also output as JSON for machine parsing
-    with open("/tmp/gsc_sites.json", "w") as f:
+    sites_path = os.path.join(tempfile.gettempdir(), f"gsc_sites_{os.getuid()}.json")
+    with open(sites_path, "w") as f:
         json.dump(sites, f, indent=2)
-    print(f"\n(Full list saved to /tmp/gsc_sites.json)")
+    print(f"\n(Full list saved to {sites_path})")
 
 
 if __name__ == "__main__":

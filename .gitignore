@@ -26,3 +26,6 @@ service-account*.json
 
 # Test artifacts
 .pytest_cache/
+
+# Security reports and local tool state (never commit)
+.gstack/
