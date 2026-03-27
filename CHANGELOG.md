@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.0] — 2026-03-27
+
+### Added
+- **Autoupdate system** — skills now check GitHub for new versions on every invocation
+  - `bin/toprank-update-check` — fetches `VERSION` from GitHub with 60-min cache; outputs `UPGRADE_AVAILABLE <old> <new>` or nothing
+  - `bin/toprank-config` — read/write `~/.toprank/config.yaml`; supports `update_check`, `auto_upgrade` keys
+  - `toprank-upgrade/SKILL.md` — upgrade skill with inline and standalone flows, snooze (24h/48h/7d backoff), auto-upgrade mode, changelog diff
+  - Preamble in `seo-analysis` and auto-inject via `setup` for all future skills
+  - `bin/preamble.md` — single source of truth for the preamble template
+- `VERSION` file — tracks current release for update checks
+
+### Fixed
+- `toprank-update-check`: validate local VERSION format before writing cache; exit after `JUST_UPGRADED` to prevent dual stdout output; move `mkdir -p` to top of script
+- `setup`: atomic SKILL.md writes via temp file + `os.replace()`; add `pipefail` to catch silent Python errors
+- `toprank-upgrade`: clear stale `.bak` before vendored upgrade to prevent collision
+
 ## [0.1.1] — 2026-03-27
 
 ### Changed

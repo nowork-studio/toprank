@@ -32,6 +32,8 @@ description: >
 
 Then the body: step-by-step instructions Claude will follow. Write in the imperative. Explain the *why* behind each step, not just the what.
 
+> **Preamble auto-injected.** You don't need to add the update-check preamble manually. `./setup` detects skills that are missing it and injects `bin/preamble.md` automatically after the frontmatter. If you want to test locally before running setup, copy the preamble from `bin/preamble.md`.
+
 ### Scripts
 
 Scripts should:
@@ -50,7 +52,7 @@ Reference files are loaded on demand. Keep them focused. If a reference file is 
 
 1. One skill per PR (or one meaningful improvement to an existing skill)
 2. Test your skill on a real site before submitting
-3. Update [CHANGELOG.md](CHANGELOG.md) under `[Unreleased]`
+3. Update [CHANGELOG.md](CHANGELOG.md) with the new version (bump `VERSION` file too)
 4. Keep the README skills table up to date
 
 ---
