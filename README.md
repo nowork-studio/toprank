@@ -1,8 +1,12 @@
 # Toprank
 
-**Open-source Claude Code skills for SEO and SEM.**
+**Your search data + Claude's brain. That's it.**
 
-Toprank is a collection of AI agent skills that give you the leverage of a search marketing expert — pulling real data from Google Search Console, auditing technical SEO, finding quick wins, and diagnosing traffic drops. Works inside Claude Code with no extra tooling beyond a `gcloud` install.
+Most SEO tools show you dashboards. Toprank feeds your real Google Search Console and Google Ads data directly into Claude, the most capable AI model available, and gets you answers. Not charts. Answers.
+
+"Why did my traffic drop?" "Where am I wasting ad spend?" "What should I write next?" One command. Real data. Actionable plan.
+
+Open source. Works inside Claude Code. No SaaS fees, no seat licenses, no dashboards to stare at.
 
 ---
 
@@ -34,7 +38,7 @@ A full SEO audit in one command. Connects to Google Search Console, auto-detects
 
 Open Claude Code and paste this. Claude does the rest.
 
-> Install toprank: run **`git clone --single-branch --depth 1 https://github.com/nowork-studio/ads-agent.git /tmp/ads-agent && cp -Rf /tmp/ads-agent/toprank ~/.claude/skills/toprank && cd ~/.claude/skills/toprank && ./setup && rm -rf /tmp/ads-agent`** then add a "toprank" section to CLAUDE.md that lists the available skills: /seo-analysis.
+> Install toprank: run **`git clone --single-branch --depth 1 https://github.com/nowork-studio/toprank.git ~/.claude/skills/toprank && cd ~/.claude/skills/toprank && ./setup`** then add a "toprank" section to CLAUDE.md that lists the available skills: /seo-analysis.
 
 ### Step 2: Add to your repo so teammates get it (optional)
 
