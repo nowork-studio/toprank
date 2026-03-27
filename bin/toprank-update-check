@@ -111,7 +111,7 @@ fi
 if [ -f "$CACHE_FILE" ]; then
   CACHED="$(cat "$CACHE_FILE" 2>/dev/null || true)"
   case "$CACHED" in
-    UP_TO_DATE*)        CACHE_TTL=60 ;;
+    UP_TO_DATE*)        CACHE_TTL=5 ;;
     UPGRADE_AVAILABLE*) CACHE_TTL=720 ;;
     *)                  CACHE_TTL=0 ;;
   esac
@@ -146,17 +146,20 @@ REMOTE="$(echo "$REMOTE" | tr -d '[:space:]')"
 
 # Validate: must look like a version number (reject HTML error pages, etc.)
 if ! echo "$REMOTE" | grep -qE "$VERSION_RE"; then
-  echo "UP_TO_DATE $LOCAL" > "$CACHE_FILE"
+  _TMP="$CACHE_FILE.$$.tmp"
+  echo "UP_TO_DATE $LOCAL" > "$_TMP" && mv "$_TMP" "$CACHE_FILE" || rm -f "$_TMP"
   exit 0
 fi
 
 if [ "$LOCAL" = "$REMOTE" ]; then
-  echo "UP_TO_DATE $LOCAL" > "$CACHE_FILE"
+  _TMP="$CACHE_FILE.$$.tmp"
+  echo "UP_TO_DATE $LOCAL" > "$_TMP" && mv "$_TMP" "$CACHE_FILE" || rm -f "$_TMP"
   exit 0
 fi
 
 # Versions differ — upgrade available
-echo "UPGRADE_AVAILABLE $LOCAL $REMOTE" > "$CACHE_FILE"
+_TMP="$CACHE_FILE.$$.tmp"
+echo "UPGRADE_AVAILABLE $LOCAL $REMOTE" > "$_TMP" && mv "$_TMP" "$CACHE_FILE" || rm -f "$_TMP"
 if check_snooze "$REMOTE"; then
   exit 0
 fi
