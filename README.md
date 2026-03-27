@@ -12,6 +12,40 @@ Free, open-source skill for Claude Code and Codex. Install in 30 seconds.
 
 ---
 
+## See It Work
+
+```
+You:    /seo-analysis
+
+Claude: Found your site at mystore.com — pulling Search Console data now.
+
+        [90 days of real traffic data loaded]
+        [pages crawled for technical issues]
+
+        Three things hurting you most:
+
+        Your homepage lives at two addresses. Google splits your ranking
+        power between them. Easy fix.
+
+        Two pages targeting the same search terms — they compete against
+        each other and neither wins.
+
+        One page gets 400 monthly impressions but ranks #52. The title
+        doesn't match what people actually search for.
+
+        Here's your 30-day plan, most impactful first.
+
+You:    Implement all of it.
+
+        [fixes duplicate homepage — 2 lines of config]
+        [consolidates competing pages, updates all internal links]
+        [rewrites page titles to match real search queries]
+
+        Done. Ready to ship.
+```
+
+---
+
 ## Skills
 
 ### [`seo-analysis`](seo-analysis/) — SEO Audit & Search Console Analysis
