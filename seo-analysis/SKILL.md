@@ -1,33 +1,43 @@
 ---
 name: seo-analysis
 description: >
-  Comprehensive SEO audit and analysis skill for toprank. Use this skill whenever
-  the user asks about SEO, search rankings, organic traffic, Google Search Console,
-  keyword performance, why traffic dropped, which pages rank, content gaps, or
-  wants to improve their site's visibility in search. Also trigger when the user
-  mentions "why is my traffic down", "what keywords am I ranking for", "improve
-  my rankings", "check my search console", "SEO audit", "analyze my SEO",
-  "technical SEO", "meta tags", "indexing issues", "crawl errors", or any
-  organic search question. If in doubt, trigger — this skill handles the full
-  range from quick GSC checks to deep technical audits.
+  Full SEO audit: Google Search Console data + technical crawl + search intent
+  analysis. Feeds real GSC data into AI to surface quick wins, diagnose traffic
+  drops, find content gaps, and produce an actionable 30-day plan. Use this skill
+  whenever the user asks about SEO, search rankings, organic traffic, Google
+  Search Console, keyword performance, traffic drops, content gaps, search
+  visibility, or technical SEO. Also trigger on: "why is my traffic down",
+  "what keywords am I ranking for", "improve my rankings", "check my search
+  console", "SEO audit", "analyze my SEO", "technical SEO", "meta tags",
+  "indexing issues", "crawl errors", "content strategy", "keyword cannibalization",
+  "search intent", or any organic search question. If in doubt, trigger. This
+  skill handles everything from quick GSC checks to deep technical audits.
 ---
 
 # SEO Analysis
 
-A comprehensive SEO audit powered by Google Search Console data and technical
-crawl analysis. Works whether you're inside a website repo or auditing any URL.
+You are a senior technical SEO consultant. You combine real Google Search Console
+data with deep knowledge of how search engines rank pages to find problems,
+surface opportunities, and produce specific, actionable recommendations.
+
+Your goal is not to produce a generic report. It's to find the 3-5 changes that
+will have the biggest impact on this specific site's organic traffic, and explain
+exactly how to make them.
+
+Works on any site. Works whether you're inside a website repo or auditing a URL
+cold.
 
 ---
 
 ## Phase 1 — Confirm Access to Google Search Console
 
-Before pulling data, confirm the user has GSC API access. Check silently:
+Check silently:
 
 ```bash
 gcloud auth application-default print-access-token 2>&1
 ```
 
-**If this succeeds** (returns a token): proceed to Phase 2 — no setup needed.
+**If this succeeds** (returns a token): proceed to Phase 2.
 
 **If this fails**: ask the user which situation applies:
 - "I have gcloud installed but haven't set it up for GSC"
@@ -41,34 +51,40 @@ The most common case is gcloud already installed. In that case, run:
 gcloud auth application-default login \
   --scopes=https://www.googleapis.com/auth/webmasters.readonly
 ```
-This opens a browser, the user logs in with the Google account that owns Search Console, and that's it. No service accounts, no JSON files.
+This opens a browser, the user logs in with the Google account that owns Search
+Console, and that's it. No service accounts, no JSON files.
 
 ---
 
 ## Phase 2 — Identify the Site
 
 ### If inside a website repo
-Look for these signals to auto-detect the site URL:
-- `package.json` → check `"homepage"` field or scripts for domain hints
-- `next.config.js` or `next.config.ts` → look for `env.NEXT_PUBLIC_SITE_URL` or `basePath`
+Auto-detect the site URL from config files:
+- `package.json` → `"homepage"` field or scripts with domain hints
+- `next.config.js` / `next.config.ts` → `env.NEXT_PUBLIC_SITE_URL` or `basePath`
 - `astro.config.*` → `site:` field
 - `gatsby-config.js` → `siteMetadata.siteUrl`
+- `hugo.toml` / `hugo.yaml` → `baseURL`
+- `_config.yml` (Jekyll) → `url` field
 - `.env` or `.env.local` → `NEXT_PUBLIC_SITE_URL`, `SITE_URL`, `PUBLIC_URL`
 - `vercel.json` → deployment aliases
+- `CNAME` file (GitHub Pages)
 
-Read these files, extract the URL, confirm with the user: "I found your site at `https://example.com` — is that right?"
+Confirm with the user: "I found your site at `https://example.com` — is that right?"
 
 ### If not in a website repo
 Ask: "What's your website URL? (e.g. https://yoursite.com)"
 
 ### Match to GSC property
-Once you have the URL, list the user's GSC properties and find the match:
+List the user's GSC properties and find the match:
 
 ```bash
 python3 "$(dirname "$0")/scripts/list_gsc_sites.py"
 ```
 
-GSC properties can be domain properties (`sc-domain:example.com`) or URL-prefix properties (`https://example.com/`). The script handles both. If multiple matches exist, ask the user to confirm which one to use.
+GSC properties can be domain properties (`sc-domain:example.com`) or URL-prefix
+properties (`https://example.com/`). The script handles both. If multiple matches
+exist, ask the user to confirm which one to use.
 
 ---
 
@@ -85,79 +101,152 @@ python3 "$(dirname "$0")/scripts/analyze_gsc.py" \
 This pulls:
 - **Top queries** by impressions, clicks, CTR, average position
 - **Top pages** by clicks + impressions
-- **Position buckets** — queries in 1-3, 4-10, 11-20, 21+ (the "almost ranking" opportunities)
+- **Position buckets** — queries in 1-3, 4-10, 11-20, 21+ (the "striking distance" opportunities)
 - **Queries losing clicks** — comparing last 28 days vs the prior 28 days
 - **Pages losing traffic** — same comparison
-- **Queries with high impressions but low CTR** — title/meta description optimization targets
+- **Queries with high impressions but low CTR** — title/snippet optimization targets
 - **Device split** — mobile vs desktop vs tablet performance
 
-**If GSC is unavailable**, skip to Phase 4b (technical-only audit).
+**If GSC is unavailable**, skip to Phase 5 (technical-only audit).
 
 ---
 
-## Phase 4a — Search Console Analysis
+## Phase 4 — Search Console Analysis
 
-With the data from Phase 3, analyze and surface insights:
+This is where you earn your keep. Don't just restate the data. Interpret it like
+an SEO expert would.
 
 ### Traffic Overview
-State: total clicks, impressions, average CTR, average position for the period. Note any dramatic changes.
+State totals: clicks, impressions, average CTR, average position for the period.
+Note any dramatic changes. Compare to typical CTR curves for given positions
+(position 1 should see ~25-30% CTR, position 3 about 10%, position 10 about 2%).
+If a query's CTR is significantly below what its position would predict, that's a
+signal the title/snippet needs work.
 
 ### Quick Wins (highest impact, lowest effort)
-1. **Position 4-10 queries** — these are ranking but not getting clicks. A title tag / meta description improvement could jump them to page 1. List top 10 with current position and impressions.
-2. **High-impression, low-CTR queries** — queries where you're seen but not clicked. Often a title/snippet mismatch with search intent.
-3. **Queries dropping MoM** — flag anything with >30% click decline. These need immediate investigation.
+
+These are the changes that can move the needle in days, not months:
+
+1. **Position 4-10 queries** — ranking on page 1 but below the fold. A title tag
+   or meta description improvement, internal linking push, or content expansion
+   could jump them into the top 3. List the top 10 with current position,
+   impressions, and a specific recommendation for each.
+
+2. **High-impression, low-CTR queries** — you're being shown but not clicked.
+   This is almost always a title/snippet mismatch with search intent. For each
+   one, analyze the likely search intent (informational, transactional,
+   navigational, commercial investigation) and suggest a title + description
+   that matches it.
+
+3. **Queries dropping month-over-month** — flag anything with >30% click decline.
+   For each, hypothesize: is it seasonal? Did a competitor take the SERP feature?
+   Did the page content drift from the query intent?
+
+### Search Intent Analysis
+
+For the top 10-15 queries, classify the search intent:
+- **Informational** ("how to...", "what is...") → needs comprehensive content, FAQ schema
+- **Transactional** ("buy...", "pricing...", "near me") → needs clear CTA, product schema, price
+- **Navigational** ("brand name", "brand + product") → should be ranking #1, if not, investigate
+- **Commercial investigation** ("best...", "vs...", "review") → needs comparison content, trust signals
+
+If the page ranking for a query doesn't match the intent (e.g., a blog post
+ranking for a transactional query, or a product page ranking for an informational
+query), flag it. This is often the single biggest unlock.
+
+### Keyword Cannibalization Check
+
+Look for queries where multiple pages from the same site rank. Signs:
+- The same query appears for two or more pages in the top pages data
+- A page that used to rank well for a query dropped after a new page was published
+- Position fluctuates wildly for a query (Google is confused about which page to show)
+
+If found, recommend: consolidate into one authoritative page, 301 redirect the
+weaker one, or add canonical tags.
 
 ### Content Gaps
-Look at queries where you rank 11-30 — you have topical authority but need a dedicated page or content expansion. Group related queries together.
+
+Queries where you rank 11-30 — you have topical authority but need a dedicated
+page or content expansion. Group related queries into topic clusters. For each
+cluster, recommend whether to:
+- Expand an existing page (if it partially covers the topic)
+- Create a new page (if no page targets this topic)
+- Create a content hub with internal linking (if there are 5+ related queries)
 
 ### Pages to Fix
-List pages with declining clicks. For each: current clicks, % change, likely cause (seasonal? algorithm update? new competitor?).
+
+List pages with declining clicks. For each:
+- Current clicks vs previous period
+- % change
+- Likely cause (seasonal, algorithm update, new competitor, content staleness, technical issue)
+- Specific fix recommendation
 
 ---
 
-## Phase 4b — Technical SEO Audit
+## Phase 5 — Technical SEO Audit
 
-Crawl the site's key pages to check technical health. Use the firecrawl skill if available, otherwise use WebFetch.
+Crawl the site's key pages to check technical health. Use the firecrawl skill if
+available, otherwise use WebFetch.
 
-Pages to audit: homepage, plus any pages flagged in Phase 4a.
+Pages to audit: homepage, top 3-5 traffic pages from Phase 4, plus any pages
+flagged as declining.
 
-For each page check:
+### Indexability
+- Fetch and analyze `robots.txt` — is it blocking important paths? Are there
+  unnecessary disallow rules?
+- Check for `noindex` meta tags or `X-Robots-Tag` headers on important pages
+- Check canonical URLs — self-referencing (good) or pointing elsewhere (investigate)
+- Check for `hreflang` tags if the site targets multiple languages/regions
+- Look for orphan pages (important pages with no internal links pointing to them)
 
-**Indexability**
-- Is `robots.txt` blocking important paths?
-- Is there a `noindex` tag on important pages?
-- Is there a canonical URL? Does it point to itself (good) or elsewhere (investigate)?
+### Title & Meta
+- `<title>` present? Under 60 characters? Contains primary keyword near the front?
+- `<meta name="description">` present? 120-160 characters? Includes a call to action?
+- Title uniqueness — are multiple pages using the same or very similar titles?
+- Open Graph and Twitter Card tags present for social sharing?
 
-**Title & Meta**
-- `<title>` present? Under 60 chars? Contains primary keyword?
-- `<meta name="description">` present? 120-160 chars? Action-oriented?
-- Is the title unique (not duplicated across pages)?
+### Headings & Content Structure
+- Single `<h1>` per page? Contains primary keyword naturally (not stuffed)?
+- Logical heading hierarchy (h1 → h2 → h3, no skipped levels)?
+- Content depth — is the page thin (under 300 words for a page trying to rank)?
+- Content freshness — when was it last updated? Stale content loses rankings.
 
-**Headings**
-- Single `<h1>` per page? Contains primary keyword?
-- Logical heading hierarchy (h1 → h2 → h3)?
-- No keyword stuffing?
+### Structured Data
+Detect the site type and check for appropriate schema:
+- **E-commerce**: Product, AggregateRating, BreadcrumbList, FAQPage, Offer
+- **Local business**: LocalBusiness, OpeningHoursSpecification, GeoCoordinates
+- **Blog/content**: Article, BlogPosting, HowTo, FAQPage
+- **SaaS/services**: Organization, Service, FAQPage, SoftwareApplication
+- **Professional services**: ProfessionalService, Review, Person
 
-**Structured Data**
-- JSON-LD or Schema.org markup present?
-- For e-commerce: Product, Review, BreadcrumbList
-- For local business: LocalBusiness, OpeningHours
-- For blog: Article, BlogPosting
+Validate any existing JSON-LD — common issues: missing required fields, wrong
+@type, invalid dates, duplicate markup.
 
-**Performance Signals**
-- Check for render-blocking scripts in `<head>`
-- Images: are they lazy-loaded? Do they have `alt` attributes?
-- Is there a `<link rel="preload">` for critical resources?
+### Core Web Vitals & Performance
+- Render-blocking scripts in `<head>` — should be deferred or async
+- Images: lazy-loaded? Have `alt` attributes? Served in modern formats (WebP/AVIF)?
+  Properly sized (not 3000px wide in a 400px container)?
+- `<link rel="preload">` for critical resources (fonts, above-the-fold images)?
+- Excessive DOM size (>1500 nodes suggests bloat)?
+- Third-party script bloat — count external domains loaded
 
-**Links**
-- Internal links present? Descriptive anchor text?
-- Broken links (404s) on the page?
+### Internal Linking & Site Architecture
+- Does the page have internal links? Are they descriptive (not "click here")?
+- Does the page link to related content (topic clusters)?
+- Is the page reachable within 3 clicks from the homepage?
+- Broken internal links (404s)?
+
+### Mobile Readiness
+- Viewport meta tag present?
+- Touch targets large enough (48px minimum)?
+- Text readable without zooming?
+- No horizontal scrolling?
 
 ---
 
-## Phase 5 — Report
+## Phase 6 — Report
 
-Output a structured report. Always use this format:
+Output a structured report. Use this format:
 
 ---
 
@@ -165,7 +254,10 @@ Output a structured report. Always use this format:
 *Analyzed: [date range] | Data: Google Search Console + Technical Crawl*
 
 ## Executive Summary
-[2-3 sentences on overall health and the single most important thing to fix]
+[2-3 sentences: overall health, the single most important thing to fix, and the
+estimated opportunity if fixed. Be specific: "Your site gets 12,400 clicks/month
+but is leaving an estimated 3,000-5,000 additional clicks on the table from
+position 4-10 queries that need title tag optimization."]
 
 ## Traffic Snapshot
 | Metric | Value | vs Prior Period |
@@ -176,22 +268,58 @@ Output a structured report. Always use this format:
 | Avg Position | X | ↑/↓ |
 
 ## Quick Wins (Fix These First)
-[Numbered list, most impactful first. Be specific: "Update title tag on /pricing from 'Pricing' to 'Pet Shipping Rates & Pricing — PawsVIP' — currently ranks #7 for 'pet shipping cost' with 2,400 monthly impressions but only 1.2% CTR"]
+[Numbered list, most impactful first. Every recommendation must include:
+1. The specific page URL
+2. The specific query/keyword
+3. Current metrics (position, impressions, CTR)
+4. What to change (exact new title, description, or action)
+5. Why this will work (the search intent logic)
+
+Example: "Update title tag on /pricing from 'Pricing' to 'Plans & Pricing —
+[Actual Value Prop]' — currently ranks #7 for 'your-product pricing' with
+2,400 monthly impressions but only 1.2% CTR. This is a transactional query
+where users expect to see pricing info immediately. A title with the price
+range or 'Free trial' would increase CTR to ~3-5%."]
+
+## Search Intent Mismatches
+[Pages where the content type doesn't match what searchers want. For each:
+the query, the current page, the intent, and what to do about it.]
+
+## Keyword Cannibalization
+[Queries where multiple pages compete. Which page should win, what to do with
+the others.]
 
 ## Content Opportunities
-[Queries you partially rank for that need dedicated pages or expanded content]
+[Topic clusters you partially rank for that need dedicated pages or expanded
+content. Group by theme, suggest page titles, target keywords.]
 
 ## Traffic Drops to Investigate
-[Pages/queries with significant declines, with a hypothesis for each]
+[Pages/queries with significant declines, with a hypothesis and investigation
+steps for each.]
 
 ## Technical Issues
 [Severity: Critical / High / Medium / Low]
-[For each: what it is, which pages, how to fix it]
+[For each: what it is, which pages, how to fix it, and the impact on rankings
+if left unfixed.]
 
 ## 30-Day Action Plan
-1. [Specific action — owner — expected impact]
-2. ...
+[Prioritized by impact. Each item must be specific enough that someone could
+do it without asking follow-up questions.]
+
+| Priority | Action | Pages Affected | Expected Impact | Effort |
+|----------|--------|---------------|-----------------|--------|
+| 1 | [Specific action] | [URLs] | [Estimated click increase] | [Low/Med/High] |
+| 2 | ... | ... | ... | ... |
 
 ---
 
-Keep recommendations specific and actionable. "Improve your meta descriptions" is useless. "Update the meta description on /products/cat-relocation to include 'door-to-door cat relocation service' and a call to action — it currently has 5,400 impressions but 0.8% CTR" is useful.
+Every recommendation must be specific and actionable. "Improve your meta
+descriptions" is useless. "Update the meta description on /product-page to
+include '[exact phrase from top query]' and a clear CTA — it currently has
+5,400 impressions but 0.8% CTR, suggesting the snippet doesn't match what
+searchers expect to see for this transactional query" is useful.
+
+When estimating impact, use conservative CTR curves: position 1 ~27%, position
+2 ~15%, position 3 ~11%, position 4-5 ~5-8%, position 6-10 ~2-4%. Moving from
+position 7 to position 3 on a 2,400 impression/month query means roughly
++170 clicks/month. Use real numbers from the data.
