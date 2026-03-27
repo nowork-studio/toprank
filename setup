@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # toprank setup — register skills with Claude Code and/or Codex
-set -e
+set -eo pipefail
 
 TOPRANK_DIR="$(cd "$(dirname "$0")" && pwd)"
 TOPRANK_NAME="$(basename "$TOPRANK_DIR")"
@@ -24,6 +24,11 @@ esac
 echo "toprank setup"
 echo "─────────────"
 echo ""
+
+# ─── Make bin scripts executable ─────────────────────────────
+if [ -d "$TOPRANK_DIR/bin" ]; then
+  chmod +x "$TOPRANK_DIR/bin/"* 2>/dev/null || true
+fi
 
 # ─── Auto-detect hosts ───────────────────────────────────────
 INSTALL_CLAUDE=0
@@ -54,6 +59,44 @@ done
 if [ ${#skills[@]} -eq 0 ]; then
   echo "  no skills found"
   exit 0
+fi
+
+# ─── Inject preamble into skills that don't have it ──────────
+PREAMBLE_FILE="$TOPRANK_DIR/bin/preamble.md"
+if [ -f "$PREAMBLE_FILE" ]; then
+  injected_preambles=()
+  for skill_name in "${skills[@]}"; do
+    [ "$skill_name" = "toprank-upgrade" ] && continue  # upgrade skill doesn't self-check
+    SKILL_FILE="$TOPRANK_DIR/$skill_name/SKILL.md"
+    [ -f "$SKILL_FILE" ] || continue
+    grep -q 'toprank-update-check' "$SKILL_FILE" 2>/dev/null && continue  # already has preamble
+    python3 - "$SKILL_FILE" "$PREAMBLE_FILE" <<'PYEOF'
+import sys, os, tempfile
+skill_path, preamble_path = sys.argv[1], sys.argv[2]
+with open(skill_path) as f:
+    content = f.read()
+with open(preamble_path) as f:
+    preamble = f.read()
+parts = content.split('---', 2)
+if len(parts) < 3:
+    sys.exit(0)  # no frontmatter, skip
+new_content = parts[0] + '---' + parts[1] + '---\n\n' + preamble + parts[2].lstrip('\n')
+# Atomic write: write to temp then rename so a kill mid-write can't corrupt the file.
+skill_dir = os.path.dirname(os.path.abspath(skill_path))
+fd, tmp_path = tempfile.mkstemp(dir=skill_dir)
+try:
+    with os.fdopen(fd, 'w') as f:
+        f.write(new_content)
+    os.replace(tmp_path, skill_path)
+except Exception:
+    os.unlink(tmp_path)
+    raise
+PYEOF
+    injected_preambles+=("$skill_name")
+  done
+  if [ ${#injected_preambles[@]} -gt 0 ]; then
+    echo "  injected preamble: ${injected_preambles[*]}"
+  fi
 fi
 
 # ─── Claude Code: symlink skills into parent directory ────────
