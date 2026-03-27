@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.4.1] — 2026-03-27
+
+### Fixed
+- **GSC quota project header** — replaced raw `urllib` HTTP calls with `google-auth` library (`AuthorizedSession`), which automatically sends the `x-goog-user-project` header required for ADC user credentials; this was the root cause of 403 errors during onboarding
+- **Auto-detect quota project** — scripts now read `quota_project_id` from ADC credentials and fall back to `gcloud config get-value project` if missing, eliminating the manual `set-quota-project` step
+
+### Changed
+- **Shared auth module** — extracted `gsc_auth.py` with `get_credentials()`, `get_session()`, and `_ensure_quota_project()` to eliminate duplicated auth logic between `list_gsc_sites.py` and `analyze_gsc.py`
+- **SKILL.md Phase 1** — streamlined GSC setup instructions from ~50 lines to ~25 lines for faster onboarding and lower token usage
+- **gsc_setup.md** — updated setup guide to reflect 2-step process (`pip install google-auth` + `gcloud auth application-default login`) and documented new troubleshooting entries
+
+### Added
+- **`google-auth` dependency** — new pip requirement for proper Google API authentication
+- **4 new unit tests** for `_ensure_quota_project()` covering: already-set, auto-detect from gcloud, gcloud not found, gcloud returns empty
+
+---
+
 ## [0.4.0] — 2026-03-27
 
 ### Added

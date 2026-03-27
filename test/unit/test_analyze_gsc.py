@@ -15,13 +15,32 @@ import unittest
 from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
-# Load analyze_gsc.py as a module without executing main()
-_SCRIPT_PATH = os.path.join(
-    os.path.dirname(__file__), '..', '..', 'seo-analysis', 'scripts', 'analyze_gsc.py'
+# Mock google.auth before importing so the scripts don't fail on import
+_mock_google_auth = MagicMock()
+_mock_creds = MagicMock()
+_mock_creds.quota_project_id = 'test-project'
+_mock_google_auth.default.return_value = (_mock_creds, 'test-project')
+_mock_google_auth.exceptions.DefaultCredentialsError = Exception
+sys.modules['google'] = MagicMock()
+sys.modules['google.auth'] = _mock_google_auth
+sys.modules['google.auth.exceptions'] = _mock_google_auth.exceptions
+sys.modules['google.auth.transport'] = MagicMock()
+sys.modules['google.auth.transport.requests'] = MagicMock()
+
+# Load gsc_auth first (shared module), then analyze_gsc
+_SCRIPTS_DIR = os.path.join(
+    os.path.dirname(__file__), '..', '..', 'seo-analysis', 'scripts'
 )
+
+_AUTH_PATH = os.path.join(_SCRIPTS_DIR, 'gsc_auth.py')
+spec = importlib.util.spec_from_file_location('gsc_auth', _AUTH_PATH)
+gsc_auth = importlib.util.module_from_spec(spec)
+sys.modules['gsc_auth'] = gsc_auth
+spec.loader.exec_module(gsc_auth)
+
+_SCRIPT_PATH = os.path.join(_SCRIPTS_DIR, 'analyze_gsc.py')
 spec = importlib.util.spec_from_file_location('analyze_gsc', _SCRIPT_PATH)
 gsc = importlib.util.module_from_spec(spec)
-# Don't run __main__ block
 spec.loader.exec_module(gsc)
 
 
@@ -71,11 +90,11 @@ class TestPositionBuckets(unittest.TestCase):
         }
 
     def _run_buckets(self, rows):
-        token = 'fake-token'
+        session = MagicMock()
         mock_data = {'rows': rows}
 
         with patch.object(gsc, 'gsc_query', return_value=mock_data):
-            return gsc.pull_position_buckets(token, 'sc-domain:test.com', '2025-01-01', '2025-03-31')
+            return gsc.pull_position_buckets(session, 'sc-domain:test.com', '2025-01-01', '2025-03-31')
 
     def test_position_1_goes_to_1_3(self):
         buckets = self._run_buckets([self._make_row('q1', 1.0)])
@@ -155,7 +174,7 @@ class TestPositionBuckets(unittest.TestCase):
 
 
 class TestCtrOpportunities(unittest.TestCase):
-    """CTR opportunity filtering: impressions > 500, ctr < 3.0%, position ≤ 20."""
+    """CTR opportunity filtering: impressions > 500, ctr < 3.0%, position <= 20."""
 
     def _make_query(self, impressions, ctr, position):
         return {
@@ -230,10 +249,9 @@ class TestPeriodComparison(unittest.TestCase):
         """Patch gsc_query to return controlled data, run pull_period_comparison."""
         call_count = {'n': 0}
 
-        def fake_query(token, site, body):
+        def fake_query(session, site, body):
             n = call_count['n']
             call_count['n'] += 1
-            dim = body['dimensions'][0]
             # Calls: curr_pages, prev_pages, curr_queries, prev_queries
             if n == 0: return {'rows': [self._make_row(k, v) for k, v in curr_pages.items()]}
             if n == 1: return {'rows': [self._make_row(k, v) for k, v in prev_pages.items()]}
@@ -242,7 +260,7 @@ class TestPeriodComparison(unittest.TestCase):
             return {'rows': []}
 
         with patch.object(gsc, 'gsc_query', side_effect=fake_query):
-            return gsc.pull_period_comparison('fake-token', 'sc-domain:test.com', 28)
+            return gsc.pull_period_comparison(MagicMock(), 'sc-domain:test.com', 28)
 
     def test_page_drop_above_20pct_flagged(self):
         result = self._run_comparison(
@@ -307,7 +325,7 @@ class TestPeriodComparison(unittest.TestCase):
             curr_pages={},
             prev_pages={},
             curr_queries={'rare query': 1},
-            prev_queries={'rare query': 4},  # -75% but prev ≤ 5
+            prev_queries={'rare query': 4},  # -75% but prev <= 5
         )
         self.assertEqual(len(result['declining_queries']), 0)
 
@@ -336,28 +354,37 @@ class TestGscQueryErrorHandling(unittest.TestCase):
     """gsc_query() returns empty rows on HTTP errors instead of crashing."""
 
     def test_http_error_returns_empty_rows(self):
-        import urllib.error
-        with patch('urllib.request.urlopen', side_effect=urllib.error.HTTPError(
-            url='https://api.google.com', code=403, msg='Forbidden', hdrs=None, fp=None  # type: ignore
-        )):
-            result = gsc.gsc_query('fake-token', 'sc-domain:test.com', {'dimensions': ['query']})
-            self.assertEqual(result, {'rows': []})
+        mock_session = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 500
+        mock_resp.ok = False
+        mock_resp.text = 'Internal Server Error'
+        mock_session.post.return_value = mock_resp
+        result = gsc.gsc_query(mock_session, 'sc-domain:test.com', {'dimensions': ['query']})
+        self.assertEqual(result, {'rows': []})
+
+    def test_403_quota_error_returns_empty_rows(self):
+        mock_session = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+        mock_resp.ok = False
+        mock_resp.text = '{"error": {"message": "quota project not set"}}'
+        mock_session.post.return_value = mock_resp
+        result = gsc.gsc_query(mock_session, 'sc-domain:test.com', {'dimensions': ['query']})
+        self.assertEqual(result, {'rows': []})
 
     def test_successful_response_parsed_correctly(self):
-        mock_body = json.dumps({
+        mock_session = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.ok = True
+        mock_resp.json.return_value = {
             'rows': [
                 {'keys': ['test query'], 'clicks': 100, 'impressions': 1000, 'ctr': 0.1, 'position': 5.0}
             ]
-        }).encode()
-
-        mock_resp = MagicMock()
-        mock_resp.__enter__ = lambda s: s
-        mock_resp.__exit__ = MagicMock(return_value=False)
-        mock_resp.read.return_value = mock_body
-
-        with patch('urllib.request.urlopen', return_value=mock_resp):
-            result = gsc.gsc_query('fake-token', 'sc-domain:test.com', {'dimensions': ['query']})
-
+        }
+        mock_session.post.return_value = mock_resp
+        result = gsc.gsc_query(mock_session, 'sc-domain:test.com', {'dimensions': ['query']})
         self.assertEqual(len(result['rows']), 1)
         self.assertEqual(result['rows'][0]['keys'][0], 'test query')
 
@@ -370,7 +397,7 @@ class TestTopQueriesFormatting(unittest.TestCase):
             {'keys': ['test'], 'clicks': 50, 'impressions': 500, 'ctr': 0.1234, 'position': 4.567}
         ]}
         with patch.object(gsc, 'gsc_query', return_value=mock_data):
-            result = gsc.pull_top_queries('token', 'sc-domain:test.com', '2025-01-01', '2025-03-31')
+            result = gsc.pull_top_queries(MagicMock(), 'sc-domain:test.com', '2025-01-01', '2025-03-31')
 
         self.assertEqual(result[0]['position'], 4.6)
 
@@ -379,20 +406,68 @@ class TestTopQueriesFormatting(unittest.TestCase):
             {'keys': ['test'], 'clicks': 100, 'impressions': 1000, 'ctr': 0.1, 'position': 3.0}
         ]}
         with patch.object(gsc, 'gsc_query', return_value=mock_data):
-            result = gsc.pull_top_queries('token', 'sc-domain:test.com', '2025-01-01', '2025-03-31')
+            result = gsc.pull_top_queries(MagicMock(), 'sc-domain:test.com', '2025-01-01', '2025-03-31')
 
-        # ctr 0.1 → 10.0%
+        # ctr 0.1 -> 10.0%
         self.assertEqual(result[0]['ctr'], 10.0)
 
     def test_empty_response_returns_empty_list(self):
         with patch.object(gsc, 'gsc_query', return_value={'rows': []}):
-            result = gsc.pull_top_queries('token', 'sc-domain:test.com', '2025-01-01', '2025-03-31')
+            result = gsc.pull_top_queries(MagicMock(), 'sc-domain:test.com', '2025-01-01', '2025-03-31')
         self.assertEqual(result, [])
 
     def test_missing_rows_returns_empty_list(self):
         with patch.object(gsc, 'gsc_query', return_value={}):
-            result = gsc.pull_top_queries('token', 'sc-domain:test.com', '2025-01-01', '2025-03-31')
+            result = gsc.pull_top_queries(MagicMock(), 'sc-domain:test.com', '2025-01-01', '2025-03-31')
         self.assertEqual(result, [])
+
+
+class TestEnsureQuotaProject(unittest.TestCase):
+    """_ensure_quota_project() auto-detects from gcloud config when missing."""
+
+    def test_returns_credentials_unchanged_if_quota_project_set(self):
+        creds = MagicMock()
+        creds.quota_project_id = 'already-set'
+        result = gsc_auth._ensure_quota_project(creds)
+        self.assertIs(result, creds)
+
+    def test_calls_gcloud_when_quota_project_missing(self):
+        creds = MagicMock()
+        creds.quota_project_id = None
+        new_creds = MagicMock()
+        creds.with_quota_project.return_value = new_creds
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = 'my-project\n'
+
+        with patch('subprocess.run', return_value=mock_result):
+            result = gsc_auth._ensure_quota_project(creds)
+
+        creds.with_quota_project.assert_called_once_with('my-project')
+        self.assertIs(result, new_creds)
+
+    def test_returns_original_if_gcloud_not_found(self):
+        creds = MagicMock()
+        creds.quota_project_id = None
+
+        with patch('subprocess.run', side_effect=FileNotFoundError):
+            result = gsc_auth._ensure_quota_project(creds)
+
+        self.assertIs(result, creds)
+
+    def test_returns_original_if_gcloud_returns_empty(self):
+        creds = MagicMock()
+        creds.quota_project_id = None
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = '\n'
+
+        with patch('subprocess.run', return_value=mock_result):
+            result = gsc_auth._ensure_quota_project(creds)
+
+        self.assertIs(result, creds)
 
 
 if __name__ == '__main__':

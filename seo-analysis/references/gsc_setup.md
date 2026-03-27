@@ -18,7 +18,13 @@ appear to work but return no GSC properties.
 
 ## The Fastest Path: gcloud Application Default Credentials
 
-If gcloud is installed, this is a single command:
+Two steps: install the Python dependency, then authenticate.
+
+```bash
+pip install google-auth
+```
+
+Then authenticate with a single command:
 
 ```bash
 gcloud auth application-default login \
@@ -28,6 +34,9 @@ gcloud auth application-default login \
 A browser window opens. Log in with the Google account from Step 0. Done. The
 token auto-refreshes and is stored at
 `~/.config/gcloud/application_default_credentials.json`.
+
+The scripts auto-detect the quota project from your gcloud config, so no extra
+setup is needed.
 
 **Verify it worked** (should list your GSC properties):
 ```bash
@@ -136,6 +145,18 @@ the `webmasters.readonly` scope. Re-run:
 ```bash
 gcloud auth application-default login \
   --scopes=https://www.googleapis.com/auth/webmasters.readonly
+```
+
+**"quota project not set" / 403 with quota error**: The scripts auto-detect the
+quota project from `gcloud config`. If this still fails, set it explicitly:
+```bash
+gcloud auth application-default set-quota-project "$(gcloud config get-value project)"
+```
+
+**"google-auth package not installed"**: The scripts require the `google-auth`
+Python package. Install it:
+```bash
+pip install google-auth
 ```
 
 **Token expired**: ADC tokens auto-refresh. If you get persistent auth errors,
