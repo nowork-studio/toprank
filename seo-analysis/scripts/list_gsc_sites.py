@@ -9,10 +9,15 @@ import urllib.error
 
 
 def get_access_token():
-    result = subprocess.run(
-        ["gcloud", "auth", "application-default", "print-access-token"],
-        capture_output=True, text=True
-    )
+    try:
+        result = subprocess.run(
+            ["gcloud", "auth", "application-default", "print-access-token"],
+            capture_output=True, text=True
+        )
+    except FileNotFoundError:
+        print("ERROR: gcloud not found. Install it and authenticate:", file=sys.stderr)
+        print("  https://cloud.google.com/sdk/docs/install", file=sys.stderr)
+        sys.exit(1)
     if result.returncode != 0:
         print("ERROR: Could not get access token. Run:", file=sys.stderr)
         print("  gcloud auth application-default login \\", file=sys.stderr)
@@ -31,6 +36,9 @@ def list_sites(token):
     except urllib.error.HTTPError as e:
         body = e.read().decode()
         print(f"ERROR {e.code}: {body}", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"ERROR: Network failure: {e.reason}", file=sys.stderr)
         sys.exit(1)
 
 
