@@ -19,10 +19,15 @@ from datetime import date, timedelta
 
 
 def get_access_token():
-    result = subprocess.run(
-        ["gcloud", "auth", "application-default", "print-access-token"],
-        capture_output=True, text=True
-    )
+    try:
+        result = subprocess.run(
+            ["gcloud", "auth", "application-default", "print-access-token"],
+            capture_output=True, text=True
+        )
+    except FileNotFoundError:
+        print("ERROR: gcloud not found. Install it and authenticate:", file=sys.stderr)
+        print("  https://cloud.google.com/sdk/docs/install", file=sys.stderr)
+        sys.exit(1)
     if result.returncode != 0:
         print("ERROR: Not authenticated. Run:", file=sys.stderr)
         print("  gcloud auth application-default login \\", file=sys.stderr)
@@ -46,6 +51,9 @@ def gsc_query(token, site_url, body):
     except urllib.error.HTTPError as e:
         body = e.read().decode()
         print(f"GSC API error {e.code}: {body}", file=sys.stderr)
+        return {"rows": []}
+    except urllib.error.URLError as e:
+        print(f"GSC API network error: {e.reason}", file=sys.stderr)
         return {"rows": []}
 
 
