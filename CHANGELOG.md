@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.4.2] — 2026-03-27
+
+### Added
+- **README demo section** — "See It Work" example conversation showing end-to-end `/seo-analysis` flow for clearer onboarding
+
+---
+
 ## [0.4.1] — 2026-03-27
 
 ### Fixed
