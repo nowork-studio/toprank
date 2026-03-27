@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.5.1] — 2026-03-27
+
+### Security
+- **Predictable /tmp paths** — `analyze_gsc.py` and `list_gsc_sites.py` now use `gsc_analysis_{uid}.json` / `gsc_sites_{uid}.json` via `tempfile.gettempdir()` + `os.getuid()`, preventing cross-user data exposure on multi-user systems
+- **`.gstack/` gitignored** — local security audit reports excluded from git history
+- **Test dependency lockfile** — added `requirements-test.lock` (pip-compiled) to pin test dependencies and prevent supply-chain drift
+
+---
+
 ## [0.5.0] — 2026-03-27
 
 ### Added
@@ -29,6 +38,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Zero-dependency GSC auth** — removed `google-auth` Python package requirement; reverts 0.4.1 approach; scripts now call `gcloud auth application-default print-access-token` directly via subprocess and use stdlib `urllib` for HTTP, eliminating the `pip install` setup step
 - **`gsc_auth.py` removed** — auth logic inlined in `list_gsc_sites.py` and `analyze_gsc.py`; simpler, no shared module
 - **SKILL.md Phase 1** — GSC setup instructions updated to reflect the simpler auth flow
+
+### Security
+- **Predictable /tmp paths** — GSC output files now use `gsc_analysis_{uid}.json` and `gsc_sites_{uid}.json` instead of shared paths, preventing cross-user data exposure on multi-user systems
+- **`.gstack/` gitignored** — security audit reports are now excluded from git commits
+- **Test dependency lockfile** — added `requirements-test.lock` (pip-compiled) to pin exact versions and prevent supply-chain drift
 
 ---
 

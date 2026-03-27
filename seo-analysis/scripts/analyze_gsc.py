@@ -10,8 +10,10 @@ Usage:
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -236,7 +238,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--site", required=True, help="GSC property URL")
     parser.add_argument("--days", type=int, default=90, help="Days of data to pull")
-    parser.add_argument("--output", default="/tmp/gsc_analysis.json", help="Output file")
+    _default_out = os.path.join(tempfile.gettempdir(), f"gsc_analysis_{os.getuid()}.json")
+    parser.add_argument("--output", default=_default_out, help="Output file")
     args = parser.parse_args()
 
     print(f"Pulling {args.days} days of GSC data for: {args.site}", file=sys.stderr)
