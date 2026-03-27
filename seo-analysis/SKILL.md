@@ -45,60 +45,45 @@ cold.
 
 ## Phase 1 — Confirm Access to Google Search Console
 
-Locate the scripts directory (works regardless of where the skill is installed):
+Locate scripts and run the auth + access check in one shot:
 
 ```bash
 SKILL_SCRIPTS=$(find ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
-if [ -z "$SKILL_SCRIPTS" ]; then
-  echo "ERROR: Could not find seo-analysis scripts directory. Check your installation."
-  exit 1
-fi
-echo "Scripts at: $SKILL_SCRIPTS"
-```
-
-Run the site listing script as a single combined auth + access check:
-
-```bash
+[ -z "$SKILL_SCRIPTS" ] && echo "ERROR: seo-analysis scripts not found" && exit 1
 python3 "$SKILL_SCRIPTS/list_gsc_sites.py"
 ```
 
-This tests everything at once: whether gcloud exists, whether ADC is authenticated
-with the right scopes, and whether the authenticated account actually has GSC access.
+**If it lists sites** → done. Carry the site list into Phase 2.
 
-**If it lists sites** → you're done; carry the site list into Phase 2 (skip running
-list_gsc_sites.py again).
+**If "google-auth package not installed"** → ask user to run `pip install google-auth`,
+then retry.
 
-**If "No Search Console properties found"** → the authenticated account has no GSC
-properties. Most likely cause: gcloud is set up for the wrong Google account (work
-email vs personal, different org). But also possible: the site was never added to
-Search Console, or the user's access was revoked. Ask: "Which Google account has
-access to your Search Console? Go to https://search.google.com/search-console and
-check which account you're logged in as — that's the one to use." Then re-authenticate:
+**If "No Application Default Credentials found"** → gcloud ADC not set up. Run:
 ```bash
 gcloud auth application-default login \
   --scopes=https://www.googleapis.com/auth/webmasters.readonly
 ```
 
-**If "Could not get access token"** (gcloud not authenticated or wrong scopes) → run:
+**If "No Search Console properties found"** → wrong Google account. Ask user to
+check which account owns their GSC properties at
+https://search.google.com/search-console, then re-authenticate with that account.
+
+**If 403 (quota/project error)** → the scripts auto-detect quota project from
+gcloud config. If it still fails, set it explicitly:
 ```bash
-gcloud auth application-default login \
-  --scopes=https://www.googleapis.com/auth/webmasters.readonly
+gcloud auth application-default set-quota-project "$(gcloud config get-value project)"
 ```
-This is the common case where gcloud is installed but was set up for a different
-service (Firebase, GCS, etc.) without the webmasters scope. The browser opens,
-the user logs in, done.
 
-**If "ERROR: gcloud not found"** → gcloud isn't installed (the script caught the
-missing binary and exited cleanly). Ask if they want to install it (2 min) or skip
-GSC entirely. Read `references/gsc_setup.md` for install steps. If they want to
-skip: jump to Phase 5 (technical-only audit).
+**If 403 (API not enabled)** → run:
+```bash
+gcloud services enable searchconsole.googleapis.com
+```
 
-**If HTTP 403** → could be wrong scopes, API not enabled, or no property access.
-Check the error body: "insufficient scope" → re-run `gcloud auth application-default
-login --scopes=...`; "API not enabled" → run `gcloud services enable
-searchconsole.googleapis.com`; "permission denied" → the account doesn't have GSC
-access for this property (verify at https://search.google.com/search-console →
-Settings → Users and permissions). Full details in `references/gsc_setup.md`.
+**If 403 (permission denied)** → the account lacks GSC property access. Verify at
+Search Console → Settings → Users and permissions.
+
+**If gcloud not installed** → ask if they want to install (2 min) or skip GSC.
+See `references/gsc_setup.md` for install steps. To skip: jump to Phase 5.
 
 ---
 
