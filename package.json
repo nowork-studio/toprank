@@ -1,0 +1,17 @@
+{
+  "name": "toprank",
+  "version": "1.0.0",
+  "description": "SEO + SEM skills for Claude Code and Codex",
+  "scripts": {
+    "test": "bun test test/**/*.test.ts",
+    "test:eval": "EVALS=1 bun test test/**/*.test.ts",
+    "test:unit": "pytest test/unit/ -v",
+    "test:llm": "EVALS=1 bun test test/skill-llm-eval.test.ts",
+    "test:e2e": "EVALS=1 bun test test/skill-e2e.test.ts",
+    "test:routing": "EVALS=1 bun test test/skill-routing-e2e.test.ts"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "bun-types": "latest"
+  }
+}

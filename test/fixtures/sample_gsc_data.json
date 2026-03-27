@@ -1,0 +1,125 @@
+{
+  "site": "sc-domain:example-saas.com",
+  "period": {
+    "start": "2025-12-17",
+    "end": "2026-03-17",
+    "days": 90
+  },
+  "summary": {
+    "clicks": 14823,
+    "impressions": 389400,
+    "ctr": 3.81,
+    "position": 18.4
+  },
+  "top_queries": [
+    { "query": "project management software", "clicks": 1240, "impressions": 9800, "ctr": 12.65, "position": 2.1 },
+    { "query": "team collaboration tools", "clicks": 890, "impressions": 7200, "ctr": 12.36, "position": 2.4 },
+    { "query": "task management app", "clicks": 780, "impressions": 6100, "ctr": 12.79, "position": 2.8 },
+    { "query": "project management tool free", "clicks": 420, "impressions": 8900, "ctr": 4.72, "position": 5.2 },
+    { "query": "best project management software 2025", "clicks": 380, "impressions": 12400, "ctr": 3.06, "position": 6.8 },
+    { "query": "agile project management", "clicks": 360, "impressions": 5800, "ctr": 6.21, "position": 4.1 },
+    { "query": "project management software for small teams", "clicks": 310, "impressions": 7600, "ctr": 4.08, "position": 5.9 },
+    { "query": "kanban board software", "clicks": 290, "impressions": 4200, "ctr": 6.90, "position": 3.8 },
+    { "query": "project tracking software", "clicks": 260, "impressions": 9100, "ctr": 2.86, "position": 7.3 },
+    { "query": "project management software pricing", "clicks": 240, "impressions": 6300, "ctr": 3.81, "position": 6.1 },
+    { "query": "asana alternative", "clicks": 220, "impressions": 4800, "ctr": 4.58, "position": 8.4 },
+    { "query": "jira alternative", "clicks": 210, "impressions": 5100, "ctr": 4.12, "position": 7.9 },
+    { "query": "monday.com alternative", "clicks": 190, "impressions": 4400, "ctr": 4.32, "position": 8.1 },
+    { "query": "team task management", "clicks": 180, "impressions": 3900, "ctr": 4.62, "position": 9.2 },
+    { "query": "project management gantt chart", "clicks": 170, "impressions": 6800, "ctr": 2.50, "position": 11.4 },
+    { "query": "remote team project management", "clicks": 160, "impressions": 5200, "ctr": 3.08, "position": 12.1 },
+    { "query": "project management software review", "clicks": 150, "impressions": 8700, "ctr": 1.72, "position": 14.2 },
+    { "query": "online project management", "clicks": 140, "impressions": 7400, "ctr": 1.89, "position": 13.8 },
+    { "query": "simple project management tool", "clicks": 130, "impressions": 5900, "ctr": 2.20, "position": 15.6 },
+    { "query": "project management app for startups", "clicks": 120, "impressions": 4100, "ctr": 2.93, "position": 16.9 }
+  ],
+  "top_pages": [
+    { "page": "https://example-saas.com/", "clicks": 3240, "impressions": 28400, "ctr": 11.41, "position": 2.8 },
+    { "page": "https://example-saas.com/features", "clicks": 2180, "impressions": 19600, "ctr": 11.12, "position": 3.1 },
+    { "page": "https://example-saas.com/pricing", "clicks": 1890, "impressions": 18200, "ctr": 10.38, "position": 4.2 },
+    { "page": "https://example-saas.com/blog/project-management-tips", "clicks": 980, "impressions": 31400, "ctr": 3.12, "position": 8.4 },
+    { "page": "https://example-saas.com/alternatives/asana", "clicks": 760, "impressions": 12800, "ctr": 5.94, "position": 5.6 },
+    { "page": "https://example-saas.com/blog/agile-vs-waterfall", "clicks": 680, "impressions": 24100, "ctr": 2.82, "position": 9.7 },
+    { "page": "https://example-saas.com/templates", "clicks": 540, "impressions": 16300, "ctr": 3.31, "position": 11.2 },
+    { "page": "https://example-saas.com/integrations", "clicks": 420, "impressions": 9800, "ctr": 4.29, "position": 7.8 },
+    { "page": "https://example-saas.com/blog/remote-team-management", "clicks": 380, "impressions": 19400, "ctr": 1.96, "position": 13.1 },
+    { "page": "https://example-saas.com/enterprise", "clicks": 320, "impressions": 7100, "ctr": 4.51, "position": 6.4 }
+  ],
+  "position_buckets": {
+    "1-3": [
+      { "query": "project management software", "clicks": 1240, "impressions": 9800, "ctr": 12.65, "position": 2.1 },
+      { "query": "team collaboration tools", "clicks": 890, "impressions": 7200, "ctr": 12.36, "position": 2.4 },
+      { "query": "task management app", "clicks": 780, "impressions": 6100, "ctr": 12.79, "position": 2.8 },
+      { "query": "kanban board software", "clicks": 290, "impressions": 4200, "ctr": 6.90, "position": 3.8 }
+    ],
+    "4-10": [
+      { "query": "project management tool free", "clicks": 420, "impressions": 8900, "ctr": 4.72, "position": 5.2 },
+      { "query": "best project management software 2025", "clicks": 380, "impressions": 12400, "ctr": 3.06, "position": 6.8 },
+      { "query": "agile project management", "clicks": 360, "impressions": 5800, "ctr": 6.21, "position": 4.1 },
+      { "query": "project management software for small teams", "clicks": 310, "impressions": 7600, "ctr": 4.08, "position": 5.9 },
+      { "query": "project tracking software", "clicks": 260, "impressions": 9100, "ctr": 2.86, "position": 7.3 },
+      { "query": "project management software pricing", "clicks": 240, "impressions": 6300, "ctr": 3.81, "position": 6.1 },
+      { "query": "asana alternative", "clicks": 220, "impressions": 4800, "ctr": 4.58, "position": 8.4 },
+      { "query": "jira alternative", "clicks": 210, "impressions": 5100, "ctr": 4.12, "position": 7.9 },
+      { "query": "monday.com alternative", "clicks": 190, "impressions": 4400, "ctr": 4.32, "position": 8.1 },
+      { "query": "team task management", "clicks": 180, "impressions": 3900, "ctr": 4.62, "position": 9.2 }
+    ],
+    "11-20": [
+      { "query": "project management gantt chart", "clicks": 170, "impressions": 6800, "ctr": 2.50, "position": 11.4 },
+      { "query": "remote team project management", "clicks": 160, "impressions": 5200, "ctr": 3.08, "position": 12.1 },
+      { "query": "project management software review", "clicks": 150, "impressions": 8700, "ctr": 1.72, "position": 14.2 },
+      { "query": "online project management", "clicks": 140, "impressions": 7400, "ctr": 1.89, "position": 13.8 }
+    ],
+    "21+": [
+      { "query": "project management certification", "clicks": 80, "impressions": 12400, "ctr": 0.65, "position": 24.1 },
+      { "query": "project management methodology", "clicks": 70, "impressions": 9800, "ctr": 0.71, "position": 27.3 }
+    ]
+  },
+  "ctr_opportunities": [
+    { "query": "best project management software 2025", "clicks": 380, "impressions": 12400, "ctr": 3.06, "position": 6.8 },
+    { "query": "project tracking software", "clicks": 260, "impressions": 9100, "ctr": 2.86, "position": 7.3 },
+    { "query": "project management software review", "clicks": 150, "impressions": 8700, "ctr": 1.72, "position": 14.2 },
+    { "query": "project management tool free", "clicks": 420, "impressions": 8900, "ctr": 4.72, "position": 5.2 },
+    { "query": "online project management", "clicks": 140, "impressions": 7400, "ctr": 1.89, "position": 13.8 },
+    { "query": "project management software for small teams", "clicks": 310, "impressions": 7600, "ctr": 4.08, "position": 5.9 },
+    { "query": "project management gantt chart", "clicks": 170, "impressions": 6800, "ctr": 2.50, "position": 11.4 },
+    { "query": "project management software pricing", "clicks": 240, "impressions": 6300, "ctr": 3.81, "position": 6.1 }
+  ],
+  "comparison": {
+    "period": "2026-02-17 to 2026-03-17",
+    "prior_period": "2026-01-20 to 2026-02-16",
+    "declining_pages": [
+      {
+        "page": "https://example-saas.com/blog/agile-vs-waterfall",
+        "clicks_now": 420,
+        "clicks_prev": 680,
+        "change_pct": -38.2
+      },
+      {
+        "page": "https://example-saas.com/templates",
+        "clicks_now": 310,
+        "clicks_prev": 540,
+        "change_pct": -42.6
+      }
+    ],
+    "declining_queries": [
+      {
+        "query": "agile vs waterfall",
+        "clicks_now": 180,
+        "clicks_prev": 390,
+        "change_pct": -53.8
+      },
+      {
+        "query": "project management templates",
+        "clicks_now": 95,
+        "clicks_prev": 210,
+        "change_pct": -54.8
+      }
+    ]
+  },
+  "device_split": [
+    { "device": "DESKTOP", "clicks": 9840, "impressions": 218600 },
+    { "device": "MOBILE", "clicks": 4280, "impressions": 152300 },
+    { "device": "TABLET", "clicks": 703, "impressions": 18500 }
+  ]
+}
