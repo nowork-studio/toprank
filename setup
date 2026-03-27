@@ -1,36 +1,127 @@
 #!/usr/bin/env bash
-# toprank setup — register skills with Claude Code
+# toprank setup — register skills with Claude Code and/or Codex
 set -e
 
 TOPRANK_DIR="$(cd "$(dirname "$0")" && pwd)"
 TOPRANK_NAME="$(basename "$TOPRANK_DIR")"
 SKILLS_DIR="$(dirname "$TOPRANK_DIR")"
 
+# ─── Parse flags ──────────────────────────────────────────────
+HOST="auto"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --host) [ -z "$2" ] && echo "Missing value for --host (expected claude, codex, or auto)" >&2 && exit 1; HOST="$2"; shift 2 ;;
+    --host=*) HOST="${1#--host=}"; shift ;;
+    *) shift ;;
+  esac
+done
+
+case "$HOST" in
+  claude|codex|auto) ;;
+  *) echo "Unknown --host value: $HOST (expected claude, codex, or auto)" >&2; exit 1 ;;
+esac
+
 echo "toprank setup"
 echo "─────────────"
 echo ""
 
-# Discover skills (directories containing SKILL.md)
-linked=()
+# ─── Auto-detect hosts ───────────────────────────────────────
+INSTALL_CLAUDE=0
+INSTALL_CODEX=0
+
+if [ "$HOST" = "claude" ]; then
+  INSTALL_CLAUDE=1
+elif [ "$HOST" = "codex" ]; then
+  INSTALL_CODEX=1
+elif [ "$HOST" = "auto" ]; then
+  # Claude Code: check if we're inside ~/.claude/skills/
+  case "$SKILLS_DIR" in
+    */.claude/skills) INSTALL_CLAUDE=1 ;;
+  esac
+  # Codex: check if codex CLI exists
+  command -v codex >/dev/null 2>&1 && INSTALL_CODEX=1
+  # Default to Claude if nothing detected
+  [ "$INSTALL_CLAUDE" -eq 0 ] && [ "$INSTALL_CODEX" -eq 0 ] && INSTALL_CLAUDE=1
+fi
+
+# ─── Discover skills ─────────────────────────────────────────
+skills=()
 for skill_dir in "$TOPRANK_DIR"/*/; do
   [ -f "$skill_dir/SKILL.md" ] || continue
-  skill_name="$(basename "$skill_dir")"
-  target="$SKILLS_DIR/$skill_name"
-
-  # Create or update symlink; skip if a real file/directory exists
-  if [ -L "$target" ] || [ ! -e "$target" ]; then
-    ln -snf "$TOPRANK_NAME/$skill_name" "$target"
-    linked+=("$skill_name")
-  else
-    echo "  skipped $skill_name (real directory exists at $target)"
-  fi
+  skills+=("$(basename "$skill_dir")")
 done
 
-if [ ${#linked[@]} -gt 0 ]; then
-  echo "  linked skills: ${linked[*]}"
-else
-  echo "  no new skills to link"
+if [ ${#skills[@]} -eq 0 ]; then
+  echo "  no skills found"
+  exit 0
+fi
+
+# ─── Claude Code: symlink skills into parent directory ────────
+if [ "$INSTALL_CLAUDE" -eq 1 ]; then
+  echo "Claude Code:"
+  linked=()
+  for skill_name in "${skills[@]}"; do
+    target="$SKILLS_DIR/$skill_name"
+    if [ -L "$target" ] || [ ! -e "$target" ]; then
+      ln -snf "$TOPRANK_NAME/$skill_name" "$target"
+      linked+=("$skill_name")
+    else
+      echo "  skipped $skill_name (real directory exists at $target)"
+    fi
+  done
+  if [ ${#linked[@]} -gt 0 ]; then
+    echo "  linked skills: ${linked[*]}"
+  else
+    echo "  no new skills to link"
+  fi
+fi
+
+# ─── Codex: create .agents/skills/ with openai.yaml ──────────
+if [ "$INSTALL_CODEX" -eq 1 ]; then
+  echo "Codex:"
+  # Determine repo root or home-level install
+  REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+  if [ -n "$REPO_ROOT" ]; then
+    AGENTS_DIR="$REPO_ROOT/.agents/skills"
+  else
+    AGENTS_DIR="$HOME/.codex/skills"
+  fi
+
+  linked=()
+  for skill_name in "${skills[@]}"; do
+    codex_skill_name="toprank-$skill_name"
+    codex_dir="$AGENTS_DIR/$codex_skill_name"
+    mkdir -p "$codex_dir/agents"
+
+    # Read description from SKILL.md frontmatter
+    desc=$(sed -n '/^description:/,/^---/{/^description:/d;/^---/d;p;}' "$TOPRANK_DIR/$skill_name/SKILL.md" | tr '\n' ' ' | sed 's/^  *//;s/  *$//' | cut -c1-120)
+    [ -z "$desc" ] && desc="Toprank $skill_name skill"
+
+    # Write openai.yaml
+    cat > "$codex_dir/agents/openai.yaml" <<YAML
+interface:
+  display_name: "toprank-$skill_name"
+  short_description: "$desc"
+  default_prompt: "Use toprank-$skill_name for this task."
+policy:
+  allow_implicit_invocation: true
+YAML
+
+    # Symlink SKILL.md and supporting directories
+    ln -snf "$TOPRANK_DIR/$skill_name/SKILL.md" "$codex_dir/SKILL.md"
+    for asset in scripts references; do
+      [ -d "$TOPRANK_DIR/$skill_name/$asset" ] && ln -snf "$TOPRANK_DIR/$skill_name/$asset" "$codex_dir/$asset"
+    done
+
+    linked+=("$codex_skill_name")
+  done
+
+  if [ ${#linked[@]} -gt 0 ]; then
+    echo "  linked skills: ${linked[*]}"
+  else
+    echo "  no new skills to link"
+  fi
 fi
 
 echo ""
-echo "Done. Restart Claude Code and the skills are available."
+echo "Done. Restart your agent and the skills are available."
