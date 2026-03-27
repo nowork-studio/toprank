@@ -43,9 +43,28 @@ cold.
 
 ---
 
-## Phase 1 — Confirm Access to Google Search Console
+## Phase 0 — Preflight Check
 
-Locate scripts and run the auth + access check in one shot:
+Run this once before anything else. It auto-installs missing dependencies and
+opens the browser for Google authentication if needed:
+
+```bash
+SKILL_SCRIPTS=$(find ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
+[ -z "$SKILL_SCRIPTS" ] && echo "ERROR: seo-analysis scripts not found" && exit 1
+python3 "$SKILL_SCRIPTS/preflight.py"
+```
+
+- **`OK: All dependencies ready.`** → continue to Phase 1.
+- **Browser opens** → complete the Google login, preflight finishes automatically.
+- **Install instructions printed** → follow them, then re-run Phase 0.
+- **gcloud not found** → OS-specific install instructions are printed. Install
+  gcloud, then re-run Phase 0.
+- **No gcloud and user wants to skip GSC** → that's fine. Jump directly to Phase 5
+  for a technical-only audit (crawl, meta tags, indexing). GSC data just won't be available.
+
+---
+
+## Phase 1 — Confirm Access to Google Search Console
 
 ```bash
 SKILL_SCRIPTS=$(find ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
@@ -55,18 +74,13 @@ python3 "$SKILL_SCRIPTS/list_gsc_sites.py"
 
 **If it lists sites** → done. Carry the site list into Phase 2.
 
-**If "google-auth package not installed"** → ask user to run `pip install google-auth`,
-then retry.
-
-**If "No Application Default Credentials found"** → gcloud ADC not set up. Run:
+**If "No Search Console properties found"** → wrong Google account. Ask the user
+which account owns their GSC properties at
+https://search.google.com/search-console, then re-authenticate:
 ```bash
 gcloud auth application-default login \
   --scopes=https://www.googleapis.com/auth/webmasters.readonly
 ```
-
-**If "No Search Console properties found"** → wrong Google account. Ask user to
-check which account owns their GSC properties at
-https://search.google.com/search-console, then re-authenticate with that account.
 
 **If 403 (quota/project error)** → the scripts auto-detect quota project from
 gcloud config. If it still fails, set it explicitly:
@@ -81,9 +95,6 @@ gcloud services enable searchconsole.googleapis.com
 
 **If 403 (permission denied)** → the account lacks GSC property access. Verify at
 Search Console → Settings → Users and permissions.
-
-**If gcloud not installed** → ask if they want to install (2 min) or skip GSC.
-See `references/gsc_setup.md` for install steps. To skip: jump to Phase 5.
 
 ---
 

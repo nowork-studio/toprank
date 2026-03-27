@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.5.0] — 2026-03-27
+
+### Added
+- **`preflight.py`** — pre-flight check that runs before any GSC operations; detects gcloud with OS-specific install instructions (Homebrew / apt / dnf / curl / winget), auto-triggers `gcloud auth` browser flow if no ADC credentials found
+- **`setup.py`** — cross-platform Python equivalent of `./setup` for Windows users who can't run bash; falls back to directory junctions (no admin rights required) when symlinks are unavailable
+- **Phase 0 in SKILL.md** — preflight step added before GSC access check; also restores the "skip GSC → Phase 5" escape hatch for technical-only audits
+
+### Changed
+- **`seo-analysis/SKILL.md`** — Phase 1 simplified (error cases now handled by preflight); Phase 1 bash block is self-contained (no shell variable leak from Phase 0)
+
+---
+
 ## [0.4.2] — 2026-03-27
 
 ### Added
