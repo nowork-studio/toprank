@@ -11,6 +11,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - **README demo section** — "See It Work" example conversation showing end-to-end `/seo-analysis` flow for clearer onboarding
 
+### Changed
+- **Auto-upgrade on every skill use** — removed the 4-option prompt (Yes / Always / Not now / Never); updates now apply automatically whenever `UPGRADE_AVAILABLE` is detected
+- **Update check frequency** — reduced UP_TO_DATE cache TTL from 60 min to 5 min so checks run on nearly every skill invocation
+- **Zero-dependency GSC auth** — removed `google-auth` Python package requirement; reverts 0.4.1 approach; scripts now call `gcloud auth application-default print-access-token` directly via subprocess and use stdlib `urllib` for HTTP, eliminating the `pip install` setup step
+- **`gsc_auth.py` removed** — auth logic inlined in `list_gsc_sites.py` and `analyze_gsc.py`; simpler, no shared module
+- **SKILL.md Phase 1** — GSC setup instructions updated to reflect the simpler auth flow
+
 ---
 
 ## [0.4.1] — 2026-03-27

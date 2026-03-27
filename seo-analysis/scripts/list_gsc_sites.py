@@ -2,40 +2,58 @@
 """List all Google Search Console properties for the authenticated account."""
 
 import json
-import os
+import subprocess
 import sys
-
-# Allow importing gsc_auth from the same directory
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from gsc_auth import get_session
+import urllib.request
+import urllib.error
 
 
-def list_sites(session):
-    url = "https://searchconsole.googleapis.com/webmasters/v3/sites"
+def get_access_token():
     try:
-        resp = session.get(url)
-    except Exception as e:
-        print(f"ERROR: Network failure: {e}", file=sys.stderr)
+        result = subprocess.run(
+            ["gcloud", "auth", "application-default", "print-access-token"],
+            capture_output=True, text=True, timeout=15
+        )
+    except FileNotFoundError:
+        print("ERROR: gcloud not found. Install it and authenticate:", file=sys.stderr)
+        print("  https://cloud.google.com/sdk/docs/install", file=sys.stderr)
         sys.exit(1)
-    if resp.status_code == 403:
-        error_body = resp.text
-        if "SERVICE_DISABLED" in error_body or "API not enabled" in error_body:
-            print("ERROR: Search Console API not enabled. Run:", file=sys.stderr)
-            print("  gcloud services enable searchconsole.googleapis.com", file=sys.stderr)
-            sys.exit(1)
-        if "USER_PROJECT_DENIED" in error_body or "quota_project" in error_body.lower():
-            print("ERROR: Quota project not set. Run:", file=sys.stderr)
-            print("  gcloud auth application-default set-quota-project $(gcloud config get-value project)", file=sys.stderr)
-            sys.exit(1)
-        print(f"ERROR 403: {error_body}", file=sys.stderr)
+    except subprocess.TimeoutExpired:
+        print("ERROR: gcloud timed out after 15s. Check your network or gcloud installation.", file=sys.stderr)
         sys.exit(1)
-    resp.raise_for_status()
-    return resp.json().get("siteEntry", [])
+    if result.returncode != 0:
+        print("ERROR: Could not get access token. Run:", file=sys.stderr)
+        print("  gcloud auth application-default login \\", file=sys.stderr)
+        print("    --scopes=https://www.googleapis.com/auth/webmasters.readonly", file=sys.stderr)
+        sys.exit(1)
+    token = result.stdout.strip()
+    if not token:
+        print("ERROR: gcloud returned an empty token. Re-authenticate:", file=sys.stderr)
+        print("  gcloud auth application-default login \\", file=sys.stderr)
+        print("    --scopes=https://www.googleapis.com/auth/webmasters.readonly", file=sys.stderr)
+        sys.exit(1)
+    return token
+
+
+def list_sites(token):
+    url = "https://searchconsole.googleapis.com/webmasters/v3/sites"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read())
+            return data.get("siteEntry", [])
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode() if e.fp else "(no body)"
+        print(f"ERROR {e.code}: {err_body}", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"ERROR: Network failure: {e.reason}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main():
-    session = get_session()
-    sites = list_sites(session)
+    token = get_access_token()
+    sites = list_sites(token)
 
     if not sites:
         print("No Search Console properties found for this account.")

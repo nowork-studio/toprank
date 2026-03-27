@@ -10,38 +10,59 @@ Usage:
 
 import argparse
 import json
-import os
+import subprocess
 import sys
 import urllib.parse
+import urllib.request
+import urllib.error
 from datetime import date, timedelta
 
-# Allow importing gsc_auth from the same directory
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from gsc_auth import get_session
+
+def get_access_token():
+    try:
+        result = subprocess.run(
+            ["gcloud", "auth", "application-default", "print-access-token"],
+            capture_output=True, text=True, timeout=15
+        )
+    except FileNotFoundError:
+        print("ERROR: gcloud not found. Install it and authenticate:", file=sys.stderr)
+        print("  https://cloud.google.com/sdk/docs/install", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.TimeoutExpired:
+        print("ERROR: gcloud timed out after 15s. Check your network or gcloud installation.", file=sys.stderr)
+        sys.exit(1)
+    if result.returncode != 0:
+        print("ERROR: Not authenticated. Run:", file=sys.stderr)
+        print("  gcloud auth application-default login \\", file=sys.stderr)
+        print("    --scopes=https://www.googleapis.com/auth/webmasters.readonly", file=sys.stderr)
+        sys.exit(1)
+    token = result.stdout.strip()
+    if not token:
+        print("ERROR: gcloud returned an empty token. Re-authenticate:", file=sys.stderr)
+        print("  gcloud auth application-default login \\", file=sys.stderr)
+        print("    --scopes=https://www.googleapis.com/auth/webmasters.readonly", file=sys.stderr)
+        sys.exit(1)
+    return token
 
 
-def gsc_query(session, site_url, body):
+def gsc_query(token, site_url, body):
     """Call the Search Analytics query endpoint."""
     encoded = urllib.parse.quote(site_url, safe="")
     url = f"https://searchconsole.googleapis.com/webmasters/v3/sites/{encoded}/searchAnalytics/query"
+    data = json.dumps(body).encode()
+    req = urllib.request.Request(
+        url, data=data,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    )
     try:
-        resp = session.post(url, json=body)
-        if resp.status_code == 403:
-            error_body = resp.text
-            if "SERVICE_DISABLED" in error_body or "API not enabled" in error_body:
-                print("GSC API not enabled. Run: gcloud services enable searchconsole.googleapis.com", file=sys.stderr)
-                return {"rows": []}
-            if "USER_PROJECT_DENIED" in error_body or "quota_project" in error_body.lower():
-                print("Quota project error. Run: gcloud auth application-default set-quota-project $(gcloud config get-value project)", file=sys.stderr)
-                return {"rows": []}
-            print(f"GSC API error 403: {error_body}", file=sys.stderr)
-            return {"rows": []}
-        if not resp.ok:
-            print(f"GSC API error {resp.status_code}: {resp.text}", file=sys.stderr)
-            return {"rows": []}
-        return resp.json()
-    except Exception as e:
-        print(f"GSC API error: {e}", file=sys.stderr)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode() if e.fp else "(no body)"
+        print(f"GSC API error {e.code}: {err_body}", file=sys.stderr)
+        return {"rows": []}
+    except urllib.error.URLError as e:
+        print(f"GSC API network error: {e.reason}", file=sys.stderr)
         return {"rows": []}
 
 
@@ -52,14 +73,14 @@ def date_range(days_ago_start, days_ago_end=3):
     return start.isoformat(), end.isoformat()
 
 
-def pull_top_queries(session, site, start, end, row_limit=50):
+def pull_top_queries(token, site, start, end, row_limit=50):
     body = {
         "startDate": start, "endDate": end,
         "dimensions": ["query"],
         "rowLimit": row_limit,
         "orderBy": [{"fieldName": "impressions", "sortOrder": "DESCENDING"}]
     }
-    data = gsc_query(session, site, body)
+    data = gsc_query(token, site, body)
     rows = []
     for r in data.get("rows", []):
         rows.append({
@@ -72,14 +93,14 @@ def pull_top_queries(session, site, start, end, row_limit=50):
     return rows
 
 
-def pull_top_pages(session, site, start, end, row_limit=50):
+def pull_top_pages(token, site, start, end, row_limit=50):
     body = {
         "startDate": start, "endDate": end,
         "dimensions": ["page"],
         "rowLimit": row_limit,
         "orderBy": [{"fieldName": "clicks", "sortOrder": "DESCENDING"}]
     }
-    data = gsc_query(session, site, body)
+    data = gsc_query(token, site, body)
     rows = []
     for r in data.get("rows", []):
         rows.append({
@@ -92,7 +113,7 @@ def pull_top_pages(session, site, start, end, row_limit=50):
     return rows
 
 
-def pull_position_buckets(session, site, start, end):
+def pull_position_buckets(token, site, start, end):
     """Queries by position bucket: 1-3 (winners), 4-10 (low-hanging fruit), 11-20 (almost there), 21+."""
     body = {
         "startDate": start, "endDate": end,
@@ -100,7 +121,7 @@ def pull_position_buckets(session, site, start, end):
         "rowLimit": 1000,
         "orderBy": [{"fieldName": "impressions", "sortOrder": "DESCENDING"}]
     }
-    data = gsc_query(session, site, body)
+    data = gsc_query(token, site, body)
     buckets = {"1-3": [], "4-10": [], "11-20": [], "21+": []}
     for r in data.get("rows", []):
         pos = r["position"]
@@ -122,7 +143,7 @@ def pull_position_buckets(session, site, start, end):
     return buckets
 
 
-def pull_period_comparison(session, site, days):
+def pull_period_comparison(token, site, days):
     """Compare current period vs prior period to find declines."""
     end_curr = date.today() - timedelta(days=3)
     start_curr = end_curr - timedelta(days=days)
@@ -135,7 +156,7 @@ def pull_period_comparison(session, site, days):
             "dimensions": [dim], "rowLimit": 200,
             "orderBy": [{"fieldName": "clicks", "sortOrder": "DESCENDING"}]
         }
-        data = gsc_query(session, site, body)
+        data = gsc_query(token, site, body)
         return {r["keys"][0]: r for r in data.get("rows", [])}
 
     # Pages comparison
@@ -184,10 +205,10 @@ def pull_period_comparison(session, site, days):
     }
 
 
-def pull_summary(session, site, start, end):
+def pull_summary(token, site, start, end):
     """Overall totals."""
     body = {"startDate": start, "endDate": end, "dimensions": []}
-    data = gsc_query(session, site, body)
+    data = gsc_query(token, site, body)
     rows = data.get("rows", [{}])
     r = rows[0] if rows else {}
     return {
@@ -198,13 +219,13 @@ def pull_summary(session, site, start, end):
     }
 
 
-def pull_device_split(session, site, start, end):
+def pull_device_split(token, site, start, end):
     body = {
         "startDate": start, "endDate": end,
         "dimensions": ["device"],
         "rowLimit": 10
     }
-    data = gsc_query(session, site, body)
+    data = gsc_query(token, site, body)
     return [
         {"device": r["keys"][0], "clicks": r["clicks"], "impressions": r["impressions"]}
         for r in data.get("rows", [])
@@ -220,26 +241,26 @@ def main():
 
     print(f"Pulling {args.days} days of GSC data for: {args.site}", file=sys.stderr)
 
-    session = get_session()
+    token = get_access_token()
     start, end = date_range(args.days)
 
     print("Fetching summary...", file=sys.stderr)
-    summary = pull_summary(session, args.site, start, end)
+    summary = pull_summary(token, args.site, start, end)
 
     print("Fetching top queries...", file=sys.stderr)
-    queries = pull_top_queries(session, args.site, start, end)
+    queries = pull_top_queries(token, args.site, start, end)
 
     print("Fetching top pages...", file=sys.stderr)
-    pages = pull_top_pages(session, args.site, start, end)
+    pages = pull_top_pages(token, args.site, start, end)
 
     print("Fetching position buckets...", file=sys.stderr)
-    buckets = pull_position_buckets(session, args.site, start, end)
+    buckets = pull_position_buckets(token, args.site, start, end)
 
     print("Fetching period comparison...", file=sys.stderr)
-    comparison = pull_period_comparison(session, args.site, 28)
+    comparison = pull_period_comparison(token, args.site, 28)
 
     print("Fetching device split...", file=sys.stderr)
-    devices = pull_device_split(session, args.site, start, end)
+    devices = pull_device_split(token, args.site, start, end)
 
     # High-impression, low-CTR queries (title/snippet improvement targets)
     ctr_opportunities = [
