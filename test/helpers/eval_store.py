@@ -5,12 +5,12 @@ Accumulates test results, writes them to ~/.toprank-evals/, prints a summary tab
 """
 
 import json
-import os
 import subprocess
-from dataclasses import dataclass, field
+import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 EVAL_DIR = Path.home() / '.toprank-evals'
 
@@ -128,4 +128,4 @@ class EvalCollector:
             f"${result['total_cost_usd']:.2f}   {round(result['total_duration_ms'] / 1000)}s"
         )
         lines.append(f'Saved: {filepath}')
-        print('\n'.join(lines), file=__import__('sys').stderr)
+        print('\n'.join(lines), file=sys.stderr)
