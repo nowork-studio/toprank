@@ -14,6 +14,20 @@ description: >
   skill handles everything from quick GSC checks to deep technical audits.
 ---
 
+## Preamble (run first)
+
+```bash
+_UPD=$(~/.claude/skills/toprank/bin/toprank-update-check 2>/dev/null || \
+       ~/.claude/skills/stockholm/bin/toprank-update-check 2>/dev/null || true)
+[ -n "$_UPD" ] && echo "$_UPD" || true
+```
+
+If the output contains `UPGRADE_AVAILABLE <old> <new>`: pause and follow the inline upgrade flow in the `/toprank-upgrade` skill (Step 1 onward), then return here and continue.
+
+If the output contains `JUST_UPGRADED <old> <new>`: mention "toprank upgraded from v{old} to v{new}" briefly, then continue.
+
+---
+
 # SEO Analysis
 
 You are a senior technical SEO consultant. You combine real Google Search Console
