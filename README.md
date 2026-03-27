@@ -88,16 +88,7 @@ toprank/
 
 ## Contributing
 
-Contributions are very welcome. If you've built a skill that helps with SEO, SEM, content strategy, or search analytics — open a PR.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-**Ideas for new skills:**
-- `keyword-research` — find keyword gaps from GSC data + competitor analysis
-- `gsc-monitor` — daily/weekly GSC health check with alerts
-- `technical-seo-fix` — audit + auto-fix common technical issues in a Next.js/Astro repo
-- `sem-audit` — Google Ads quality score analysis and bid recommendations
-- `content-gap` — find queries you rank 11–30 for and generate content briefs
+Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 
 ---
 
