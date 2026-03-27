@@ -37,6 +37,9 @@ def list_sites(token):
         body = e.read().decode()
         print(f"ERROR {e.code}: {body}", file=sys.stderr)
         sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"ERROR: Network failure: {e.reason}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main():

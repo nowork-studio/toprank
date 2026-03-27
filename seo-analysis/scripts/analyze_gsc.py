@@ -52,6 +52,9 @@ def gsc_query(token, site_url, body):
         body = e.read().decode()
         print(f"GSC API error {e.code}: {body}", file=sys.stderr)
         return {"rows": []}
+    except urllib.error.URLError as e:
+        print(f"GSC API network error: {e.reason}", file=sys.stderr)
+        return {"rows": []}
 
 
 def date_range(days_ago_start, days_ago_end=3):

@@ -49,6 +49,10 @@ Locate the scripts directory (works regardless of where the skill is installed):
 
 ```bash
 SKILL_SCRIPTS=$(find ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
+if [ -z "$SKILL_SCRIPTS" ]; then
+  echo "ERROR: Could not find seo-analysis scripts directory. Check your installation."
+  exit 1
+fi
 echo "Scripts at: $SKILL_SCRIPTS"
 ```
 
@@ -84,10 +88,10 @@ This is the common case where gcloud is installed but was set up for a different
 service (Firebase, GCS, etc.) without the webmasters scope. The browser opens,
 the user logs in, done.
 
-**If Python traceback mentioning "No such file or directory" or "gcloud"** → gcloud
-isn't installed (the script couldn't launch it). Ask if they want to install it
-(2 min) or skip GSC entirely. Read `references/gsc_setup.md` for install steps. If
-they want to skip: jump to Phase 5 (technical-only audit).
+**If "ERROR: gcloud not found"** → gcloud isn't installed (the script caught the
+missing binary and exited cleanly). Ask if they want to install it (2 min) or skip
+GSC entirely. Read `references/gsc_setup.md` for install steps. If they want to
+skip: jump to Phase 5 (technical-only audit).
 
 **If HTTP 403** → could be wrong scopes, API not enabled, or no property access.
 Check the error body: "insufficient scope" → re-run `gcloud auth application-default
