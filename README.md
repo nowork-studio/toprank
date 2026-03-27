@@ -1,18 +1,14 @@
 # Toprank
 
-**Finally know what to do about your SEO.**
+**SEO that reads your data, tells you what's wrong, and fixes it.**
 
-You've logged into your analytics platform, stared at the charts, and left with the same question you came in with: *now what?*
-
-Toprank connects your real Google Search Console and Google Ads data directly to Claude — and lets you just ask.
+Toprank gives Claude direct access to your Google Search Console and Google Ads data. Run it inside your website repo and it doesn't just analyze — it rewrites your meta tags, fixes your headings, adds structured data, and ships the changes.
 
 > *"Why did my traffic drop last month?"*
 > *"What keywords am I almost ranking for?"*
-> *"Where am I wasting ad spend?"*
+> *"Fix my title tags for pages losing clicks."*
 
-Claude reads your actual data, spots the patterns, and hands you a prioritized action plan. Not generic SEO advice. A plan built from your numbers.
-
-**Zero risk.** Free and open source. No new account, no SaaS subscription, no seat fees. It's a skill for Claude Code and Codex — tools you're already using. Install in 30 seconds.
+Free, open-source skill for Claude Code and Codex. Install in 30 seconds.
 
 ---
 
