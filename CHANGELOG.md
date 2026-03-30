@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.0] — 2026-03-30
+
+### Added
+- **`keyword-research`** — new skill for keyword discovery, intent classification, difficulty assessment, opportunity scoring, and topic clustering. Includes reference materials for intent taxonomy, prioritization framework, cluster templates, and example reports.
+- **`meta-tags-optimizer`** — new skill for creating and optimizing title tags, meta descriptions, Open Graph, and Twitter Card tags with A/B test variations and CTR analysis. Includes reference materials for tag formulas, CTR benchmarks, and code templates.
+- **`schema-markup-generator`** — new skill for generating JSON-LD structured data (FAQ, HowTo, Article, Product, LocalBusiness, etc.) with validation guidance and rich result eligibility checks. Includes reference materials for schema templates, decision tree, and validation guide.
+- **`geo-content-optimizer`** — new skill for optimizing content to appear in AI-generated responses (ChatGPT, Perplexity, Google AI Overviews, Claude). Scores GEO readiness and applies citation, authority, and structure optimization techniques. Includes reference materials for AI citation patterns, GEO techniques, and quotable content examples.
+
+### Changed
+- **README.md** — updated with documentation for all 4 new skills, expanded install instructions and directory tree
+
+---
+
 ## [0.5.1] — 2026-03-27
 
 ### Security

@@ -45,8 +45,8 @@ cold.
 
 ## Phase 0 — Preflight Check
 
-Run this once before anything else. It auto-installs missing dependencies and
-opens the browser for Google authentication if needed:
+Run this once before anything else. It checks gcloud, ensures a GCP project exists,
+enables the Search Console API, and opens the browser for Google OAuth if needed:
 
 ```bash
 SKILL_SCRIPTS=$(find ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
@@ -55,12 +55,25 @@ python3 "$SKILL_SCRIPTS/preflight.py"
 ```
 
 - **`OK: All dependencies ready.`** → continue to Phase 1.
-- **Browser opens** → complete the Google login, preflight finishes automatically.
-- **Install instructions printed** → follow them, then re-run Phase 0.
+- **Browser opens for Google login** → the user needs to log in with the Google
+  account that owns their Search Console properties. Preflight finishes automatically
+  after login.
+- **`gcloud init` runs** → first-time user. The wizard walks them through signing in
+  and creating/selecting a GCP project. After it completes, preflight continues
+  automatically.
+- **`Search Console API: enabled`** → preflight auto-enabled the API. No action needed.
+- **ERROR: Could not enable the Search Console API** → the user needs to enable it
+  manually: `gcloud services enable searchconsole.googleapis.com`. If billing is
+  required, link a billing account at https://console.cloud.google.com/billing
+  (the Search Console API itself is free).
 - **gcloud not found** → OS-specific install instructions are printed. Install
   gcloud, then re-run Phase 0.
 - **No gcloud and user wants to skip GSC** → that's fine. Jump directly to Phase 5
-  for a technical-only audit (crawl, meta tags, indexing). GSC data just won't be available.
+  for a technical-only audit (crawl, meta tags, indexing). GSC data just won't be
+  available.
+
+> **Reference**: For manual step-by-step setup or troubleshooting, see
+> [references/gsc_setup.md](references/gsc_setup.md).
 
 ---
 
