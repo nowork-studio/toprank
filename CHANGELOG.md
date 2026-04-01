@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.1] — 2026-03-31
+
+### Changed
+- **`seo-analysis`** — deeper Google Search Console data in every audit. The script now pulls four additional data sets from a single API session:
+  - **Cannibalization** (`cannibalization`) — queries where multiple pages compete, with per-page click/impression breakdown. Previously the skill inferred this from single-dimension data; now it uses the real `[query, page]` dimension so every recommendation names specific URLs.
+  - **CTR gaps by page** (`ctr_gaps_by_page`) — high-impression, low-CTR pairs at the query+page level. Replaces query-only CTR opportunities so every title/meta rewrite suggestion includes the exact page to fix.
+  - **Country split** (`country_split`) — top 20 countries by clicks with CTR and position. Surfaces geo opportunities and region-specific ranking problems.
+  - **Search type breakdown** (`search_type_split`) — web, image, video, news, Discover, and Google News traffic shown separately. Many sites have Discover or image traffic they don't know about.
+- `device_split` now includes CTR and position alongside clicks and impressions.
+- Phase 4 analysis guidance updated to use the new data fields directly.
+- New "Segment Analysis" subsection added to Phase 4 for device, country, and search type interpretation.
+- Unit tests: 49 → 79 (+30 tests covering all new functions with boundary and edge case coverage).
+
+---
+
 ## [0.6.0] — 2026-03-30
 
 ### Added
