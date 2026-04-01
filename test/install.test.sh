@@ -46,7 +46,10 @@ run_setup() {
   (cd "$1" && ./setup "${@:2}") >/dev/null 2>&1
 }
 
-# Skills that should be registered (everything with a SKILL.md)
+# Skills that should be registered (everything with a SKILL.md).
+# This list is intentionally explicit — new skills must be added here consciously.
+# The count-check below will catch a mismatch if a skill is added to the repo
+# without updating this list.
 SKILLS=(
   seo-analysis
   content-writer
@@ -56,6 +59,14 @@ SKILLS=(
   geo-content-optimizer
   toprank-upgrade
 )
+
+# Guard: actual SKILL.md count must match the SKILLS array above.
+actual_skill_count=$(find "$REPO_ROOT" -maxdepth 2 -name "SKILL.md" | wc -l | tr -d ' ')
+if [ "$actual_skill_count" -ne "${#SKILLS[@]}" ]; then
+  echo "ERROR: SKILLS array has ${#SKILLS[@]} entries but repo has $actual_skill_count SKILL.md files."
+  echo "       Update the SKILLS array in this file to match."
+  exit 1
+fi
 
 # Make a fresh copy of the repo in a subdirectory of TMP (exclude .git to
 # avoid confusing git rev-parse in tests that set up their own git repo)
