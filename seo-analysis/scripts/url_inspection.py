@@ -34,6 +34,22 @@ import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
+def get_quota_project():
+    """Return the quota_project_id from the ADC JSON file, or None."""
+    adc_dir = os.environ.get("CLOUDSDK_CONFIG") or os.path.join(
+        os.path.expanduser("~"), ".config", "gcloud"
+    )
+    adc_path = os.path.join(adc_dir, "application_default_credentials.json")
+    try:
+        with open(adc_path) as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            return data.get("quota_project_id") or None
+    except (OSError, ValueError):
+        pass
+    return None
+
+
 def get_access_token():
     try:
         result = subprocess.run(
@@ -70,14 +86,14 @@ def inspect_url(token, site_url, inspection_url):
         "siteUrl": site_url
     }).encode()
 
-    req = urllib.request.Request(
-        endpoint,
-        data=body,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
-    )
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    quota_project = get_quota_project()
+    if quota_project:
+        headers["x-goog-user-project"] = quota_project
+    req = urllib.request.Request(endpoint, data=body, headers=headers)
 
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:

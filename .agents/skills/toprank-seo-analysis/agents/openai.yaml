@@ -1,0 +1,6 @@
+interface:
+  display_name: "toprank-seo-analysis"
+  short_description: "Full SEO audit: Google Search Console data + URL Inspection API + technical   crawl + keyword research + metadata audit "
+  default_prompt: "Use toprank-seo-analysis for this task."
+policy:
+  allow_implicit_invocation: true

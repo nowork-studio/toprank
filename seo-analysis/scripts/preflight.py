@@ -16,6 +16,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import urllib.request
 
 
 def check_python_version():
@@ -164,8 +165,36 @@ def check_search_console_api():
     sys.exit(1)
 
 
+_GSC_SCOPES = (
+    "https://www.googleapis.com/auth/webmasters",
+    "https://www.googleapis.com/auth/webmasters.readonly",
+)
+_GSC_SCOPES_ARG = ",".join(_GSC_SCOPES)
+
+
+def _token_has_gsc_scope(token):
+    """Return True if the token includes at least one Search Console scope.
+
+    Calls the Google tokeninfo endpoint to inspect the granted scopes.
+    Returns None if the check cannot be completed (network error, etc.).
+    """
+    try:
+        url = f"https://oauth2.googleapis.com/tokeninfo?access_token={token}"
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+        granted = set(data.get("scope", "").split())
+        return bool(granted & set(_GSC_SCOPES))
+    except Exception:
+        return None  # can't verify — caller decides what to do
+
+
 def check_adc_credentials():
-    """Check ADC credentials exist with correct scope; auto-trigger auth if not."""
+    """Check ADC credentials exist with correct Search Console scope.
+
+    If credentials are missing or have the wrong scope (e.g. cloud-platform from
+    a prior bare `gcloud auth application-default login`), re-authenticates with
+    the correct scopes.
+    """
     try:
         result = subprocess.run(
             ["gcloud", "auth", "application-default", "print-access-token"],
@@ -175,30 +204,46 @@ def check_adc_credentials():
         print("ERROR: gcloud timed out checking credentials. Check your network.", file=sys.stderr)
         sys.exit(1)
 
+    needs_auth = True
     if result.returncode == 0 and result.stdout.strip():
-        return  # credentials found and working
+        token = result.stdout.strip()
+        has_scope = _token_has_gsc_scope(token)
+        if has_scope is True:
+            print("Google credentials: OK (Search Console scope confirmed)", file=sys.stderr)
+            return
+        elif has_scope is None:
+            # tokeninfo unreachable — assume credentials are fine, let the API call fail
+            print("Google credentials: found (scope check skipped — no network)", file=sys.stderr)
+            return
+        else:
+            # Credentials exist but have the wrong scope (e.g. cloud-platform)
+            print("WARNING: Existing credentials are missing the Search Console scope.", file=sys.stderr)
+            print("  This happens when `gcloud auth application-default login` was run", file=sys.stderr)
+            print("  without --scopes, granting broad cloud-platform access instead.", file=sys.stderr)
+            print("  Re-authenticating with the correct scope now...", file=sys.stderr)
+            print("", file=sys.stderr)
+            needs_auth = True
 
-    # No valid credentials — auto-trigger the browser auth flow (interactive terminal only)
-    if not sys.stdin.isatty():
-        print("ERROR: No Application Default Credentials found.", file=sys.stderr)
+    if needs_auth and not sys.stdin.isatty():
+        print("ERROR: No Application Default Credentials with Search Console scope.", file=sys.stderr)
         print("Run in an interactive terminal:", file=sys.stderr)
         print("  gcloud auth application-default login \\", file=sys.stderr)
-        print("    --scopes=https://www.googleapis.com/auth/webmasters.readonly", file=sys.stderr)
+        print(f"    --scopes={_GSC_SCOPES_ARG}", file=sys.stderr)
         sys.exit(1)
 
-    print("No Google credentials found. Opening browser for authentication...", file=sys.stderr)
+    print("Opening browser for Google authentication...", file=sys.stderr)
     print("(Log in with the Google account that has access to Search Console.)", file=sys.stderr)
     print("", file=sys.stderr)
     auth_result = subprocess.run(
         ["gcloud", "auth", "application-default", "login",
-         "--scopes=https://www.googleapis.com/auth/webmasters.readonly"],
+         f"--scopes={_GSC_SCOPES_ARG}"],
     )
     if auth_result.returncode != 0:
         print("", file=sys.stderr)
         print("ERROR: Authentication failed or was cancelled.", file=sys.stderr)
         print("Run this manually and try again:", file=sys.stderr)
         print("  gcloud auth application-default login \\", file=sys.stderr)
-        print("    --scopes=https://www.googleapis.com/auth/webmasters.readonly", file=sys.stderr)
+        print(f"    --scopes={_GSC_SCOPES_ARG}", file=sys.stderr)
         sys.exit(1)
     print("Authentication successful.", file=sys.stderr)
 

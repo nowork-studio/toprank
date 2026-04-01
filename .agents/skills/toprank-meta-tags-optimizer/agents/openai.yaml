@@ -1,0 +1,6 @@
+interface:
+  display_name: "toprank-meta-tags-optimizer"
+  short_description: "Optimize title tags, meta descriptions, Open Graph, and Twitter cards for   maximum click-through rate. Generates multip"
+  default_prompt: "Use toprank-meta-tags-optimizer for this task."
+policy:
+  allow_implicit_invocation: true

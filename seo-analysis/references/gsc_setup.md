@@ -110,17 +110,19 @@ This is a one-time step per project. It's free — the Search Console API has no
 ## Step 4 — Authenticate for Search Console Access (OAuth)
 
 This is the key step. You need Application Default Credentials (ADC) with the
-`webmasters.readonly` scope — this is what grants read access to Search Console data.
+Search Console scopes. The `--scopes` flag is required — omitting it defaults to
+the broad `cloud-platform` scope, which asks for access to BigQuery, Compute Engine,
+and other services you don't need.
 
 ```bash
 gcloud auth application-default login \
-  --scopes=https://www.googleapis.com/auth/webmasters.readonly
+  --scopes=https://www.googleapis.com/auth/webmasters,https://www.googleapis.com/auth/webmasters.readonly
 ```
 
 A browser window opens. **Log in with the Google account from Step 0** — the one
 that has access to Search Console for your site.
 
-You'll see a consent screen asking to grant "Search Console API" read access.
+You'll see a consent screen asking to grant "Search Console API" access.
 Click **Allow**.
 
 The token is stored at `~/.config/gcloud/application_default_credentials.json`
@@ -169,12 +171,13 @@ gcloud services enable searchconsole.googleapis.com
 access to the specific GSC property. Verify at
 https://search.google.com/search-console → Settings → Users and permissions.
 
-**"insufficient_scope" or 403 on API calls despite valid token**: You have ADC
-configured for a different Google service (Firebase, GCS, BigQuery, etc.) without
-the `webmasters.readonly` scope. Re-run Step 4:
+**"insufficient_scope" or 403 on API calls despite valid token**: Your ADC token
+was created without `--scopes` (which defaults to `cloud-platform`), or was set up
+for a different Google service. The preflight script now detects this automatically
+and re-authenticates. To fix manually, re-run Step 4:
 ```bash
 gcloud auth application-default login \
-  --scopes=https://www.googleapis.com/auth/webmasters.readonly
+  --scopes=https://www.googleapis.com/auth/webmasters,https://www.googleapis.com/auth/webmasters.readonly
 ```
 
 **"quota project not set" / 403 with quota error**: The scripts auto-detect the

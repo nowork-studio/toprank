@@ -1,0 +1,6 @@
+interface:
+  display_name: "toprank-geo-content-optimizer"
+  short_description: "Optimize content for AI citations: ChatGPT, Perplexity, AI Overviews, Gemini,   Claude, Copilot. Analyzes content for AI"
+  default_prompt: "Use toprank-geo-content-optimizer for this task."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,6 @@
+interface:
+  display_name: "toprank-schema-markup-generator"
+  short_description: "Generate JSON-LD structured data markup for rich results in Google Search.   Supports FAQ, HowTo, Article, Product, Loca"
+  default_prompt: "Use toprank-schema-markup-generator for this task."
+policy:
+  allow_implicit_invocation: true
