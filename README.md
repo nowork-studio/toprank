@@ -1,8 +1,10 @@
 # Toprank
 
-**SEO that reads your data, tells you what's wrong, and fixes it.**
+**The future of SEO is full funnel — content, data, and decisions deeply integrated. That's why we built Toprank.**
 
-Toprank gives Claude direct access to your Google Search Console and Google Ads data. Run it inside your website repo and it doesn't just analyze — it rewrites your meta tags, fixes your headings, adds structured data, and ships the changes.
+Most SEO tools give you dashboards. Toprank gives you action. It connects your real traffic data to the content you're creating and the decisions you're making — so every keyword you target, every page you write, and every fix you ship is grounded in what's actually happening in search.
+
+Toprank gives Claude direct access to your Google Search Console and Google Ads data. Whether you own the codebase or run on a CMS like WordPress, Webflow, or Squarespace — it analyzes your traffic, surfaces what's hurting your rankings, and tells you exactly what to fix. When you have access to the repo, it goes further: rewriting meta tags, fixing headings, adding structured data, and shipping the changes.
 
 > *"Why did my traffic drop last month?"*
 > *"What keywords am I almost ranking for?"*
