@@ -32,3 +32,7 @@ service-account*.json
 
 # Skill eval workspaces — local scratch data, not for repo
 *-workspace/
+
+# Git worktrees and Claude worktrees
+.git/worktrees/
+.claude/worktrees/
