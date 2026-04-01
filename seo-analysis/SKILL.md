@@ -162,8 +162,12 @@ This pulls:
 - **Position buckets** — queries in 1-3, 4-10, 11-20, 21+ (the "striking distance" opportunities)
 - **Queries losing clicks** — comparing last 28 days vs the prior 28 days
 - **Pages losing traffic** — same comparison
-- **Queries with high impressions but low CTR** — title/snippet optimization targets
-- **Device split** — mobile vs desktop vs tablet performance
+- **CTR opportunities** (`ctr_opportunities`) — query-level: high impressions, low CTR, title/snippet targets
+- **CTR gaps by page** (`ctr_gaps_by_page`) — query+page level: shows exactly which page to rewrite for each underperforming query
+- **Cannibalization** (`cannibalization`) — queries where multiple pages compete, with per-page click/impression split
+- **Device split** — mobile vs desktop vs tablet clicks, impressions, CTR, position
+- **Country split** (`country_split`) — top 20 countries by clicks with CTR and position
+- **Search type breakdown** (`search_type_split`) — web vs image vs video vs news vs Discover vs Google News traffic
 
 **If GSC is unavailable**, skip to Phase 5 (technical-only audit).
 
@@ -190,11 +194,12 @@ These are the changes that can move the needle in days, not months:
    could jump them into the top 3. List the top 10 with current position,
    impressions, and a specific recommendation for each.
 
-2. **High-impression, low-CTR queries** — you're being shown but not clicked.
-   This is almost always a title/snippet mismatch with search intent. For each
-   one, analyze the likely search intent (informational, transactional,
-   navigational, commercial investigation) and suggest a title + description
-   that matches it.
+2. **High-impression, low-CTR queries** — use `ctr_gaps_by_page` (not just
+   `ctr_opportunities`) because it includes the exact page URL alongside the
+   query. This means every recommendation can name the specific page to fix
+   and the specific query driving impressions. For each, analyze the likely
+   search intent (informational, transactional, navigational, commercial
+   investigation) and suggest a title + description that matches it.
 
 3. **Queries dropping month-over-month** — flag anything with >30% click decline.
    For each, hypothesize: is it seasonal? Did a competitor take the SERP feature?
@@ -214,13 +219,35 @@ query), flag it. This is often the single biggest unlock.
 
 ### Keyword Cannibalization Check
 
-Look for queries where multiple pages from the same site rank. Signs:
-- The same query appears for two or more pages in the top pages data
-- A page that used to rank well for a query dropped after a new page was published
-- Position fluctuates wildly for a query (Google is confused about which page to show)
+The output includes a `cannibalization` array — these are queries where multiple pages
+are actively splitting clicks and impressions. Each entry shows the query, total
+impressions, and the competing pages ranked by clicks.
 
-If found, recommend: consolidate into one authoritative page, 301 redirect the
-weaker one, or add canonical tags.
+For each cannibalized query, identify:
+- The **winner** (most clicks) — this should be the canonical page for the topic
+- The **losers** — consolidate into the winner, 301 redirect, or add a canonical tag
+- Queries where the position is mediocre (5-15) despite high impressions — splitting
+  is likely suppressing what should be a top-3 ranking
+
+Also cross-check `top_pages` and `position_buckets` for indirect signals: a page
+that used to rank well dropping after a new page was published, or wild position
+fluctuation on a query, are signs of cannibalization not yet in the data window.
+
+### Segment Analysis
+
+**Device** (`device_split`): Compare CTR and position across mobile/desktop/tablet.
+A page can look healthy overall but be failing on mobile. Flag any device where
+CTR is >30% below the site average — that's a mobile UX or snippet problem.
+
+**Country** (`country_split`): Look at the top countries. Flag cases where:
+- A country has high impressions but very low CTR (title/snippet not landing in that market)
+- Position is much worse in one country vs others (local competitor or relevance gap)
+- A country with meaningful impressions has near-zero clicks (potential hreflang or geo-targeting issue)
+
+**Search type** (`search_type_split`): If `discover` or `googleNews` appear, note them —
+they behave differently from web search and have separate optimization levers (freshness,
+images, authority signals). If `image` or `video` traffic exists and the site doesn't
+have dedicated image/video optimization, call that out as an opportunity.
 
 ### Content Gaps
 

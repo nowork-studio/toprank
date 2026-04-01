@@ -229,9 +229,117 @@ def pull_device_split(token, site, start, end):
     }
     data = gsc_query(token, site, body)
     return [
-        {"device": r["keys"][0], "clicks": r["clicks"], "impressions": r["impressions"]}
+        {"device": r["keys"][0], "clicks": r["clicks"], "impressions": r["impressions"],
+         "ctr": round(r["ctr"] * 100, 2), "position": round(r["position"], 1)}
         for r in data.get("rows", [])
     ]
+
+
+def pull_country_split(token, site, start, end, row_limit=20):
+    """Top countries by clicks. Surfaces geo opportunities and region-specific problems."""
+    body = {
+        "startDate": start, "endDate": end,
+        "dimensions": ["country"],
+        "rowLimit": row_limit,
+        "orderBy": [{"fieldName": "clicks", "sortOrder": "DESCENDING"}]
+    }
+    data = gsc_query(token, site, body)
+    return [
+        {"country": r["keys"][0], "clicks": r["clicks"], "impressions": r["impressions"],
+         "ctr": round(r["ctr"] * 100, 2), "position": round(r["position"], 1)}
+        for r in data.get("rows", [])
+    ]
+
+
+def pull_search_type_split(token, site, start, end):
+    """Breakdown by search type: web, image, video, news, discover, googleNews.
+    Many sites have Discover or image traffic they don't know about."""
+    search_types = ["web", "image", "video", "news", "discover", "googleNews"]
+    results = []
+    for stype in search_types:
+        body = {
+            "startDate": start, "endDate": end,
+            "dimensions": [],
+            "type": stype
+        }
+        data = gsc_query(token, site, body)
+        rows = data.get("rows", [{}])
+        r = rows[0] if rows else {}
+        clicks = r.get("clicks", 0)
+        if clicks > 0:
+            results.append({
+                "type": stype,
+                "clicks": clicks,
+                "impressions": r.get("impressions", 0),
+                "ctr": round(r.get("ctr", 0) * 100, 2),
+                "position": round(r.get("position", 0), 1)
+            })
+    results.sort(key=lambda x: x["clicks"], reverse=True)
+    return results
+
+
+def pull_query_page_rows(token, site, start, end, row_limit=2000):
+    """Pull [query, page] dimension data in one call. Expensive — reused for both
+    cannibalization detection and page-level CTR gap analysis."""
+    body = {
+        "startDate": start, "endDate": end,
+        "dimensions": ["query", "page"],
+        "rowLimit": row_limit,
+        "orderBy": [{"fieldName": "impressions", "sortOrder": "DESCENDING"}]
+    }
+    data = gsc_query(token, site, body)
+    return data.get("rows", [])
+
+
+def derive_cannibalization(rows, min_impressions=100):
+    """Find queries where multiple pages compete for the same keyword.
+    Input: raw rows from pull_query_page_rows."""
+    query_pages = {}
+    for r in rows:
+        query, page = r["keys"]
+        if query not in query_pages:
+            query_pages[query] = []
+        query_pages[query].append({
+            "page": page,
+            "clicks": r["clicks"],
+            "impressions": r["impressions"],
+            "ctr": round(r["ctr"] * 100, 2),
+            "position": round(r["position"], 1)
+        })
+
+    cannibalized = []
+    for query, pages in query_pages.items():
+        if len(pages) > 1:
+            total_impressions = sum(p["impressions"] for p in pages)
+            if total_impressions >= min_impressions:
+                cannibalized.append({
+                    "query": query,
+                    "competing_pages": sorted(pages, key=lambda x: x["clicks"], reverse=True),
+                    "total_impressions": total_impressions,
+                    "total_clicks": sum(p["clicks"] for p in pages)
+                })
+
+    cannibalized.sort(key=lambda x: x["total_impressions"], reverse=True)
+    return cannibalized[:30]
+
+
+def derive_ctr_gaps_by_page(rows, min_impressions=200, max_ctr=3.0, max_position=20):
+    """High-impression, low-CTR at query+page level — pinpoints exactly which page
+    to rewrite the title/meta for. Input: raw rows from pull_query_page_rows."""
+    gaps = []
+    for r in rows:
+        ctr_pct = r["ctr"] * 100
+        if r["impressions"] >= min_impressions and ctr_pct < max_ctr and r["position"] <= max_position:
+            gaps.append({
+                "query": r["keys"][0],
+                "page": r["keys"][1],
+                "clicks": r["clicks"],
+                "impressions": r["impressions"],
+                "ctr": round(ctr_pct, 2),
+                "position": round(r["position"], 1)
+            })
+    gaps.sort(key=lambda x: x["impressions"], reverse=True)
+    return gaps[:25]
 
 
 def main():
@@ -265,7 +373,18 @@ def main():
     print("Fetching device split...", file=sys.stderr)
     devices = pull_device_split(token, args.site, start, end)
 
-    # High-impression, low-CTR queries (title/snippet improvement targets)
+    print("Fetching country split...", file=sys.stderr)
+    countries = pull_country_split(token, args.site, start, end)
+
+    print("Fetching search type breakdown...", file=sys.stderr)
+    search_types = pull_search_type_split(token, args.site, start, end)
+
+    print("Fetching query+page data (cannibalization + CTR gaps)...", file=sys.stderr)
+    qp_rows = pull_query_page_rows(token, args.site, start, end)
+    cannibalization = derive_cannibalization(qp_rows)
+    ctr_gaps_by_page = derive_ctr_gaps_by_page(qp_rows)
+
+    # High-impression, low-CTR queries (query-level, for quick title/snippet targeting)
     ctr_opportunities = [
         q for q in queries
         if q["impressions"] > 500 and q["ctr"] < 3.0 and q["position"] <= 20
@@ -283,8 +402,12 @@ def main():
             for k, v in buckets.items()
         },
         "ctr_opportunities": ctr_opportunities[:20],
+        "ctr_gaps_by_page": ctr_gaps_by_page,
+        "cannibalization": cannibalization,
         "comparison": comparison,
-        "device_split": devices
+        "device_split": devices,
+        "country_split": countries,
+        "search_type_split": search_types
     }
 
     with open(args.output, "w") as f:
@@ -293,6 +416,11 @@ def main():
     print(f"\nDone. Results saved to {args.output}", file=sys.stderr)
     print(f"\nSummary: {summary['clicks']:,} clicks | {summary['impressions']:,} impressions | "
           f"CTR {summary['ctr']}% | Avg position {summary['position']}", file=sys.stderr)
+    if cannibalization:
+        print(f"Cannibalization: {len(cannibalization)} queries with competing pages found", file=sys.stderr)
+    if search_types:
+        type_summary = ", ".join(f"{t['type']}={t['clicks']:,}" for t in search_types)
+        print(f"Search types: {type_summary}", file=sys.stderr)
 
 
 if __name__ == "__main__":
