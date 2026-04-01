@@ -17,6 +17,7 @@ import tempfile
 import urllib.parse
 import urllib.request
 import urllib.error
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 
 
@@ -355,34 +356,45 @@ def main():
     token = get_access_token()
     start, end = date_range(args.days)
 
-    print("Fetching summary...", file=sys.stderr)
-    summary = pull_summary(token, args.site, start, end)
+    # All GSC calls are independent — run them concurrently to cut wall-clock
+    # time from ~9 sequential round-trips down to the slowest single call.
+    tasks = {
+        "summary":    lambda: pull_summary(token, args.site, start, end),
+        "queries":    lambda: pull_top_queries(token, args.site, start, end),
+        "pages":      lambda: pull_top_pages(token, args.site, start, end),
+        "buckets":    lambda: pull_position_buckets(token, args.site, start, end),
+        "comparison": lambda: pull_period_comparison(token, args.site, 28),
+        "devices":    lambda: pull_device_split(token, args.site, start, end),
+        "countries":  lambda: pull_country_split(token, args.site, start, end),
+        "search_types": lambda: pull_search_type_split(token, args.site, start, end),
+        "qp_rows":    lambda: pull_query_page_rows(token, args.site, start, end),
+    }
 
-    print("Fetching top queries...", file=sys.stderr)
-    queries = pull_top_queries(token, args.site, start, end)
+    results = {}
+    print(f"Fetching {len(tasks)} data sets in parallel...", file=sys.stderr)
+    with ThreadPoolExecutor(max_workers=len(tasks)) as pool:
+        futures = {pool.submit(fn): name for name, fn in tasks.items()}
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                results[name] = future.result()
+                print(f"  ✓ {name}", file=sys.stderr)
+            except Exception as exc:
+                print(f"  ✗ {name}: {exc}", file=sys.stderr)
+                results[name] = {}
 
-    print("Fetching top pages...", file=sys.stderr)
-    pages = pull_top_pages(token, args.site, start, end)
+    summary    = results["summary"]
+    queries    = results["queries"]
+    pages      = results["pages"]
+    buckets    = results["buckets"]
+    comparison = results["comparison"]
+    devices    = results["devices"]
+    countries  = results["countries"]
+    search_types = results["search_types"]
+    qp_rows    = results["qp_rows"]
 
-    print("Fetching position buckets...", file=sys.stderr)
-    buckets = pull_position_buckets(token, args.site, start, end)
-
-    print("Fetching period comparison...", file=sys.stderr)
-    comparison = pull_period_comparison(token, args.site, 28)
-
-    print("Fetching device split...", file=sys.stderr)
-    devices = pull_device_split(token, args.site, start, end)
-
-    print("Fetching country split...", file=sys.stderr)
-    countries = pull_country_split(token, args.site, start, end)
-
-    print("Fetching search type breakdown...", file=sys.stderr)
-    search_types = pull_search_type_split(token, args.site, start, end)
-
-    print("Fetching query+page data (cannibalization + CTR gaps)...", file=sys.stderr)
-    qp_rows = pull_query_page_rows(token, args.site, start, end)
-    cannibalization = derive_cannibalization(qp_rows)
-    ctr_gaps_by_page = derive_ctr_gaps_by_page(qp_rows)
+    cannibalization   = derive_cannibalization(qp_rows)
+    ctr_gaps_by_page  = derive_ctr_gaps_by_page(qp_rows)
 
     # High-impression, low-CTR queries (query-level, for quick title/snippet targeting)
     ctr_opportunities = [
