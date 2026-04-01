@@ -20,15 +20,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Winner/loser scoring for cannibalization** — each `cannibalization` entry now includes `winner_page`, `winner_reason`, `loser_pages`, and `recommended_action` ("consolidate: 301 redirect..." or "monitor: possible SERP domination").
 - **`test/unit/test_url_inspection.py`** — 25 unit tests covering `normalize_site_url_for_inspection`, `parse_inspection_result`, and `summarize_findings`.
 - **35 new unit tests** covering `classify_branded`, `derive_branded_split`, `cluster_page_groups`, and all new cannibalization fields.
+- **Strapi CMS integration** (Phase 3.6) — the `/seo-analysis` skill now cross-references your published Strapi content against GSC data. Three new scripts:
+  - **`preflight_strapi.py`** — validates config, tests connectivity, detects Strapi v4 vs v5. Exit code 2 = not configured (non-fatal skip).
+  - **`fetch_strapi_content.py`** — paginates all published entries, extracts SEO fields from the official `strapi-community/plugin-seo` component and root-level fallbacks, writes a structured JSON audit.
+  - **`push_strapi_seo.py`** — batch write-back with before/after diff preview, stale-write guard, and locale support for v5 localized content.
+- **59 new unit tests** for the Strapi scripts — version detection, entry normalisation, SEO audit counting, payload building, stale-write guard logic, and SSRF IP classification.
 
 ### Changed
-- **`seo-analysis` — `analyze_gsc.py` parallelized** — all 9 GSC API calls now run concurrently via `ThreadPoolExecutor`, cutting wall-clock data collection time by ~70%.
-- **`url_inspection.py` — parallel URL inspection** — inspections run with `--concurrency 3` (default). `--max-urls` default reduced from 20 to 5 to stay well within the 2000/day API quota.
-- **`seo-analysis` — technical crawl capped at 5 pages** — Phase 5 now has a hard cap of 5 pages to keep the audit fast without losing insight.
-- **`seo-analysis` — broader OAuth scope** — re-auth instructions now include both `webmasters` and `webmasters.readonly` scopes, required for the URL Inspection API.
+- **`seo-analysis` — `analyze_gsc.py` parallelized** — all 9 GSC API calls now run concurrently via `ThreadPoolExecutor`, cutting wall-clock data collection time by ~70%. Each worker has an exception guard so a single failed call logs an error and continues rather than crashing the script.
+- **`url_inspection.py` — parallel URL inspection** — inspections run with `--concurrency 3` (default). `--max-urls` default reduced from 20 to 5 to stay well within the 2000/day API quota. Worker failures are caught and logged without aborting the run.
+- **`seo-analysis` — technical crawl capped at 5 pages** — Phase 5 now has a hard cap of 5 pages (homepage first, then top by clicks, then flagged pages) to keep the audit fast without losing insight.
+- **`seo-analysis` — broader OAuth scope** — re-auth instructions throughout the skill now include both `webmasters` and `webmasters.readonly` scopes, required for the URL Inspection API.
 - **`seo-analysis`** Phase 2 now asks for brand terms before pulling data.
 - **`seo-analysis`** Phase 4 adds "Branded vs Non-Branded Split" and "Page Group Performance" sections.
+- **`seo-analysis/evals/evals.json`** — 3-scenario test suite covering URL-first behavior, no-GSC technical fallback, and comprehensive GSC+inspection audit.
 - Cannibalization `competing_pages` now sorted by position ascending (best first) instead of clicks descending.
+- Strapi integration is **opt-in and non-blocking** — if `STRAPI_URL` is not configured, Phase 3.6 skips silently.
 
 ---
 

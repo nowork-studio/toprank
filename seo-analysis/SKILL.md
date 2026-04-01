@@ -255,6 +255,91 @@ Then retry `url_inspection.py`.
 
 ---
 
+## Phase 3.6 — Strapi Content Inventory (Optional)
+
+This phase is **non-blocking** — if Strapi is not configured it is silently skipped.
+
+### Check if Strapi is configured
+
+```bash
+SKILL_SCRIPTS=$(find ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
+python3 "$SKILL_SCRIPTS/preflight_strapi.py"
+STRAPI_PREFLIGHT=$?
+```
+
+- Exit code **0** → Strapi ready. Continue below.
+- Exit code **2** (`STRAPI_NOT_CONFIGURED`) → skip this phase entirely, no mention needed.
+- Exit code **1** (auth/config error) → show the error and ask the user if they want to fix it or continue without Strapi.
+
+### Fetch content inventory
+
+```bash
+if [ "$STRAPI_PREFLIGHT" = "0" ]; then
+  python3 "$SKILL_SCRIPTS/fetch_strapi_content.py"
+fi
+```
+
+Output is saved to `/tmp/strapi_content_<uid>.json`. Load it and use the data in Phase 4.
+
+### What to do with the Strapi data
+
+Cross-reference `strapi_content.entries` (published articles with slugs) against GSC data:
+
+**1. Published content with no GSC visibility** — Strapi articles whose `slug` appears in no
+GSC query or page data. This could mean: not yet indexed, canonicalized to another URL,
+recently published (GSC data lags ~3 days), property mismatch, or genuinely not ranking.
+For each: cross-check in Phase 5 technical crawl (indexability, robots.txt, canonical tags).
+Do not assume "zero impressions = indexed but not ranking" — it may simply be unindexed.
+
+**2. Content gaps with intent signal** — GSC queries ranking 11-30 with `>200` impressions
+where no Strapi article targets that keyword in its title or slug. These are confirmed demand
+signals you can close with a new article.
+
+**3. Stale content needing refresh** — Strapi entries where `updated_at` is >6 months ago
+AND the corresponding page appears in `comparison.declining_pages`. Age alone isn't a problem;
+age + declining clicks is.
+
+**4. Missing SEO fields** — Use `strapi_content.seo_audit` directly:
+- `missing_meta_title` — entries with no meta title set
+- `missing_meta_description` — entries with no meta description set
+- `meta_title_too_long` — meta titles over 60 characters
+- `meta_description_too_short/too_long` — outside 70-160 char range
+
+Surface the top 5 most impactful fixes (by impressions where GSC data matches).
+
+### Pushing fixes back to Strapi
+
+After generating recommendations in Phase 6, offer to write the fixes directly:
+
+> "I can push the meta title/description fixes directly to Strapi. Want me to apply them?"
+
+If the user agrees, for each fix run:
+```bash
+python3 "$SKILL_SCRIPTS/push_strapi_seo.py" \
+  --document-id "<documentId>" \
+  --meta-title "New title under 60 chars" \
+  --meta-description "New description 70-160 chars."
+```
+
+Or batch-write via a JSON file for multiple entries:
+```bash
+python3 "$SKILL_SCRIPTS/push_strapi_seo.py" --batch-file /tmp/seo_updates.json
+```
+
+The script always shows a before/after diff and asks for confirmation before writing.
+Pass `--yes` only if the user has explicitly approved all changes upfront.
+
+**Required env vars** (in `.env.local` or shell environment):
+```
+STRAPI_URL=https://cms.example.com
+STRAPI_API_KEY=your_full_access_token
+STRAPI_CONTENT_TYPE=articles   # optional, defaults to "articles"
+STRAPI_VERSION=5               # optional; set to "4" if auto-detection is wrong
+                               # (can happen with empty collections or custom setups)
+```
+
+---
+
 ## Phase 4 — Search Console Analysis
 
 This is where you earn your keep. Do not just restate the data. Interpret it like
@@ -723,6 +808,21 @@ steps for each.]
 [Severity: Critical / High / Medium / Low]
 [For each: what it is, which pages, how to fix it, and the impact on rankings
 if left unfixed.]
+
+## Strapi SEO Field Audit
+*(Only included when Strapi is configured.)*
+
+| Issue | Count | Top Affected Articles |
+|-------|-------|-----------------------|
+| Missing meta title | X | article-slug-1, article-slug-2... |
+| Missing meta description | X | ... |
+| Meta title too long (>60 chars) | X | ... |
+| Meta description out of range | X | ... |
+
+**Highest-impact fixes** (articles with most GSC impressions + missing/bad SEO fields):
+[List 5 specific articles: current meta title → recommended meta title, with character counts]
+
+> "I can push these fixes directly to Strapi — run `push_strapi_seo.py` after approval."
 
 ## 30-Day Action Plan
 
