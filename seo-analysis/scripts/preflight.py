@@ -10,6 +10,8 @@ Exit codes:
   1 — unrecoverable error (gcloud missing, auth failed, etc.)
 """
 
+import json
+import os
 import platform
 import shutil
 import subprocess
@@ -201,12 +203,74 @@ def check_adc_credentials():
     print("Authentication successful.", file=sys.stderr)
 
 
+def _get_adc_quota_project():
+    """Return the quota_project_id from the ADC JSON file, or None if absent."""
+    adc_path = os.path.join(
+        os.path.expanduser("~"), ".config", "gcloud", "application_default_credentials.json"
+    )
+    if not os.path.isfile(adc_path):
+        return None
+    try:
+        with open(adc_path) as f:
+            data = json.load(f)
+        return data.get("quota_project_id") or None
+    except (OSError, ValueError):
+        return None
+
+
+def check_quota_project():
+    """Ensure ADC has a quota project set; auto-configure it from the active gcloud project.
+
+    Without a quota project, user-credential ADC calls to Search Console return 403:
+      "The searchconsole.googleapis.com API requires a quota project."
+    Fix: gcloud auth application-default set-quota-project PROJECT_ID
+    """
+    if _get_adc_quota_project():
+        return  # already configured
+
+    # Look up the active gcloud project
+    try:
+        result = subprocess.run(
+            ["gcloud", "config", "get-value", "project"],
+            capture_output=True, text=True, timeout=15,
+        )
+    except subprocess.TimeoutExpired:
+        print("WARNING: gcloud timed out getting project for quota setup.", file=sys.stderr)
+        return
+
+    project = result.stdout.strip() if result.returncode == 0 else ""
+    if not project or project == "(unset)":
+        print("WARNING: Cannot set quota project — no active GCP project.", file=sys.stderr)
+        print("  Run: gcloud auth application-default set-quota-project YOUR_PROJECT_ID", file=sys.stderr)
+        return
+
+    print(f"Setting ADC quota project to '{project}'...", file=sys.stderr)
+    try:
+        set_result = subprocess.run(
+            ["gcloud", "auth", "application-default", "set-quota-project", project],
+            capture_output=True, text=True, timeout=30,
+        )
+    except subprocess.TimeoutExpired:
+        print("WARNING: gcloud timed out setting quota project.", file=sys.stderr)
+        print(f"  Run manually: gcloud auth application-default set-quota-project '{project}'", file=sys.stderr)
+        return
+    if set_result.returncode == 0:
+        print(f"ADC quota project: {project}", file=sys.stderr)
+    else:
+        print("WARNING: Could not set quota project automatically.", file=sys.stderr)
+        print(f"  Run manually: gcloud auth application-default set-quota-project '{project}'", file=sys.stderr)
+        stderr_msg = set_result.stderr.strip()
+        if stderr_msg:
+            print(f"  Reason: {stderr_msg}", file=sys.stderr)
+
+
 def main():
     check_python_version()
     check_gcloud()
     check_gcloud_project()
     check_search_console_api()
     check_adc_credentials()
+    check_quota_project()
     print("OK: All dependencies ready.", file=sys.stderr)
 
 
