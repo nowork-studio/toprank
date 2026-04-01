@@ -16,6 +16,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **`seo-analysis` — Deep Schema Markup Audit** — detects site type (E-commerce, SaaS, Local Business, etc.), defines expected schema types per site type, audits each page's `<script type="application/ld+json">` blocks, and flags missing high-impact schema and errors in existing schema. Cross-references with URL Inspection rich result findings.
 - **`seo-analysis` — Skill Handoffs** (Phase 7) — after delivering the report, surfaces targeted follow-up actions: `/meta-tags-optimizer` for pages with metadata issues, `/schema-markup-generator` for schema gaps, `/keyword-research` with seed terms from the gap analysis.
 - **`test/unit/test_url_inspection.py`** — 25 unit tests covering `normalize_site_url_for_inspection`, `parse_inspection_result`, and `summarize_findings`.
+- **Strapi CMS integration** (Phase 3.6) — the `/seo-analysis` skill now cross-references your published Strapi content against GSC data. Three new scripts:
+  - **`preflight_strapi.py`** — validates config, tests connectivity, detects Strapi v4 vs v5. Exit code 2 = not configured (non-fatal skip).
+  - **`fetch_strapi_content.py`** — paginates all published entries, extracts SEO fields from the official `strapi-community/plugin-seo` component and root-level fallbacks, writes a structured JSON audit.
+  - **`push_strapi_seo.py`** — batch write-back with before/after diff preview, stale-write guard, and locale support for v5 localized content.
+- **59 new unit tests** for the Strapi scripts — version detection, entry normalisation, SEO audit counting, payload building, stale-write guard logic, and SSRF IP classification.
 
 ### Changed
 - **`seo-analysis` — `analyze_gsc.py` parallelized** — all 9 GSC API calls now run concurrently via `ThreadPoolExecutor`, cutting wall-clock data collection time by ~70%. Each worker has an exception guard so a single failed call logs an error and continues rather than crashing the script.
@@ -23,6 +28,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **`seo-analysis` — technical crawl capped at 5 pages** — Phase 5 now has a hard cap of 5 pages (homepage first, then top by clicks, then flagged pages) to keep the audit fast without losing insight.
 - **`seo-analysis` — broader OAuth scope** — re-auth instructions throughout the skill now include both `webmasters` and `webmasters.readonly` scopes, required for the URL Inspection API.
 - **`seo-analysis/evals/evals.json`** — 3-scenario test suite covering URL-first behavior, no-GSC technical fallback, and comprehensive GSC+inspection audit.
+- Strapi integration is **opt-in and non-blocking** — if `STRAPI_URL` is not configured, Phase 3.6 skips silently.
 
 ---
 
