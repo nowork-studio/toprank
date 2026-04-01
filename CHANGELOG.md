@@ -6,19 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [0.7.0] — 2026-03-31
+## [0.7.0] — 2026-04-01
 
 ### Added
-- **Strapi CMS integration** — the `/seo-analysis` skill now pulls content from your Strapi CMS and cross-references it against GSC and crawl data. Three new scripts power this:
-  - **`preflight_strapi.py`** — validates config, tests connectivity, detects Strapi v4 vs v5, and reports published entry counts before any analysis runs. Exit code 2 means "not configured" (non-fatal skip); exit code 1 is a real error.
-  - **`fetch_strapi_content.py`** — paginates through all published entries, extracts SEO fields from both the official `strapi-community/plugin-seo` component and common root-level fallbacks, and writes a structured JSON audit file. Detects which schema your Strapi uses so the push script writes to the right location.
-  - **`push_strapi_seo.py`** — reads a batch of recommended SEO updates, shows a before/after diff, and writes back to Strapi after confirmation. Includes stale-write guard (refuses to overwrite concurrent edits), locale-aware updates for v5 localized content, and dry-run support via the diff preview.
-- **Phase 3.5 in SKILL.md** — new "Strapi CMS Cross-Reference" phase inserted between data collection and analysis. Surfaces unranked published content, recently published content not yet in GSC, content gaps (GSC queries with no matching Strapi slug), and a full SEO field audit table.
-- **SSRF protection** in all three scripts — blocks localhost, RFC1918, link-local, and loopback addresses, with best-effort DNS resolution check. Strapi URL is validated before any HTTP request is made.
-- **59 new unit tests** covering version detection, entry normalisation, SEO audit counting, payload building, stale-write guard logic, and SSRF IP classification across all three scripts.
+- **`seo-analysis` — URL-first flow** — Step 0 now asks for the target website URL before running any preflight or API calls. The URL is stored and used throughout the entire audit for URL Inspection, technical crawl, and metadata fetching.
+- **`seo-analysis` — URL Inspection API** (Phase 3.5) — new `url_inspection.py` script calls `POST https://searchconsole.googleapis.com/v1/urlInspection/index:inspect` for the top pages. Returns per-page indexing status (`INDEXED`, `NOT_INDEXED`, `DUPLICATE_WITHOUT_CANONICAL`, etc.), mobile usability verdict, rich result status, last crawl time, and referring sitemaps. Results surface immediately as critical flags in the report.
+- **`seo-analysis` — Keyword Gap Analysis** (Phase 4.5) — finds keyword orphans (queries ranking 4-20 with no dedicated page), builds topic clusters from GSC data with pillar page recommendations, and identifies business-relevant keywords the site should rank for but has no impressions for.
+- **`seo-analysis` — Deep Metadata Audit** — for each audited page, fetches the live `<title>` and `<meta description>`, cross-references against top GSC queries for title/query alignment, checks character counts, detects duplicate titles, and audits Open Graph tags. Outputs a structured per-page table.
+- **`seo-analysis` — Deep Schema Markup Audit** — detects site type (E-commerce, SaaS, Local Business, etc.), defines expected schema types per site type, audits each page's `<script type="application/ld+json">` blocks, and flags missing high-impact schema and errors in existing schema. Cross-references with URL Inspection rich result findings.
+- **`seo-analysis` — Skill Handoffs** (Phase 7) — after delivering the report, surfaces targeted follow-up actions: `/meta-tags-optimizer` for pages with metadata issues, `/schema-markup-generator` for schema gaps, `/keyword-research` with seed terms from the gap analysis.
+- **`test/unit/test_url_inspection.py`** — 25 unit tests covering `normalize_site_url_for_inspection`, `parse_inspection_result`, and `summarize_findings`.
+- **Strapi CMS integration** (Phase 3.6) — the `/seo-analysis` skill now cross-references your published Strapi content against GSC data. Three new scripts:
+  - **`preflight_strapi.py`** — validates config, tests connectivity, detects Strapi v4 vs v5. Exit code 2 = not configured (non-fatal skip).
+  - **`fetch_strapi_content.py`** — paginates all published entries, extracts SEO fields from the official `strapi-community/plugin-seo` component and root-level fallbacks, writes a structured JSON audit.
+  - **`push_strapi_seo.py`** — batch write-back with before/after diff preview, stale-write guard, and locale support for v5 localized content.
+- **59 new unit tests** for the Strapi scripts — version detection, entry normalisation, SEO audit counting, payload building, stale-write guard logic, and SSRF IP classification.
 
 ### Changed
-- Strapi integration is **opt-in and non-blocking** — if `STRAPI_URL` is not configured, Phase 3.5 skips silently. The full SEO audit runs regardless.
+- **`seo-analysis` — `analyze_gsc.py` parallelized** — all 9 GSC API calls now run concurrently via `ThreadPoolExecutor`, cutting wall-clock data collection time by ~70%. Each worker has an exception guard so a single failed call logs an error and continues rather than crashing the script.
+- **`url_inspection.py` — parallel URL inspection** — inspections run with `--concurrency 3` (default). `--max-urls` default reduced from 20 to 5 to stay well within the 2000/day API quota. Worker failures are caught and logged without aborting the run.
+- **`seo-analysis` — technical crawl capped at 5 pages** — Phase 5 now has a hard cap of 5 pages (homepage first, then top by clicks, then flagged pages) to keep the audit fast without losing insight.
+- **`seo-analysis` — broader OAuth scope** — re-auth instructions throughout the skill now include both `webmasters` and `webmasters.readonly` scopes, required for the URL Inspection API.
+- **`seo-analysis/evals/evals.json`** — 3-scenario test suite covering URL-first behavior, no-GSC technical fallback, and comprehensive GSC+inspection audit.
+- Strapi integration is **opt-in and non-blocking** — if `STRAPI_URL` is not configured, Phase 3.6 skips silently.
 
 ---
 
