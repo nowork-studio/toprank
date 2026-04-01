@@ -6,19 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [0.7.0] — 2026-03-31
+## [0.7.0] — 2026-04-01
 
 ### Added
+- **`seo-analysis` — URL-first flow** — Step 0 now asks for the target website URL before running any preflight or API calls. The URL is stored and used throughout the entire audit for URL Inspection, technical crawl, and metadata fetching.
+- **`seo-analysis` — URL Inspection API** (Phase 3.5) — new `url_inspection.py` script calls `POST https://searchconsole.googleapis.com/v1/urlInspection/index:inspect` for the top pages. Returns per-page indexing status (`INDEXED`, `NOT_INDEXED`, `DUPLICATE_WITHOUT_CANONICAL`, etc.), mobile usability verdict, rich result status, last crawl time, and referring sitemaps. Results surface immediately as critical flags in the report.
+- **`seo-analysis` — Keyword Gap Analysis** (Phase 4.5) — finds keyword orphans (queries ranking 4-20 with no dedicated page), builds topic clusters from GSC data with pillar page recommendations, and identifies business-relevant keywords the site should rank for but has no impressions for.
+- **`seo-analysis` — Deep Metadata Audit** — for each audited page, fetches the live `<title>` and `<meta description>`, cross-references against top GSC queries for title/query alignment, checks character counts, detects duplicate titles, and audits Open Graph tags. Outputs a structured per-page table.
+- **`seo-analysis` — Deep Schema Markup Audit** — detects site type (E-commerce, SaaS, Local Business, etc.), defines expected schema types per site type, audits each page's `<script type="application/ld+json">` blocks, and flags missing high-impact schema and errors in existing schema. Cross-references with URL Inspection rich result findings.
+- **`seo-analysis` — Skill Handoffs** (Phase 7) — after delivering the report, surfaces targeted follow-up actions: `/meta-tags-optimizer` for pages with metadata issues, `/schema-markup-generator` for schema gaps, `/keyword-research` with seed terms from the gap analysis.
 - **Branded vs non-branded segmentation** (`branded_split`) — pass `--brand-terms "Acme,AcmeCorp"` to split all GSC traffic into branded and non-branded segments. Each segment gets its own clicks, impressions, CTR, average position, query count, and top-20 queries. Non-branded metrics become the true baseline for Quick Wins and content recommendations. Returns `null` if no brand terms provided.
-- **Page group clustering** (`page_groups`) — automatically buckets top pages by URL path pattern (/blog/, /products/, /locations/, /services/, /pricing/, /docs/, /about/, /faq/, /lp/, /case-studies/) with per-section aggregate stats. Exposes template-level problems: "all /products/ pages have 0.8% CTR" can be fixed once, not 50 times. Custom groups supported via `cluster_page_groups(pages, groups=...)`.
-- **Winner/loser scoring for cannibalization** — each `cannibalization` entry now includes `winner_page` (best position, tiebreaker: most clicks), `winner_reason` (explains whether position or clicks decided it), `loser_pages` list, and `recommended_action` ("consolidate: 301 redirect..." or "monitor: possible SERP domination" when all pages rank in top 5 within 2 positions of each other).
-- **35 new unit tests** covering `classify_branded`, `derive_branded_split`, `cluster_page_groups`, and all new cannibalization fields. Total test suite: 115 tests.
+- **Page group clustering** (`page_groups`) — automatically buckets top pages by URL path pattern (/blog/, /products/, /locations/, /services/, /pricing/, /docs/, /about/, /faq/, /lp/, /case-studies/) with per-section aggregate stats. Exposes template-level problems: "all /products/ pages have 0.8% CTR" can be fixed once, not 50 times.
+- **Winner/loser scoring for cannibalization** — each `cannibalization` entry now includes `winner_page`, `winner_reason`, `loser_pages`, and `recommended_action` ("consolidate: 301 redirect..." or "monitor: possible SERP domination").
+- **`test/unit/test_url_inspection.py`** — 25 unit tests covering `normalize_site_url_for_inspection`, `parse_inspection_result`, and `summarize_findings`.
+- **35 new unit tests** covering `classify_branded`, `derive_branded_split`, `cluster_page_groups`, and all new cannibalization fields.
 
 ### Changed
+- **`seo-analysis` — `analyze_gsc.py` parallelized** — all 9 GSC API calls now run concurrently via `ThreadPoolExecutor`, cutting wall-clock data collection time by ~70%.
+- **`url_inspection.py` — parallel URL inspection** — inspections run with `--concurrency 3` (default). `--max-urls` default reduced from 20 to 5 to stay well within the 2000/day API quota.
+- **`seo-analysis` — technical crawl capped at 5 pages** — Phase 5 now has a hard cap of 5 pages to keep the audit fast without losing insight.
+- **`seo-analysis` — broader OAuth scope** — re-auth instructions now include both `webmasters` and `webmasters.readonly` scopes, required for the URL Inspection API.
 - **`seo-analysis`** Phase 2 now asks for brand terms before pulling data.
 - **`seo-analysis`** Phase 4 adds "Branded vs Non-Branded Split" and "Page Group Performance" sections.
-- **`seo-analysis`** Phase 6 report adds "Branded vs Non-Branded Split" and "Traffic by Site Section" tables.
-- Cannibalization `competing_pages` now sorted by position ascending (best first) instead of clicks descending — aligns with the new winner scoring.
+- Cannibalization `competing_pages` now sorted by position ascending (best first) instead of clicks descending.
 
 ---
 

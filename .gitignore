@@ -29,3 +29,6 @@ service-account*.json
 
 # Security reports and local tool state (never commit)
 .gstack/
+
+# Skill eval workspaces — local scratch data, not for repo
+*-workspace/
