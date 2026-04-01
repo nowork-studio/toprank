@@ -175,6 +175,10 @@ Confirm the match with the user before proceeding: "I'll pull GSC data for
 
 ## Phase 3 — Collect GSC Data
 
+**⚡ Speed**: In the same turn you run `analyze_gsc.py`, also fire a parallel
+WebFetch for `{target_url}/robots.txt` — it's always needed in Phase 5 and you
+already know the URL. Both calls can run simultaneously.
+
 Run the main analysis script with the confirmed site property:
 
 ```bash
@@ -185,6 +189,14 @@ python3 "$SKILL_SCRIPTS/analyze_gsc.py" \
 ```
 
 (Omit `--brand-terms` if `$BRAND_TERMS` is empty.)
+
+After `analyze_gsc.py` completes, run the display utility to print a structured summary — **do not write inline Python to parse the JSON yourself**:
+
+```bash
+python3 "$SKILL_SCRIPTS/show_gsc.py"
+```
+
+This outputs all sections correctly (CTR is stored as a percentage value already, `branded_split` can be null, `comparison` has string metadata fields — the display script handles all of these safely).
 
 This pulls:
 - **Top queries** by impressions, clicks, CTR, average position
@@ -203,6 +215,28 @@ This pulls:
 - **Page groups** (`page_groups`) — traffic aggregated by site section (/blog/, /products/, /locations/, etc.) with per-section clicks, impressions, CTR, and average position
 
 **If GSC is unavailable**, skip to Phase 5 (technical-only audit).
+
+---
+
+## ⚡ Parallel Data Collection (after Phase 3 completes)
+
+**Do not run Phase 3.5, 3.6, and 5 sequentially — run them all at once.**
+
+As soon as Phase 3's `analyze_gsc.py` finishes and you have the top pages list,
+launch all three of these in a single turn using parallel tool calls:
+
+1. **Phase 3.5**: run `url_inspection.py` (Bash tool)
+2. **Phase 3.6**: run `preflight_strapi.py` + `fetch_strapi_content.py` if configured (Bash tool)
+3. **Phase 5 pre-fetch**: fetch `robots.txt`, the homepage, and up to 4 top pages via WebFetch — all in parallel
+
+This is safe because all three only need the target URL and top pages list, which
+Phase 3 has already produced. Running them in parallel cuts ~3-5 minutes off the
+total audit time. Start them all in the same response before reading any results.
+
+Also: once you know the target URL (after Step 0), **pre-fetch `robots.txt`
+(`{target_url}/robots.txt`) immediately** — don't wait for Phase 3 to finish. It
+is always needed in Phase 5 and takes only seconds. Fire it off as a WebFetch call
+alongside the `analyze_gsc.py` bash call.
 
 ---
 
@@ -551,6 +585,11 @@ Pages to audit: at most 5 pages total. Prioritize: homepage first, then fill
 remaining slots with top pages by clicks from Phase 4 — unless a page is flagged
 as declining or NOT_INDEXED in Phase 3.5, in which case swap it in. Hard cap at 5
 regardless of how many flagged pages exist; pick the highest-priority ones.
+
+**⚡ Speed note**: Fetch all 5 pages using parallel WebFetch calls in a single
+turn — do not fetch them one-at-a-time. You should have already pre-fetched
+`robots.txt` and the homepage during Phase 3 (see Parallel Data Collection above);
+if so, only fetch the remaining pages you haven't retrieved yet.
 
 ### Indexability
 
