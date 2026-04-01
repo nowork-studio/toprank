@@ -8,6 +8,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [0.6.1] — 2026-03-31
 
+### Added
+- **`test/install.test.sh`** — mock-HOME install test suite for `./setup`. 61 assertions across 6 scenarios: Claude Code global install (symlinks, targets, preamble injection), auto-detect via path, idempotency, real-directory protection, Codex install (openai.yaml + SKILL.md symlinks), and invalid `--host` flag handling. Includes a count-guard that fails fast if a new skill is added to the repo without updating the test's SKILLS array.
+
 ### Changed
 - **`seo-analysis`** — deeper Google Search Console data in every audit. The script now pulls four additional data sets from a single API session:
   - **Cannibalization** (`cannibalization`) — queries where multiple pages compete, with per-page click/impression breakdown. Previously the skill inferred this from single-dimension data; now it uses the real `[query, page]` dimension so every recommendation names specific URLs.
