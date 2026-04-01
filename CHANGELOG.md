@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.7.0] — 2026-03-31
+
+### Added
+- **Strapi CMS integration** — the `/seo-analysis` skill now pulls content from your Strapi CMS and cross-references it against GSC and crawl data. Three new scripts power this:
+  - **`preflight_strapi.py`** — validates config, tests connectivity, detects Strapi v4 vs v5, and reports published entry counts before any analysis runs. Exit code 2 means "not configured" (non-fatal skip); exit code 1 is a real error.
+  - **`fetch_strapi_content.py`** — paginates through all published entries, extracts SEO fields from both the official `strapi-community/plugin-seo` component and common root-level fallbacks, and writes a structured JSON audit file. Detects which schema your Strapi uses so the push script writes to the right location.
+  - **`push_strapi_seo.py`** — reads a batch of recommended SEO updates, shows a before/after diff, and writes back to Strapi after confirmation. Includes stale-write guard (refuses to overwrite concurrent edits), locale-aware updates for v5 localized content, and dry-run support via the diff preview.
+- **Phase 3.5 in SKILL.md** — new "Strapi CMS Cross-Reference" phase inserted between data collection and analysis. Surfaces unranked published content, recently published content not yet in GSC, content gaps (GSC queries with no matching Strapi slug), and a full SEO field audit table.
+- **SSRF protection** in all three scripts — blocks localhost, RFC1918, link-local, and loopback addresses, with best-effort DNS resolution check. Strapi URL is validated before any HTTP request is made.
+- **59 new unit tests** covering version detection, entry normalisation, SEO audit counting, payload building, stale-write guard logic, and SSRF IP classification across all three scripts.
+
+### Changed
+- Strapi integration is **opt-in and non-blocking** — if `STRAPI_URL` is not configured, Phase 3.5 skips silently. The full SEO audit runs regardless.
+
+---
+
 ## [0.6.1] — 2026-03-31
 
 ### Added
