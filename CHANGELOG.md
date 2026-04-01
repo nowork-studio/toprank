@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.7.1] — 2026-04-01
+
+### Fixed
+- **`seo-analysis` — GSC display crash** — added `show_gsc.py` display utility to replace fragile inline Python scripts. Fixes `TypeError: string indices must be integers, not 'str'` that occurred when iterating `comparison` dict fields (which mixes string metadata and list data at the same level). Also fixes CTR being displayed as 474% instead of 4.74% (was being multiplied by 100 twice).
+
+---
+
 ## [0.7.0] — 2026-04-01
 
 ### Added
