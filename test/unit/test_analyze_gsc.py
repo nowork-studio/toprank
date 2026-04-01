@@ -466,14 +466,14 @@ class TestDeriveCannibalization(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['query'], 'seo tips')
 
-    def test_competing_pages_sorted_by_clicks_desc(self):
+    def test_competing_pages_sorted_by_position_asc(self):
         rows = [
-            self._make_row('seo tips', '/blog/seo', 30, 500),
-            self._make_row('seo tips', '/guide/seo', 100, 800),
+            self._make_row('seo tips', '/blog/seo', 30, 500, position=8.0),
+            self._make_row('seo tips', '/guide/seo', 100, 800, position=3.0),
         ]
         result = gsc.derive_cannibalization(rows)
         pages = result[0]['competing_pages']
-        self.assertEqual(pages[0]['page'], '/guide/seo')  # higher clicks first
+        self.assertEqual(pages[0]['page'], '/guide/seo')  # best position first
         self.assertEqual(pages[1]['page'], '/blog/seo')
 
     def test_total_impressions_and_clicks_summed(self):
@@ -537,6 +537,69 @@ class TestDeriveCannibalization(unittest.TestCase):
         self.assertIn('ctr', page)
         self.assertIn('position', page)
         self.assertEqual(page['ctr'], round(0.1 * 100, 2))
+
+    def test_winner_page_is_best_position(self):
+        rows = [
+            self._make_row('keyword', '/a', 50, 500, position=8.0),
+            self._make_row('keyword', '/b', 20, 400, position=3.0),
+        ]
+        result = gsc.derive_cannibalization(rows)
+        self.assertEqual(result[0]['winner_page'], '/b')  # /b has position 3.0
+
+    def test_winner_tiebreaker_is_most_clicks(self):
+        rows = [
+            self._make_row('keyword', '/a', 80, 500, position=5.0),
+            self._make_row('keyword', '/b', 30, 400, position=5.0),
+        ]
+        result = gsc.derive_cannibalization(rows)
+        self.assertEqual(result[0]['winner_page'], '/a')  # same position, /a has more clicks
+
+    def test_loser_pages_excludes_winner(self):
+        rows = [
+            self._make_row('kw', '/winner', 100, 800, position=2.0),
+            self._make_row('kw', '/loser1', 40, 400, position=7.0),
+            self._make_row('kw', '/loser2', 20, 300, position=9.0),
+        ]
+        result = gsc.derive_cannibalization(rows)
+        self.assertEqual(result[0]['winner_page'], '/winner')
+        self.assertIn('/loser1', result[0]['loser_pages'])
+        self.assertIn('/loser2', result[0]['loser_pages'])
+        self.assertNotIn('/winner', result[0]['loser_pages'])
+
+    def test_domination_flag_when_all_top5_close_positions(self):
+        rows = [
+            self._make_row('brand query', '/a', 100, 800, position=2.0),
+            self._make_row('brand query', '/b', 80, 600, position=3.5),
+        ]
+        result = gsc.derive_cannibalization(rows)
+        self.assertIn('domination', result[0]['recommended_action'])
+
+    def test_consolidate_recommended_when_positions_spread(self):
+        rows = [
+            self._make_row('keyword', '/a', 100, 800, position=2.0),
+            self._make_row('keyword', '/b', 30, 500, position=9.0),
+        ]
+        result = gsc.derive_cannibalization(rows)
+        self.assertIn('consolidate', result[0]['recommended_action'])
+
+    def test_winner_reason_shows_position_when_positions_differ(self):
+        rows = [
+            self._make_row('kw', '/a', 100, 800, position=3.0),
+            self._make_row('kw', '/b', 50, 600, position=7.0),
+        ]
+        result = gsc.derive_cannibalization(rows)
+        self.assertIn('winner_reason', result[0])
+        self.assertIn('3.0', result[0]['winner_reason'])
+        self.assertIn('position', result[0]['winner_reason'])
+
+    def test_winner_reason_shows_clicks_when_positions_tied(self):
+        rows = [
+            self._make_row('kw', '/a', 100, 800, position=5.0),
+            self._make_row('kw', '/b', 40, 600, position=5.0),
+        ]
+        result = gsc.derive_cannibalization(rows)
+        self.assertIn('clicks', result[0]['winner_reason'])
+        self.assertIn('100', result[0]['winner_reason'])
 
 
 class TestDeriveCtrGapsByPage(unittest.TestCase):
@@ -695,6 +758,200 @@ class TestPullSearchTypeSplit(unittest.TestCase):
         with patch.object(gsc, 'gsc_query', side_effect=fake_query):
             result = gsc.pull_search_type_split('token', 'sc-domain:test.com', '2025-01-01', '2025-03-31')
         self.assertEqual(result[0]['ctr'], 10.0)
+
+
+class TestClassifyBranded(unittest.TestCase):
+    """classify_branded() detects brand terms case-insensitively."""
+
+    def test_exact_match(self):
+        self.assertTrue(gsc.classify_branded('acme pricing', ['acme']))
+
+    def test_case_insensitive(self):
+        self.assertTrue(gsc.classify_branded('Acme Corp pricing', ['acme']))
+
+    def test_brand_uppercase_term(self):
+        self.assertTrue(gsc.classify_branded('acmecorp review', ['AcmeCorp']))
+
+    def test_non_branded_query(self):
+        self.assertFalse(gsc.classify_branded('best seo tools', ['acme']))
+
+    def test_empty_brand_terms_returns_false(self):
+        self.assertFalse(gsc.classify_branded('acme pricing', []))
+
+    def test_none_brand_terms_returns_false(self):
+        self.assertFalse(gsc.classify_branded('acme pricing', None))
+
+    def test_multiple_brand_terms_any_match(self):
+        self.assertTrue(gsc.classify_branded('toprank seo tool', ['acme', 'toprank']))
+
+    def test_multiple_brand_terms_none_match(self):
+        self.assertFalse(gsc.classify_branded('best content marketing', ['acme', 'toprank']))
+
+    def test_partial_word_match(self):
+        # "acmecorp" contains "acme" — should match
+        self.assertTrue(gsc.classify_branded('acmecorp login', ['acme']))
+
+
+class TestDeriveBrandedSplit(unittest.TestCase):
+    """derive_branded_split() aggregates qp_rows into branded vs non-branded segments."""
+
+    def _make_row(self, query, page, clicks, impressions, position=5.0):
+        return {'keys': [query, page], 'clicks': clicks, 'impressions': impressions,
+                'ctr': clicks / impressions, 'position': position}
+
+    def test_returns_none_when_no_brand_terms(self):
+        rows = [self._make_row('acme pricing', '/pricing', 100, 1000)]
+        self.assertIsNone(gsc.derive_branded_split(rows, []))
+
+    def test_returns_none_when_brand_terms_is_none(self):
+        rows = [self._make_row('acme pricing', '/pricing', 100, 1000)]
+        self.assertIsNone(gsc.derive_branded_split(rows, None))
+
+    def test_splits_into_branded_and_non_branded(self):
+        rows = [
+            self._make_row('acme pricing', '/pricing', 100, 1000),
+            self._make_row('seo tools', '/blog', 50, 800),
+        ]
+        result = gsc.derive_branded_split(rows, ['acme'])
+        self.assertEqual(result['branded']['clicks'], 100)
+        self.assertEqual(result['non_branded']['clicks'], 50)
+
+    def test_branded_impressions_correct(self):
+        rows = [
+            self._make_row('acme login', '/login', 200, 2000),
+            self._make_row('acme pricing', '/pricing', 100, 1000),
+        ]
+        result = gsc.derive_branded_split(rows, ['acme'])
+        self.assertEqual(result['branded']['impressions'], 3000)
+
+    def test_query_count_correct(self):
+        rows = [
+            self._make_row('acme tool', '/a', 50, 500),
+            self._make_row('generic query', '/b', 30, 300),
+            self._make_row('another generic', '/c', 20, 200),
+        ]
+        result = gsc.derive_branded_split(rows, ['acme'])
+        self.assertEqual(result['branded']['query_count'], 1)
+        self.assertEqual(result['non_branded']['query_count'], 2)
+
+    def test_same_query_multiple_pages_deduped(self):
+        # Same query on two pages → only 1 unique query, but clicks/impressions summed
+        rows = [
+            self._make_row('acme tool', '/a', 50, 500),
+            self._make_row('acme tool', '/b', 30, 300),
+        ]
+        result = gsc.derive_branded_split(rows, ['acme'])
+        self.assertEqual(result['branded']['query_count'], 1)
+        self.assertEqual(result['branded']['clicks'], 80)
+
+    def test_empty_segment_returns_zero_stats(self):
+        rows = [self._make_row('generic query', '/page', 100, 1000)]
+        result = gsc.derive_branded_split(rows, ['acme'])
+        self.assertEqual(result['branded']['clicks'], 0)
+        self.assertEqual(result['branded']['query_count'], 0)
+        self.assertEqual(result['branded']['top_queries'], [])
+
+    def test_top_queries_sorted_by_impressions(self):
+        rows = [
+            self._make_row('acme cheap', '/a', 10, 200),
+            self._make_row('acme popular', '/b', 50, 5000),
+        ]
+        result = gsc.derive_branded_split(rows, ['acme'])
+        top = result['branded']['top_queries']
+        self.assertEqual(top[0]['query'], 'acme popular')
+
+    def test_ctr_computed_correctly(self):
+        # 200 clicks / 1000 impressions = 20.0%
+        rows = [self._make_row('acme', '/home', 200, 1000)]
+        result = gsc.derive_branded_split(rows, ['acme'])
+        self.assertAlmostEqual(result['branded']['ctr'], 20.0, places=1)
+
+
+class TestClusterPageGroups(unittest.TestCase):
+    """cluster_page_groups() groups pages by URL path pattern."""
+
+    def _make_page(self, page, clicks, impressions, position=5.0):
+        return {'page': page, 'clicks': clicks, 'impressions': impressions,
+                'ctr': round(clicks / impressions * 100, 2), 'position': position}
+
+    def test_blog_pages_grouped(self):
+        pages = [self._make_page('https://example.com/blog/post-1', 100, 1000)]
+        result = gsc.cluster_page_groups(pages)
+        blog = next((g for g in result if g['group'] == 'blog'), None)
+        self.assertIsNotNone(blog)
+        self.assertEqual(blog['clicks'], 100)
+
+    def test_products_pages_grouped(self):
+        pages = [self._make_page('/products/widget', 50, 500)]
+        result = gsc.cluster_page_groups(pages)
+        products = next((g for g in result if g['group'] == 'products'), None)
+        self.assertIsNotNone(products)
+
+    def test_unmatched_pages_go_to_other(self):
+        pages = [self._make_page('/custom-path/something', 20, 200)]
+        result = gsc.cluster_page_groups(pages)
+        other = next((g for g in result if g['group'] == 'other'), None)
+        self.assertIsNotNone(other)
+        self.assertEqual(other['clicks'], 20)
+
+    def test_multiple_pages_same_group_aggregated(self):
+        pages = [
+            self._make_page('/blog/post-1', 100, 1000),
+            self._make_page('/blog/post-2', 80, 800),
+        ]
+        result = gsc.cluster_page_groups(pages)
+        blog = next((g for g in result if g['group'] == 'blog'), None)
+        self.assertEqual(blog['clicks'], 180)
+        self.assertEqual(blog['page_count'], 2)
+
+    def test_sorted_by_clicks_desc(self):
+        pages = [
+            self._make_page('/blog/post', 50, 500),
+            self._make_page('/products/item', 300, 3000),
+        ]
+        result = gsc.cluster_page_groups(pages)
+        self.assertGreater(result[0]['clicks'], result[1]['clicks'])
+
+    def test_empty_groups_not_returned(self):
+        pages = [self._make_page('/blog/post', 100, 1000)]
+        result = gsc.cluster_page_groups(pages)
+        groups_with_pages = [g for g in result if g['page_count'] > 0]
+        self.assertEqual(len(result), len(groups_with_pages))
+
+    def test_empty_pages_returns_empty(self):
+        self.assertEqual(gsc.cluster_page_groups([]), [])
+
+    def test_ctr_computed_correctly(self):
+        # 100 clicks / 1000 impressions = 10%
+        pages = [self._make_page('/blog/post', 100, 1000)]
+        result = gsc.cluster_page_groups(pages)
+        blog = next(g for g in result if g['group'] == 'blog')
+        self.assertAlmostEqual(blog['ctr'], 10.0, places=1)
+
+    def test_position_is_weighted_average(self):
+        # Two blog posts: position 2.0 with 1000 imps, position 8.0 with 1000 imps → avg 5.0
+        pages = [
+            self._make_page('/blog/a', 100, 1000, position=2.0),
+            self._make_page('/blog/b', 80, 1000, position=8.0),
+        ]
+        result = gsc.cluster_page_groups(pages)
+        blog = next(g for g in result if g['group'] == 'blog')
+        self.assertAlmostEqual(blog['position'], 5.0, places=1)
+
+    def test_first_matching_group_wins(self):
+        # /blog/products/ could match both 'blog' and 'products' — first pattern wins
+        pages = [self._make_page('/blog/products/item', 100, 1000)]
+        result = gsc.cluster_page_groups(pages)
+        matched_groups = [g['group'] for g in result if g['page_count'] > 0]
+        # Should only be in one group
+        self.assertEqual(len([g for g in result if g['page_count'] > 0 and g['group'] in ('blog', 'products')]), 1)
+
+    def test_custom_groups_override_defaults(self):
+        custom = [("guides", r"/guide/")]
+        pages = [self._make_page('/guide/seo-basics', 100, 1000)]
+        result = gsc.cluster_page_groups(pages, groups=custom)
+        guides = next((g for g in result if g['group'] == 'guides'), None)
+        self.assertIsNotNone(guides)
 
 
 if __name__ == '__main__':

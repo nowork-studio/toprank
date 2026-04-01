@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.7.0] — 2026-03-31
+
+### Added
+- **Branded vs non-branded segmentation** (`branded_split`) — pass `--brand-terms "Acme,AcmeCorp"` to split all GSC traffic into branded and non-branded segments. Each segment gets its own clicks, impressions, CTR, average position, query count, and top-20 queries. Non-branded metrics become the true baseline for Quick Wins and content recommendations. Returns `null` if no brand terms provided.
+- **Page group clustering** (`page_groups`) — automatically buckets top pages by URL path pattern (/blog/, /products/, /locations/, /services/, /pricing/, /docs/, /about/, /faq/, /lp/, /case-studies/) with per-section aggregate stats. Exposes template-level problems: "all /products/ pages have 0.8% CTR" can be fixed once, not 50 times. Custom groups supported via `cluster_page_groups(pages, groups=...)`.
+- **Winner/loser scoring for cannibalization** — each `cannibalization` entry now includes `winner_page` (best position, tiebreaker: most clicks), `winner_reason` (explains whether position or clicks decided it), `loser_pages` list, and `recommended_action` ("consolidate: 301 redirect..." or "monitor: possible SERP domination" when all pages rank in top 5 within 2 positions of each other).
+- **35 new unit tests** covering `classify_branded`, `derive_branded_split`, `cluster_page_groups`, and all new cannibalization fields. Total test suite: 115 tests.
+
+### Changed
+- **`seo-analysis`** Phase 2 now asks for brand terms before pulling data.
+- **`seo-analysis`** Phase 4 adds "Branded vs Non-Branded Split" and "Page Group Performance" sections.
+- **`seo-analysis`** Phase 6 report adds "Branded vs Non-Branded Split" and "Traffic by Site Section" tables.
+- Cannibalization `competing_pages` now sorted by position ascending (best first) instead of clicks descending — aligns with the new winner scoring.
+
+---
+
 ## [0.6.1] — 2026-03-31
 
 ### Added

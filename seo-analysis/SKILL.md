@@ -130,6 +130,11 @@ Confirm with the user: "I found your site at `https://example.com` — is that r
 ### If not in a website repo
 Ask: "What's your website URL? (e.g. https://yoursite.com)"
 
+### Collect brand terms
+Ask: "What's your brand name? Enter one or more comma-separated terms (e.g. `Acme, AcmeCorp, acme.io`) — used to separate branded from non-branded traffic. Press Enter to skip."
+
+Store the response as `BRAND_TERMS`. If skipped, leave empty — the script handles it gracefully.
+
 ### Match to GSC property
 If Phase 1 already listed the user's GSC properties, use that output. Otherwise
 re-run (e.g., if GSC was skipped and the user has since authenticated):
@@ -153,8 +158,11 @@ Run the main analysis script with the confirmed site property:
 ```bash
 python3 "$SKILL_SCRIPTS/analyze_gsc.py" \
   --site "sc-domain:example.com" \
-  --days 90
+  --days 90 \
+  --brand-terms "$BRAND_TERMS"
 ```
+
+(Omit `--brand-terms` if `$BRAND_TERMS` is empty.)
 
 This pulls:
 - **Top queries** by impressions, clicks, CTR, average position
@@ -168,6 +176,8 @@ This pulls:
 - **Device split** — mobile vs desktop vs tablet clicks, impressions, CTR, position
 - **Country split** (`country_split`) — top 20 countries by clicks with CTR and position
 - **Search type breakdown** (`search_type_split`) — web vs image vs video vs news vs Discover vs Google News traffic
+- **Branded vs non-branded split** (`branded_split`) — separate aggregates for queries containing brand terms vs pure organic; `null` if no brand terms provided
+- **Page groups** (`page_groups`) — traffic aggregated by site section (/blog/, /products/, /locations/, etc.) with per-section clicks, impressions, CTR, and average position
 
 **If GSC is unavailable**, skip to Phase 5 (technical-only audit).
 
@@ -184,6 +194,21 @@ Note any dramatic changes. Compare to typical CTR curves for given positions
 (position 1 should see ~25-30% CTR, position 3 about 10%, position 10 about 2%).
 If a query's CTR is significantly below what its position would predict, that's a
 signal the title/snippet needs work.
+
+### Branded vs Non-Branded Split
+
+If `branded_split` is present (not null), show it as the first table in the analysis:
+
+| Segment | Queries | Clicks | Impressions | CTR | Avg Position |
+|---------|---------|--------|-------------|-----|--------------|
+| Branded | X | X | X | X% | X |
+| Non-branded | X | X | X | X% | X |
+
+Interpret the gap:
+- If branded CTR is significantly higher (expected — users know what they're looking for), note that non-branded metrics are the real measure of organic performance.
+- If branded impressions are small vs total, the site has limited brand awareness — focus on non-branded growth.
+- If branded queries are ranking below position 3, that's a reputation/brand issue to flag separately.
+- Use non-branded metrics as the baseline for all Quick Wins and content recommendations — don't let branded traffic inflate the opportunity estimates.
 
 ### Quick Wins (highest impact, lowest effort)
 
@@ -219,19 +244,41 @@ query), flag it. This is often the single biggest unlock.
 
 ### Keyword Cannibalization Check
 
-The output includes a `cannibalization` array — these are queries where multiple pages
-are actively splitting clicks and impressions. Each entry shows the query, total
-impressions, and the competing pages ranked by clicks.
+The output includes a `cannibalization` array. Each entry now has structured winner/loser
+scoring — use it directly instead of re-deriving from raw data:
 
-For each cannibalized query, identify:
-- The **winner** (most clicks) — this should be the canonical page for the topic
-- The **losers** — consolidate into the winner, 301 redirect, or add a canonical tag
-- Queries where the position is mediocre (5-15) despite high impressions — splitting
-  is likely suppressing what should be a top-3 ranking
+- `winner_page` — the canonical page to keep (scored by best position, tiebreaker: most clicks)
+- `winner_reason` — why it won (e.g. "best position (2.1)")
+- `loser_pages` — pages to consolidate away
+- `recommended_action` — either "consolidate: 301 redirect losers to winner or add canonical" or "monitor: possible SERP domination" (all pages in top 5, positions within 2 of each other)
+
+For each cannibalized query:
+- State the winner and losers explicitly — don't make the user figure it out
+- Use `recommended_action` directly in your recommendation
+- Flag queries where position is mediocre (5-15) despite high impressions — splitting is likely suppressing a potential top-3 ranking
+- If `recommended_action` is "monitor: possible SERP domination", note this as a positive (owning multiple SERP spots) and skip the consolidation recommendation
 
 Also cross-check `top_pages` and `position_buckets` for indirect signals: a page
 that used to rank well dropping after a new page was published, or wild position
 fluctuation on a query, are signs of cannibalization not yet in the data window.
+
+### Page Group Performance
+
+Use `page_groups` to show which site sections are winning and which need attention:
+
+| Section | Pages | Clicks | Impressions | CTR | Avg Position |
+|---------|-------|--------|-------------|-----|--------------|
+| /blog/ | X | X | X | X% | X |
+| /products/ | X | X | X | X% | X |
+| ... | | | | | |
+
+Flag:
+- **Low-CTR sections**: if an entire section (e.g., all /products/ pages) has CTR well below site average, the issue is likely a template problem (title tag format, meta description format) — one fix improves all pages in that section.
+- **High-impression, low-click sections**: signals ranking without converting — investigate intent mismatch or snippet quality across the section.
+- **Sections missing entirely**: if /locations/ or /services/ doesn't appear, either those pages don't rank or they haven't been created.
+- **"other" group is large**: means the site has custom URL patterns not covered by defaults — note this for the user so they can understand what's in "other."
+
+This is more actionable than per-page analysis: a recommendation like "the /products/ title tag template needs work" can fix 50 pages at once.
 
 ### Segment Analysis
 
@@ -351,6 +398,24 @@ position 4-10 queries that need title tag optimization."]
 | Impressions | X | ↑/↓ X% |
 | Avg CTR | X% | ↑/↓ |
 | Avg Position | X | ↑/↓ |
+
+## Branded vs Non-Branded Split
+*(omit this section if brand terms were not provided)*
+| Segment | Queries | Clicks | Impressions | CTR | Avg Position |
+|---------|---------|--------|-------------|-----|--------------|
+| Branded | X | X | X | X% | X |
+| Non-branded | X | X | X | X% | X |
+
+[1-2 sentence interpretation: what the split reveals about brand vs organic performance]
+
+## Traffic by Site Section
+| Section | Pages | Clicks | CTR | Avg Position | Notes |
+|---------|-------|--------|-----|--------------|-------|
+| /blog/ | X | X | X% | X | |
+| /products/ | X | X | X% | X | |
+| other | X | X | X% | X | |
+
+[Flag any section with CTR significantly below site average — likely a template problem]
 
 ## Quick Wins (Fix These First)
 [Numbered list, most impactful first. Every recommendation must include:

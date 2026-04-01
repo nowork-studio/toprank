@@ -11,6 +11,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,20 @@ import urllib.parse
 import urllib.request
 import urllib.error
 from datetime import date, timedelta
+
+
+DEFAULT_PAGE_GROUPS = [
+    ("blog",         r"/blog/"),
+    ("products",     r"/product"),
+    ("locations",    r"/location"),
+    ("services",     r"/service"),
+    ("pricing",      r"/pricing"),
+    ("docs",         r"/docs?/"),
+    ("about",        r"/about"),
+    ("faq",          r"/faq"),
+    ("landing",      r"/lp/"),
+    ("case-studies", r"/case-studi"),
+]
 
 
 def get_access_token():
@@ -291,8 +306,14 @@ def pull_query_page_rows(token, site, start, end, row_limit=2000):
     return data.get("rows", [])
 
 
+def _cannibalization_winner(pages):
+    """Pick the canonical winner page. Primary: best (lowest) position. Tiebreaker: most clicks."""
+    return min(pages, key=lambda p: (p["position"], -p["clicks"]))
+
+
 def derive_cannibalization(rows, min_impressions=100):
     """Find queries where multiple pages compete for the same keyword.
+    Returns structured winner/loser scoring and recommended action.
     Input: raw rows from pull_query_page_rows."""
     query_pages = {}
     for r in rows:
@@ -312,9 +333,29 @@ def derive_cannibalization(rows, min_impressions=100):
         if len(pages) > 1:
             total_impressions = sum(p["impressions"] for p in pages)
             if total_impressions >= min_impressions:
+                winner = _cannibalization_winner(pages)
+                winner_page = winner["page"]
+                loser_pages = [p["page"] for p in pages if p["page"] != winner_page]
+
+                # Possible SERP domination: all pages in top 5, positions within 2 of each other
+                positions = [p["position"] for p in pages]
+                is_domination = max(positions) <= 5 and (max(positions) - min(positions)) <= 2.0
+                action = ("monitor: possible SERP domination"
+                          if is_domination else
+                          "consolidate: 301 redirect losers to winner or add canonical")
+
+                # Determine the actual deciding factor for the winner reason
+                all_same_position = all(p["position"] == winner["position"] for p in pages)
+                winner_reason = (f"most clicks ({winner['clicks']})" if all_same_position
+                                 else f"best position ({winner['position']})")
+
                 cannibalized.append({
                     "query": query,
-                    "competing_pages": sorted(pages, key=lambda x: x["clicks"], reverse=True),
+                    "winner_page": winner_page,
+                    "winner_reason": winner_reason,
+                    "loser_pages": loser_pages,
+                    "recommended_action": action,
+                    "competing_pages": sorted(pages, key=lambda x: x["position"]),
                     "total_impressions": total_impressions,
                     "total_clicks": sum(p["clicks"] for p in pages)
                 })
@@ -342,13 +383,113 @@ def derive_ctr_gaps_by_page(rows, min_impressions=200, max_ctr=3.0, max_position
     return gaps[:25]
 
 
+def classify_branded(query, brand_terms):
+    """Return True if query contains any brand term (case-insensitive substring match)."""
+    if not brand_terms:
+        return False
+    q = query.lower()
+    return any(term.lower() in q for term in brand_terms)
+
+
+def derive_branded_split(rows, brand_terms):
+    """Split query+page traffic into branded vs non-branded segments.
+    Input: raw rows from pull_query_page_rows. Returns None if no brand_terms provided."""
+    if not brand_terms:
+        return None
+
+    # Aggregate per unique query (qp_rows can have multiple rows per query across pages)
+    query_stats = {}
+    for r in rows:
+        query = r["keys"][0]
+        imp = r["impressions"]
+        if query not in query_stats:
+            query_stats[query] = {
+                "clicks": 0, "impressions": 0, "weighted_pos": 0.0,
+                "branded": classify_branded(query, brand_terms)
+            }
+        query_stats[query]["clicks"] += r["clicks"]
+        query_stats[query]["impressions"] += imp
+        query_stats[query]["weighted_pos"] += r["position"] * imp
+
+    branded, non_branded = [], []
+    for query, s in query_stats.items():
+        imp = s["impressions"]
+        pos = round(s["weighted_pos"] / imp, 1) if imp > 0 else 0.0
+        ctr = round(s["clicks"] / imp * 100, 2) if imp > 0 else 0.0
+        entry = {"query": query, "clicks": s["clicks"], "impressions": imp,
+                 "ctr": ctr, "position": pos}
+        (branded if s["branded"] else non_branded).append(entry)
+
+    def summarize(query_list):
+        if not query_list:
+            return {"clicks": 0, "impressions": 0, "ctr": 0.0, "position": 0.0,
+                    "query_count": 0, "top_queries": []}
+        total_clicks = sum(q["clicks"] for q in query_list)
+        total_imp = sum(q["impressions"] for q in query_list)
+        ctr = round(total_clicks / total_imp * 100, 2) if total_imp > 0 else 0.0
+        weighted_pos = sum(q["position"] * q["impressions"] for q in query_list)
+        pos = round(weighted_pos / total_imp, 1) if total_imp > 0 else 0.0
+        top = sorted(query_list, key=lambda x: x["impressions"], reverse=True)[:20]
+        return {"clicks": total_clicks, "impressions": total_imp, "ctr": ctr,
+                "position": pos, "query_count": len(query_list), "top_queries": top}
+
+    return {"branded": summarize(branded), "non_branded": summarize(non_branded)}
+
+
+def _url_path(url):
+    """Extract lowercase path from a full URL or path string."""
+    try:
+        path = urllib.parse.urlparse(url).path
+    except Exception:
+        path = url
+    return path.rstrip("/").lower() or "/"
+
+
+def cluster_page_groups(pages, groups=None):
+    """Group pages by URL path pattern. Returns per-group aggregate stats sorted by clicks.
+    pages: list of dicts with 'page', 'clicks', 'impressions', 'ctr', 'position' keys."""
+    patterns = groups or DEFAULT_PAGE_GROUPS
+    buckets = {name: {"clicks": 0, "impressions": 0, "pos_weighted": 0.0, "count": 0}
+               for name, _ in patterns}
+    buckets["other"] = {"clicks": 0, "impressions": 0, "pos_weighted": 0.0, "count": 0}
+
+    for p in pages:
+        path = _url_path(p["page"])
+        group = "other"
+        for name, pattern in patterns:
+            if re.search(pattern, path):
+                group = name
+                break
+        imp = p["impressions"]
+        buckets[group]["clicks"] += p["clicks"]
+        buckets[group]["impressions"] += imp
+        buckets[group]["pos_weighted"] += p["position"] * imp
+        buckets[group]["count"] += 1
+
+    results = []
+    for name, b in buckets.items():
+        if b["count"] == 0:
+            continue
+        imp = b["impressions"]
+        ctr = round(b["clicks"] / imp * 100, 2) if imp > 0 else 0.0
+        pos = round(b["pos_weighted"] / imp, 1) if imp > 0 else 0.0
+        results.append({"group": name, "page_count": b["count"],
+                        "clicks": b["clicks"], "impressions": imp, "ctr": ctr, "position": pos})
+
+    results.sort(key=lambda x: x["clicks"], reverse=True)
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--site", required=True, help="GSC property URL")
     parser.add_argument("--days", type=int, default=90, help="Days of data to pull")
+    parser.add_argument("--brand-terms", default="",
+                        help="Comma-separated brand names for branded vs non-branded split, e.g. 'Acme,AcmeCorp'")
     _default_out = os.path.join(tempfile.gettempdir(), f"gsc_analysis_{os.getuid()}.json")
     parser.add_argument("--output", default=_default_out, help="Output file")
     args = parser.parse_args()
+    brand_terms = [t.strip() for t in args.brand_terms.split(",") if t.strip()]
 
     print(f"Pulling {args.days} days of GSC data for: {args.site}", file=sys.stderr)
 
@@ -391,6 +532,12 @@ def main():
     ]
     ctr_opportunities.sort(key=lambda x: x["impressions"], reverse=True)
 
+    print("Deriving branded/non-branded split...", file=sys.stderr)
+    branded_split = derive_branded_split(qp_rows, brand_terms)
+
+    print("Clustering pages by section...", file=sys.stderr)
+    page_groups = cluster_page_groups(pages)
+
     result = {
         "site": args.site,
         "period": {"start": start, "end": end, "days": args.days},
@@ -407,7 +554,9 @@ def main():
         "comparison": comparison,
         "device_split": devices,
         "country_split": countries,
-        "search_type_split": search_types
+        "search_type_split": search_types,
+        "branded_split": branded_split,
+        "page_groups": page_groups
     }
 
     with open(args.output, "w") as f:
