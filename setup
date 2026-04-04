@@ -189,6 +189,12 @@ def setup_codex(skills):
     except FileNotFoundError:
         repo_root = ""
 
+    # If the git root IS the toprank directory itself, we're running from
+    # within the toprank clone (e.g. ~/.claude/skills/toprank), not from a
+    # user project.  Fall back to ~/.codex/skills/ so Codex can find them.
+    if repo_root and os.path.realpath(repo_root) == os.path.realpath(TOPRANK_DIR):
+        repo_root = ""
+
     agents_dir = (
         os.path.join(repo_root, ".agents", "skills")
         if repo_root
