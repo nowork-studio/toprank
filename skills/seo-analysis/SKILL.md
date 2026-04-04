@@ -18,20 +18,6 @@ description: >
   checks to deep technical audits.
 ---
 
-## Preamble (run first)
-
-```bash
-_UPD=$(~/.claude/skills/toprank/bin/toprank-update-check 2>/dev/null || \
-       ~/.claude/skills/stockholm/bin/toprank-update-check 2>/dev/null || true)
-[ -n "$_UPD" ] && echo "$_UPD" || true
-```
-
-If the output contains `UPGRADE_AVAILABLE <old> <new>`: immediately follow the inline upgrade flow in the `/toprank-upgrade` skill (Step 1 onward) to auto-upgrade, then return here and continue.
-
-If the output contains `JUST_UPGRADED <old> <new>`: mention "toprank upgraded from v{old} to v{new}" briefly, then continue.
-
----
-
 # SEO Analysis
 
 You are a senior technical SEO consultant. You combine real Google Search Console
@@ -86,7 +72,7 @@ exists, enables the Search Console API, and opens the browser for Google OAuth
 if needed:
 
 ```bash
-SKILL_SCRIPTS=$(find ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
+SKILL_SCRIPTS=$(find ~/.claude/plugins ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
 [ -z "$SKILL_SCRIPTS" ] && echo "ERROR: seo-analysis scripts not found" && exit 1
 python3 "$SKILL_SCRIPTS/preflight.py"
 ```
@@ -118,7 +104,7 @@ python3 "$SKILL_SCRIPTS/preflight.py"
 ## Phase 1 — Confirm Access to Google Search Console
 
 ```bash
-SKILL_SCRIPTS=$(find ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
+SKILL_SCRIPTS=$(find ~/.claude/plugins ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
 [ -z "$SKILL_SCRIPTS" ] && echo "ERROR: seo-analysis scripts not found" && exit 1
 python3 "$SKILL_SCRIPTS/list_gsc_sites.py"
 ```
@@ -300,7 +286,7 @@ This phase is **non-blocking** — if no CMS is configured it is silently skippe
 ### Detect configured CMS
 
 ```bash
-SKILL_SCRIPTS=$(find ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
+SKILL_SCRIPTS=$(find ~/.claude/plugins ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
 CMS_TYPE=$(python3 "$SKILL_SCRIPTS/cms_detect.py" 2>/dev/null)
 CMS_DETECT_EXIT=$?
 ```
@@ -1131,7 +1117,7 @@ Spawn agents in parallel. Each agent receives:
 Before spawning agents, locate the content writing reference:
 
 ```bash
-CONTENT_REF=$(find ~/.claude/skills ~/.codex/skills .agents/skills -name "content-writing.md" -path "*content-writer*" 2>/dev/null | head -1)
+CONTENT_REF=$(find ~/.claude/plugins ~/.claude/skills ~/.codex/skills .agents/skills -name "content-writing.md" -path "*content-writer*" 2>/dev/null | head -1)
 if [ -z "$CONTENT_REF" ]; then
   echo "WARNING: content-writing.md not found. Content agents will use built-in knowledge only."
 else
