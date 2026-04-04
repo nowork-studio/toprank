@@ -15,8 +15,7 @@ seo/                      <- SEO skills go here
 
 google-ads/               <- Google Ads skills go here
 └── your-skill-name/
-    ├── SKILL.md          <- required
-    └── mcporter.json     <- optional (for MCP server config)
+    └── SKILL.md          <- required
 ```
 
 ### SKILL.md
