@@ -12,20 +12,28 @@ from pathlib import Path
 from typing import Optional
 
 E2E_TOUCHFILES: dict[str, list[str]] = {
-    'seo-no-gsc-technical-audit': ['seo/seo-analysis/**'],
-    'seo-fixture-full-audit':     ['seo/seo-analysis/**', 'test/fixtures/sample_gsc_data.json'],
-    'seo-report-quality':         ['seo/seo-analysis/**', 'test/fixtures/sample_gsc_data.json'],
+    'seo-no-gsc-technical-audit': ['skills/seo-analysis/**'],
+    'seo-fixture-full-audit':     ['skills/seo-analysis/**', 'test/fixtures/sample_gsc_data.json'],
+    'seo-report-quality':         ['skills/seo-analysis/**', 'test/fixtures/sample_gsc_data.json'],
 }
 
 LLM_JUDGE_TOUCHFILES: dict[str, list[str]] = {
-    'seo-phases-clarity':        ['seo/seo-analysis/SKILL.md'],
-    'seo-report-format-clarity': ['seo/seo-analysis/SKILL.md'],
-    'seo-quick-wins-clarity':    ['seo/seo-analysis/SKILL.md'],
+    'seo-phases-clarity':        ['skills/seo-analysis/SKILL.md'],
+    'seo-report-format-clarity': ['skills/seo-analysis/SKILL.md'],
+    'seo-quick-wins-clarity':    ['skills/seo-analysis/SKILL.md'],
+}
+
+ADS_LLM_JUDGE_TOUCHFILES: dict[str, list[str]] = {
+    'ads-heuristics-clarity':    ['skills/ads/SKILL.md', 'skills/ads/references/**'],
+    'ads-workflows-clarity':     ['skills/ads/SKILL.md'],
+    'ads-audit-scoring-clarity': ['skills/ads-audit/SKILL.md', 'skills/ads-audit/references/**'],
+    'ads-audit-report-clarity':  ['skills/ads-audit/SKILL.md'],
+    'ads-copy-formulas-clarity': ['skills/ads-copy/SKILL.md', 'skills/ads-copy/references/**'],
 }
 
 ROUTING_TOUCHFILES: dict[str, list[str]] = {
-    'routing-seo-triggers':     ['seo/seo-analysis/SKILL.md'],
-    'routing-seo-non-triggers': ['seo/seo-analysis/SKILL.md'],
+    'routing-seo-triggers':     ['skills/seo-analysis/SKILL.md'],
+    'routing-seo-non-triggers': ['skills/seo-analysis/SKILL.md'],
 }
 
 # Changes to these files trigger all tests

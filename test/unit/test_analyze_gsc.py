@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 # Load analyze_gsc.py as a module without executing main()
 _SCRIPT_PATH = os.path.join(
-    os.path.dirname(__file__), '..', '..', 'seo', 'seo-analysis', 'scripts', 'analyze_gsc.py'
+    os.path.dirname(__file__), '..', '..', 'skills', 'seo-analysis', 'scripts', 'analyze_gsc.py'
 )
 spec = importlib.util.spec_from_file_location('analyze_gsc', _SCRIPT_PATH)
 gsc = importlib.util.module_from_spec(spec)

@@ -18,7 +18,7 @@ import unittest
 
 def _load(name):
     path = os.path.join(
-        os.path.dirname(__file__), '..', '..', 'seo', 'seo-analysis', 'scripts', name
+        os.path.dirname(__file__), '..', '..', 'skills', 'seo-analysis', 'scripts', name
     )
     spec = importlib.util.spec_from_file_location(name.replace('.py', ''), path)
     mod = importlib.util.module_from_spec(spec)

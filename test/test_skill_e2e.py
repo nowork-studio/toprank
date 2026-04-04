@@ -24,7 +24,7 @@ from helpers.touchfiles import (
 )
 
 ROOT = Path(__file__).parent.parent
-SKILL_PATH = ROOT / 'seo' / 'seo-analysis'
+SKILL_PATH = ROOT / 'skills' / 'seo-analysis'
 FIXTURES_DIR = ROOT / 'test' / 'fixtures'
 
 EVALS = bool(os.environ.get('EVALS'))
