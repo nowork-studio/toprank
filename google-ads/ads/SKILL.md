@@ -25,7 +25,7 @@ triggers:
 
 # AdsAgent — Google Ads Management
 
-Call Google Ads tools using the bundled CLI client.
+Call Google Ads tools using the AdsAgent MCP server.
 
 ## Configuration
 
@@ -75,8 +75,6 @@ If the tool doesn't exist, the MCP server isn't configured yet. Guide the user:
 >
 > If you installed toprank via the setup script, re-run `./setup --api-key YOUR_KEY` to configure everything automatically.
 
-Note: This skill can also call tools via the bundled mcporter CLI (see "Calling tools" section below), which works without MCP server configuration. But the MCP server is recommended because other ads skills (`/ads-copy`, `/ads-audit`, `/ads-compete`) depend on it.
-
 ### Step 1: Check for token
 
 Read `~/.adsagent/config.json` (create `~/.adsagent/` if it doesn't exist).
@@ -109,30 +107,14 @@ If the user wants to switch accounts, run `listConnectedAccounts`, let them pick
 
 ## Calling tools
 
-Before calling any tool, read `~/.adsagent/config.json` and export the API key so mcporter can use it:
-
-```bash
-export ADS_AGENT_KEY="<apiKey from config>"
-```
-
-Then call tools via mcporter using the bundled config. String parameters must be quoted with double quotes inside single quotes to avoid type errors:
-
-```bash
-export ADS_AGENT_KEY="<apiKey from config>"
-npx mcporter call 'google-ads.<toolName>(accountId: "<accountId from config>")' --config ~/.claude/skills/ads/mcporter.json
-```
+Call tools directly via the MCP server using the `mcp__adsagent__<toolName>` pattern. Read `~/.adsagent/config.json` first to get the `accountId`.
 
 **Examples:**
 
-```bash
-# List campaigns
-npx mcporter call 'google-ads.listCampaigns(accountId: "1234567890")' --config ~/.claude/skills/ads/mcporter.json
-
-# Get keywords for a campaign
-npx mcporter call 'google-ads.getKeywords(accountId: "1234567890", campaignId: "111222333")' --config ~/.claude/skills/ads/mcporter.json
-
-# No-parameter tools
-npx mcporter call google-ads.listConnectedAccounts --config ~/.claude/skills/ads/mcporter.json
+```
+mcp__adsagent__listCampaigns(accountId: "1234567890")
+mcp__adsagent__getKeywords(accountId: "1234567890", campaignId: "111222333")
+mcp__adsagent__listConnectedAccounts()
 ```
 
 Always pass `accountId` from `~/.adsagent/config.json` to every tool call (except `listConnectedAccounts`). All responses are JSON.

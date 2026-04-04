@@ -306,8 +306,7 @@ toprank/
 │   ├── ads-audit/
 │   │   └── SKILL.md               <- account audit + business context
 │   ├── ads/
-│   │   ├── SKILL.md               <- Google Ads management
-│   │   └── mcporter.json          <- MCP server config
+│   │   └── SKILL.md               <- Google Ads management
 │   └── ads-copy/
 │       └── SKILL.md               <- RSA copy generator + A/B testing
 └── toprank-upgrade/
