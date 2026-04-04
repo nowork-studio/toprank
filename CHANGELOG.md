@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.1] — 2026-04-04
+
+### Added
+- **Google Ads Setup section** in README — two-path install guide: Option A (free hosted server via adsagent.org) and Option B (self-hosted MCP server for users with their own Google Ads API access)
+- Collapsible manual MCP config block for users who skip the setup script
+
+### Changed
+- **README hook questions** — rewritten to target real pain points: wasted ad spend, traffic drops, and conversion growth without budget increases
+
+---
+
 ## [0.8.0] — 2026-03-31
 
 ### Added
