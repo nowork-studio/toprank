@@ -80,9 +80,28 @@ Claude: Found your site at mystore.com — pulling Search Console data now.
 
 Toprank is a **Claude Code plugin**. One-time setup, automatic updates.
 
-### Step 1: Add the marketplace
+### Claude Code (recommended)
 
-Open Claude Code settings and add to `extraKnownMarketplaces`:
+Run these two commands in Claude Code:
+
+```
+/plugin marketplace add nowork-studio/toprank
+```
+
+```
+/plugin install toprank@nowork-studio
+```
+
+That's it. All skills are now available as `/toprank:*` commands.
+
+**Google Ads (optional):** Connect your account at [adsagent.org](https://www.adsagent.org) (free API key) — setup instructions are provided there.
+
+### Manual Install
+
+<details>
+<summary>Prefer to edit settings.json directly?</summary>
+
+Add the marketplace and enable the plugin in `~/.claude/settings.json`:
 
 ```json
 {
@@ -93,33 +112,14 @@ Open Claude Code settings and add to `extraKnownMarketplaces`:
         "repo": "nowork-studio/toprank"
       }
     }
-  }
-}
-```
-
-### Step 2: Enable the plugin
-
-Add to `enabledPlugins` in settings:
-
-```json
-{
+  },
   "enabledPlugins": {
     "toprank@nowork-studio": true
   }
 }
 ```
 
-### Step 3: Configure Google Ads (optional)
-
-If you use Google Ads, set your AdsAgent API key (free from [adsagent.org](https://www.adsagent.org)):
-
-```bash
-export ADSAGENT_API_KEY=your_key_here
-```
-
-The plugin's bundled MCP server picks this up automatically. Or configure any Google Ads MCP server manually.
-
-That's it. All skills are now available.
+</details>
 
 ---
 
