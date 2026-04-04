@@ -1,0 +1,36 @@
+{
+  "skill_name": "ads-copy",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write ad copy for a dog grooming business in Seattle called 'Pawfect Grooming'. They offer full grooming, nail trims, and teeth cleaning. They have 4.8 stars on Google with 200+ reviews. They've been in business for 12 years. Target ad group: 'Dog Grooming - Seattle'.",
+      "expected_output": "RSA copy with 2-3 variants, each with a distinct messaging angle. Every headline must show character count and be <= 30 chars. Every description must show character count and be <= 90 chars. Pin positions should be indicated. Variants should be named by their angle (e.g., 'Trust & Experience', 'Value & Convenience').",
+      "files": [],
+      "expectations": [
+        "Generates at least 2 distinct RSA variants with named messaging angles",
+        "Every headline shows a character count",
+        "All headlines are <= 30 characters",
+        "Every description shows a character count",
+        "All descriptions are <= 90 characters",
+        "At least one headline includes Seattle (location specificity)",
+        "At least one headline references the 4.8 star rating or 200+ reviews (social proof)",
+        "At least one headline references 12 years in business (trust signal)",
+        "Pin positions are indicated (at least H1 pinned to position 1)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I want to A/B test my ad copy for the 'Roof Repair' ad group. Current ad has 2.1% CTR over 500 clicks. Here's the current ad:\nH1: Roof Repair Services\nH2: Licensed & Insured\nH3: Call Now for a Quote\nD1: Professional roof repair services for residential and commercial properties. Fast, reliable service.\nD2: Licensed, bonded, and insured. Over 20 years of experience. Free estimates available.\n\nCan you create a challenger variant?",
+      "expected_output": "Creates a challenger variant with a clearly different messaging angle. Specifies the test methodology: run both ads in the same ad group, minimum 100 clicks per variant or 2 weeks. Names the variable being tested. Recommends deploying both paused and enabling simultaneously.",
+      "files": [],
+      "expectations": [
+        "Creates a challenger variant with a distinctly different angle from the current ad",
+        "Names the variable being tested (e.g., 'urgency vs trust', 'benefit-led vs feature-led')",
+        "Specifies minimum test duration (2 weeks or clicks threshold)",
+        "Recommends deploying both ads in the same ad group",
+        "Specifies the success metric (CTR and/or conversion rate)",
+        "Character counts shown for all new headlines and descriptions"
+      ]
+    }
+  ]
+}

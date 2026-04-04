@@ -1,0 +1,35 @@
+{
+  "skill_name": "ads-audit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run a full audit of my Google Ads account. Here's the data:\n\n```json\n{\"account\": {\"name\": \"Bay Area Dog Resort\", \"id\": \"9876543210\", \"currency\": \"USD\", \"timezone\": \"America/Los_Angeles\", \"auto_tagging\": true},\n\"campaigns\": [{\"name\": \"Brand\", \"spend\": 800, \"clicks\": 420, \"impressions\": 5200, \"conversions\": 38, \"cpa\": 21.05, \"ctr\": 8.1, \"budget_lost_is\": 5, \"rank_lost_is\": 10}, {\"name\": \"Dog Boarding\", \"spend\": 3200, \"clicks\": 580, \"impressions\": 14000, \"conversions\": 22, \"cpa\": 145.45, \"ctr\": 4.1, \"budget_lost_is\": 35, \"rank_lost_is\": 25}, {\"name\": \"Dog Grooming\", \"spend\": 1500, \"clicks\": 390, \"impressions\": 8800, \"conversions\": 28, \"cpa\": 53.57, \"ctr\": 4.4, \"budget_lost_is\": 12, \"rank_lost_is\": 15}],\n\"keywords\": [{\"campaign\": \"Dog Boarding\", \"keyword\": \"dog boarding near me\", \"spend\": 1100, \"clicks\": 180, \"conversions\": 12, \"qs\": 7}, {\"keyword\": \"luxury dog hotel\", \"campaign\": \"Dog Boarding\", \"spend\": 900, \"clicks\": 120, \"conversions\": 2, \"qs\": 4}, {\"keyword\": \"cheap dog boarding\", \"campaign\": \"Dog Boarding\", \"spend\": 650, \"clicks\": 140, \"conversions\": 0, \"qs\": 3}, {\"keyword\": \"dog kennel jobs\", \"campaign\": \"Dog Boarding\", \"spend\": 280, \"clicks\": 65, \"conversions\": 0, \"qs\": 2}, {\"keyword\": \"dog grooming san francisco\", \"campaign\": \"Dog Grooming\", \"spend\": 800, \"clicks\": 210, \"conversions\": 20, \"qs\": 9}],\n\"conversion_actions\": [{\"name\": \"Phone Call\", \"type\": \"PHONE_CALL\", \"status\": \"ENABLED\"}, {\"name\": \"Form Submit\", \"type\": \"WEBPAGE\", \"status\": \"ENABLED\"}],\n\"search_terms\": [{\"term\": \"dog boarding san francisco\", \"clicks\": 45, \"conversions\": 8, \"spend\": 270}, {\"term\": \"how to start a dog boarding business\", \"clicks\": 32, \"conversions\": 0, \"spend\": 190}, {\"term\": \"dog boarding prices\", \"clicks\": 28, \"conversions\": 3, \"spend\": 140}],\n\"ads_per_group\": {\"Dog Boarding - General\": 1, \"Dog Grooming - SF\": 3}}\n```",
+      "expected_output": "A comprehensive audit with a scorecard covering all 7 dimensions. Should identify: Dog Boarding campaign has 35% budget-lost IS (severe constraint) AND 25% rank-lost IS (both dimensions problematic). 'cheap dog boarding' and 'dog kennel jobs' are waste ($930 combined, 0 conversions). 'luxury dog hotel' has QS 4 and poor CPA. Dog Boarding ad group has only 1 RSA (needs more). Conversion tracking exists but is basic (no enhanced conversions). Should recommend adding 'dog boarding san francisco' as keyword (8 conversions). Should flag 'how to start a dog boarding business' as negative.",
+      "files": [],
+      "expectations": [
+        "Produces a scorecard table with all 7 health dimensions scored",
+        "Calculates an overall health score (numeric)",
+        "Identifies Dog Boarding campaign's impression share problem using the 2x2 matrix (budget-lost 35% + rank-lost 25%)",
+        "Identifies 'cheap dog boarding' ($650, 0 conv) and 'dog kennel jobs' ($280, 0 conv) as wasted spend with specific dollar amounts",
+        "Flags 'luxury dog hotel' QS 4 as needing quality improvement",
+        "Notes Dog Boarding ad group has only 1 RSA and recommends adding more",
+        "Recommends adding 'dog boarding san francisco' as a keyword (8 conversions from search terms)",
+        "Recommends adding 'how to start a dog boarding business' as a negative keyword",
+        "Top 3 actions section is present with dollar amounts and expected impact"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Audit my Google Ads account. Here's the data:\n\n```json\n{\"account\": {\"name\": \"Quick Print Co\", \"id\": \"1112223334\", \"currency\": \"USD\"},\n\"campaigns\": [{\"name\": \"All Services\", \"spend\": 2500, \"clicks\": 800, \"impressions\": 20000, \"conversions\": 0, \"cpa\": null, \"ctr\": 4.0}],\n\"conversion_actions\": [],\n\"keywords\": [{\"keyword\": \"printing services\", \"spend\": 800, \"clicks\": 260, \"conversions\": 0, \"qs\": 5}, {\"keyword\": \"business cards\", \"spend\": 600, \"clicks\": 200, \"conversions\": 0, \"qs\": 6}]}\n```",
+      "expected_output": "The audit should immediately flag that conversion tracking is completely missing (no conversion actions at all). This should be rated Critical (score 0) on the conversion tracking dimension. The entire $2500 in spend cannot be evaluated for ROI. The #1 recommendation must be to set up conversion tracking before any other optimization.",
+      "files": [],
+      "expectations": [
+        "Flags missing conversion tracking as the #1 critical issue",
+        "Scores conversion tracking dimension as 0 or Critical",
+        "States that the $2500 spend cannot be evaluated without conversion tracking",
+        "Recommends setting up conversion tracking as the first action before any keyword or bid optimization",
+        "Does not recommend bid or keyword changes since there's no conversion data to base decisions on"
+      ]
+    }
+  ]
+}

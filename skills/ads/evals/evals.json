@@ -1,0 +1,45 @@
+{
+  "skill_name": "ads",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Can you help me manage my Google Ads?",
+      "expected_output": "The skill checks for the AdsAgent MCP server connection, then checks for a token in ~/.adsagent/config.json, then checks for an accountId. It should not attempt to pull campaign data before completing the onboarding flow.",
+      "files": [],
+      "expectations": [
+        "The skill attempts to verify MCP server connectivity before pulling data",
+        "The skill checks for apiKey in ~/.adsagent/config.json",
+        "The skill checks for accountId before making campaign API calls",
+        "If any setup step is missing, the skill guides the user through resolution before proceeding"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Here's my Google Ads data. I have 3 campaigns:\n\n```json\n{\"campaigns\": [{\"name\": \"Brand - Acme Plumbing\", \"id\": \"111\", \"status\": \"ENABLED\", \"spend_30d\": 2400, \"clicks\": 890, \"impressions\": 12000, \"conversions\": 45, \"cpa\": 53.33, \"ctr\": 7.4}, {\"name\": \"Non-Brand - Emergency Plumbing\", \"id\": \"222\", \"status\": \"ENABLED\", \"spend_30d\": 4800, \"clicks\": 620, \"impressions\": 18000, \"conversions\": 12, \"cpa\": 400.00, \"ctr\": 3.4}, {\"name\": \"Non-Brand - Drain Cleaning\", \"id\": \"333\", \"status\": \"ENABLED\", \"spend_30d\": 1800, \"clicks\": 410, \"impressions\": 9500, \"conversions\": 18, \"cpa\": 100.00, \"ctr\": 4.3}],\n\"keywords\": [{\"campaign\": \"Non-Brand - Emergency Plumbing\", \"keyword\": \"emergency plumber near me\", \"spend\": 1200, \"clicks\": 180, \"conversions\": 8, \"cpa\": 150, \"qs\": 7}, {\"keyword\": \"24 hour plumbing service\", \"campaign\": \"Non-Brand - Emergency Plumbing\", \"spend\": 1800, \"clicks\": 220, \"conversions\": 0, \"cpa\": null, \"qs\": 3}, {\"keyword\": \"plumber salary\", \"campaign\": \"Non-Brand - Emergency Plumbing\", \"spend\": 450, \"clicks\": 95, \"conversions\": 0, \"cpa\": null, \"qs\": 2}, {\"keyword\": \"drain cleaning service\", \"campaign\": \"Non-Brand - Drain Cleaning\", \"spend\": 900, \"clicks\": 210, \"conversions\": 14, \"cpa\": 64.29, \"qs\": 8}],\n\"search_terms\": [{\"term\": \"how to become a plumber\", \"clicks\": 42, \"conversions\": 0, \"spend\": 180}, {\"term\": \"plumbing apprenticeship\", \"clicks\": 28, \"conversions\": 0, \"spend\": 120}, {\"term\": \"emergency plumber seattle\", \"clicks\": 35, \"conversions\": 6, \"spend\": 210}]}\n```\n\nHow are my ads doing? What should I fix?",
+      "expected_output": "A performance analysis that identifies specific waste: the 'plumber salary' keyword ($450 spent, 0 conversions, QS 2) should be paused immediately; '24 hour plumbing service' ($1800, 0 conversions, QS 3) needs urgent attention; 'how to become a plumber' and 'plumbing apprenticeship' should be added as negative keywords. The Emergency Plumbing campaign has a $400 CPA which is far above the Drain Cleaning campaign's $100 CPA. Should recommend adding 'emergency plumber seattle' as a keyword since it has 6 conversions.",
+      "files": [],
+      "expectations": [
+        "Identifies 'plumber salary' keyword as waste — names it specifically with the $450 spend and 0 conversions",
+        "Identifies '24 hour plumbing service' as problematic — $1800 spend, 0 conversions, QS 3",
+        "Recommends adding 'how to become a plumber' and 'plumbing apprenticeship' as negative keywords",
+        "Recommends adding 'emergency plumber seattle' as a keyword since it has 6 conversions",
+        "Flags the Emergency Plumbing campaign's $400 CPA as significantly worse than Drain Cleaning's $100 CPA",
+        "Calculates or estimates wasted spend with a dollar amount",
+        "Recommendations include specific keyword names and campaign names, not generic advice"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I have these keywords and want to optimize bids:\n\n```json\n{\"account_avg_cpa\": 85,\n\"keywords\": [{\"keyword\": \"roof repair austin\", \"bid\": 8.50, \"cpa\": 35, \"conversions\": 22, \"qs\": 9, \"imp_share\": 45}, {\"keyword\": \"roofing contractor\", \"bid\": 12.00, \"cpa\": 140, \"conversions\": 5, \"qs\": 6, \"imp_share\": 30}, {\"keyword\": \"metal roof installation\", \"bid\": 6.00, \"cpa\": 70, \"conversions\": 8, \"qs\": 7, \"imp_share\": 55}, {\"keyword\": \"roof inspection free\", \"bid\": 4.00, \"cpa\": null, \"conversions\": 0, \"clicks\": 45, \"spend\": 180, \"qs\": 4, \"imp_share\": 70}]}\n```",
+      "expected_output": "Bid optimization recommendations grounded in heuristics: 'roof repair austin' is a star performer (CPA $35 vs $85 avg, QS 9) — increase bid by 15-25% to capture more impression share (currently 45%). 'roofing contractor' has CPA 65% above average — decrease bid or fix QS. 'metal roof installation' is healthy. 'roof inspection free' has $180 spend with 0 conversions and QS 4 — pause or significantly reduce bid.",
+      "files": [],
+      "expectations": [
+        "Recommends increasing bid for 'roof repair austin' — references its CPA being well below account average",
+        "Recommends decreasing bid or pausing 'roofing contractor' — references its CPA being above account average",
+        "Identifies 'roof inspection free' as waste — $180 spend, 0 conversions, QS 4",
+        "Bid change recommendations stay within the 25% maximum guardrail",
+        "References impression share data in the analysis"
+      ]
+    }
+  ]
+}
