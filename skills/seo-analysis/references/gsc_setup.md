@@ -136,7 +136,7 @@ setup is needed.
 ## Step 5 — Verify Everything Works
 
 ```bash
-SKILL_SCRIPTS=$(find ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
+SKILL_SCRIPTS=$(find ~/.claude/plugins ~/.claude/skills ~/.codex/skills .agents/skills -type d -name scripts -path "*seo-analysis*" 2>/dev/null | head -1)
 python3 "$SKILL_SCRIPTS/list_gsc_sites.py"
 ```
 
