@@ -324,86 +324,76 @@ def detect_hosts(host_arg):
     return install_claude, install_codex, install_openclaw
 
 
-def _replace_key(obj, key):
-    """Recursively replace ${ADS_AGENT_KEY} placeholders with the actual key."""
-    if isinstance(obj, str):
-        return obj.replace("${ADS_AGENT_KEY}", key)
-    if isinstance(obj, list):
-        return [_replace_key(v, key) for v in obj]
-    if isinstance(obj, dict):
-        return {k: _replace_key(v, key) for k, v in obj.items()}
-    return obj
-
-
 def setup_mcp(skills, api_key):
-    """Configure MCP servers in Claude Desktop settings."""
-    for skill_name, rel_path in skills:
-        mcporter_path = os.path.join(TOPRANK_DIR, rel_path, "mcporter.json")
-        if not os.path.isfile(mcporter_path):
-            continue
+    """Configure AdsAgent MCP server in Claude Desktop settings."""
+    has_ads = any(rel_path.replace("\\", "/").startswith("google-ads/") for _, rel_path in skills)
+    if not has_ads:
+        return
 
-        key = api_key
-        if not key:
-            config_path = os.path.join(os.path.expanduser("~"), ".adsagent", "config.json")
-            if os.path.isfile(config_path):
-                try:
-                    with open(config_path) as f:
-                        key = json.load(f).get("apiKey", "")
-                except Exception:
-                    pass
-        if not key:
-            continue
+    key = api_key
+    if not key:
+        config_path = os.path.join(os.path.expanduser("~"), ".adsagent", "config.json")
+        if os.path.isfile(config_path):
+            try:
+                with open(config_path) as f:
+                    key = json.load(f).get("apiKey", "")
+            except Exception:
+                pass
+    if not key:
+        return
 
-        with open(mcporter_path) as f:
-            mcporter = json.load(f)
+    new_servers = {
+        "adsagent": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "mcp-remote",
+                "https://www.adsagent.org/api/mcp",
+                "--transport",
+                "http-first",
+                "--header",
+                f"Authorization:Bearer {key}",
+            ],
+        }
+    }
 
-        new_servers = mcporter.get("mcpServers", {})
-        if not new_servers:
-            continue
+    print("MCP servers:")
+    configs_written = []
 
-        new_servers = _replace_key(new_servers, key)
+    system = platform.system()
+    if system == "Darwin":
+        desktop_config = os.path.join(
+            os.path.expanduser("~"), "Library", "Application Support", "Claude", "claude_desktop_config.json"
+        )
+    elif system == "Linux":
+        desktop_config = os.path.join(
+            os.path.expanduser("~"), ".config", "Claude", "claude_desktop_config.json"
+        )
+    elif system == "Windows":
+        desktop_config = os.path.join(os.environ.get("APPDATA", ""), "Claude", "claude_desktop_config.json")
+    else:
+        desktop_config = ""
 
-        print("MCP servers:")
-        configs_written = []
+    if desktop_config:
+        os.makedirs(os.path.dirname(desktop_config), exist_ok=True)
+        config = {}
+        if os.path.isfile(desktop_config):
+            with open(desktop_config) as f:
+                config = json.load(f)
+        config.setdefault("mcpServers", {}).update(new_servers)
+        with open(desktop_config, "w") as f:
+            json.dump(config, f, indent=2)
+        configs_written.append("Claude Desktop")
 
-        system = platform.system()
-        if system == "Darwin":
-            desktop_config = os.path.join(
-                os.path.expanduser("~"), "Library", "Application Support", "Claude", "claude_desktop_config.json"
-            )
-        elif system == "Linux":
-            desktop_config = os.path.join(
-                os.path.expanduser("~"), ".config", "Claude", "claude_desktop_config.json"
-            )
-        elif system == "Windows":
-            desktop_config = os.path.join(os.environ.get("APPDATA", ""), "Claude", "claude_desktop_config.json")
-        else:
-            desktop_config = ""
-
-        if desktop_config:
-            os.makedirs(os.path.dirname(desktop_config), exist_ok=True)
-            config = {}
-            if os.path.isfile(desktop_config):
-                with open(desktop_config) as f:
-                    config = json.load(f)
-            config.setdefault("mcpServers", {}).update(new_servers)
-            with open(desktop_config, "w") as f:
-                json.dump(config, f, indent=2)
-            configs_written.append("Claude Desktop")
-
-        if configs_written:
-            print(f"  configured: {', '.join(configs_written)}")
-            for name in new_servers:
-                print(f"  + {name}")
+    if configs_written:
+        print(f"  configured: {', '.join(configs_written)}")
+        for name in new_servers:
+            print(f"  + {name}")
 
 
 def prompt_google_ads_setup(skills):
     """Interactively set up Google Ads if the user wants it and stdin is a TTY."""
-    # Check if any skill has a mcporter.json (i.e., needs MCP config)
-    has_ads = any(
-        os.path.isfile(os.path.join(TOPRANK_DIR, rel_path, "mcporter.json"))
-        for _, rel_path in skills
-    )
+    has_ads = any(rel_path.replace("\\", "/").startswith("google-ads/") for _, rel_path in skills)
     if not has_ads:
         return ""
 

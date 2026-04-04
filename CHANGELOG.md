@@ -13,7 +13,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Collapsible manual MCP config block for users who skip the setup script
 
 ### Changed
+- **`/ads` skill** — MCP is now the only tool-calling method. Removed mcporter CLI fallback and `mcporter.json` config file. The "Calling tools" section now documents the `mcp__adsagent__<toolName>` pattern directly.
+- **`setup`** — MCP server config is built inline instead of reading from `mcporter.json`. Ads skill detection uses directory prefix instead of file existence check. Fixed Windows path compatibility for ads skill detection.
 - **README hook questions** — rewritten to target real pain points: wasted ad spend, traffic drops, and conversion growth without budget increases
+
+### Removed
+- **`google-ads/ads/mcporter.json`** — no longer needed; MCP server config is generated directly by the setup script.
+- **`_replace_key()` helper** in setup — was only used for mcporter placeholder substitution.
 
 ---
 
