@@ -4,9 +4,9 @@
 
 Toprank gives your AI agent direct access to Google Search Console and Google Ads. It analyzes your traffic, surfaces what's hurting your rankings, finds wasted ad spend, and tells you exactly what to fix. When you have access to the repo, it goes further: rewriting meta tags, fixing headings, adding structured data, and shipping the changes.
 
-> *"Why did my traffic drop last month?"*
-> *"What keywords am I almost ranking for?"*
-> *"How are my ads doing? Find wasted spend."*
+> *"Am I wasting money on ads right now?"*
+> *"Why did my traffic drop and how do I fix it?"*
+> *"How do I get more conversions without spending more?"*
 
 Free, open-source. Install in 30 seconds.
 
@@ -111,6 +111,72 @@ You:    Implement all of it.
 
         Done. Ready to ship.
 ```
+
+---
+
+## Google Ads Setup
+
+The ads skills need an MCP server that talks to the Google Ads API. Two options:
+
+### Option A: Free hosted server (easiest)
+
+[AdsAgent](https://www.adsagent.org) runs a free MCP server so you don't have to deal with Google Ads API credentials, OAuth, or infrastructure.
+
+1. **Get a free token** at [adsagent.org](https://www.adsagent.org) — sign in with Google to connect your Google Ads account
+2. **Run `/ads-audit`** in Claude Code — it walks you through setup and saves your token to `~/.adsagent/config.json`
+3. **Done** — all ads skills (`/ads`, `/ads-audit`, `/ads-copy`) now work
+
+<details>
+<summary>Manual MCP config (if you skipped the setup script)</summary>
+
+Add this to your Claude Code MCP config (`~/.claude/settings.json` or project `.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "adsagent": {
+      "command": "npx",
+      "args": [
+        "-y", "mcp-remote",
+        "https://www.adsagent.org/api/mcp",
+        "--transport", "http-first",
+        "--header", "Authorization:Bearer YOUR_TOKEN_HERE"
+      ],
+      "env": {
+        "ADS_AGENT_KEY": "YOUR_TOKEN_HERE"
+      }
+    }
+  }
+}
+```
+
+Replace `YOUR_TOKEN_HERE` with the token from [adsagent.org](https://www.adsagent.org).
+
+</details>
+
+### Option B: Self-hosted MCP server
+
+If you already have Google Ads API access and prefer to run your own MCP server, point the skills at your server instead. The only requirement is that your server implements the same MCP tool interface (e.g. `listCampaigns`, `getKeywords`, `pauseKeyword`, etc.).
+
+Update the MCP config to point at your server:
+
+```json
+{
+  "mcpServers": {
+    "adsagent": {
+      "command": "npx",
+      "args": [
+        "-y", "mcp-remote",
+        "https://your-server.example.com/mcp",
+        "--transport", "http-first",
+        "--header", "Authorization:Bearer YOUR_AUTH_TOKEN"
+      ]
+    }
+  }
+}
+```
+
+As long as your server exposes the same tools, the skills work identically.
 
 ---
 
