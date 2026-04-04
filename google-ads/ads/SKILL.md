@@ -1,6 +1,6 @@
 ---
 name: ads
-description: Manage Google Ads campaigns — read performance, optimize keywords, adjust bids and budgets, add negatives, pause/enable campaigns, manage ads/ad groups, tracking templates, and undo changes. Use this skill whenever the user mentions Google Ads, campaigns, keywords, ad spend, CPA, ROAS, search terms, negative keywords, bids, budgets, or ads performance — even if they don't say "ads" explicitly.
+description: Manage Google Ads campaigns — read performance, optimize keywords, adjust bids and budgets, add negatives, pause/enable campaigns, manage ads/ad groups, tracking templates, location targeting, network settings, rename campaigns/ad groups, bulk operations, and undo changes. Use this skill whenever the user mentions Google Ads, campaigns, keywords, ad spend, CPA, ROAS, search terms, negative keywords, bids, budgets, ads performance, location targeting, geo targeting, or campaign settings — even if they don't say "ads" explicitly.
 version: 2.0.0
 triggers:
   - google ads
@@ -15,6 +15,12 @@ triggers:
   - budget
   - pause campaign
   - ads performance
+  - location targeting
+  - geo targeting
+  - campaign settings
+  - rename campaign
+  - rename ad group
+  - bulk keywords
 ---
 
 # AdsAgent — Google Ads Management
@@ -149,6 +155,7 @@ Always pass `accountId` from `~/.adsagent/config.json` to every tool call (excep
 - **getConversionActions** — Conversion actions and settings
 - **getAccountSettings** — Auto-tagging, tracking template, conversion tracking IDs
 - **getCampaignSettings** — Bidding, network, locations, schedule
+- **getNegativeKeywords** — List negative keywords for a campaign (check before adding new negatives to avoid duplicates)
 - **getRecommendations** — Google optimization recommendations
 
 ### Write (mutates the account — always confirm with user first)
@@ -157,7 +164,6 @@ All write tools return a `changeId` on success. Use this with `undoChange` to re
 - **enableKeyword** — Re-enable a paused keyword
 - **addKeyword** — Add a new keyword to an ad group
 - **updateBid** — Change CPC bid (manual/enhanced CPC only, max 25% change)
-- **bulkUpdateBids** — Update multiple CPC bids in one call
 - **addNegativeKeyword** — Block irrelevant search terms (phrase match)
 - **removeNegativeKeyword** — Remove a negative keyword
 - **updateCampaignBudget** — Change daily budget (max 50% change)
@@ -170,7 +176,14 @@ All write tools return a `changeId` on success. Use this with `undoChange` to re
 - **pauseAd** — Pause an ad
 - **enableAd** — Re-enable an ad
 - **updateAdFinalUrl** — Change an ad's landing page URL
-- **updateAdAssets** — Replace an RSA's headlines/descriptions
+- **updateAdAssets** — Replace an RSA's headlines/descriptions (complete replacement — provide every asset, not just changed ones; optionally pin assets to positions)
+- **bulkUpdateBids** — Update up to 50 keyword bids in one call (each capped at 25% change)
+- **bulkPauseKeywords** — Pause up to 100 keywords in one call (partial success possible)
+- **bulkAddKeywords** — Add up to 100 keywords to an ad group in one call (partial success possible)
+- **moveKeywords** — Move keywords between ad groups in the same campaign (adds to destination first, pauses source on success, rolls back on failure)
+- **renameCampaign** — Rename a campaign
+- **renameAdGroup** — Rename an ad group
+- **updateCampaignSettings** — Update network targeting (Google Search, Search Partners, Display Network) and/or location targeting (add/remove geo targets by geo target constant ID, e.g. '2840' for US, '200840' for Seattle-Tacoma DMA). Also supports negative location targeting (exclusions).
 - **undoChange** — Reverse a previous write by `changeId`
 
 ## Rules
