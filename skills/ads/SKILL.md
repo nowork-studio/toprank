@@ -23,6 +23,72 @@ triggers:
   - bulk keywords
 ---
 
+## Session Start — Proactive Follow-Up
+
+Before fulfilling any user request, silently perform these checks. Do NOT tell the user you are running checks — just present findings naturally as if you remembered.
+
+### Step 1: Check for pending change reviews
+
+Read `~/.adsagent/change-log.json`. Find entries where:
+- `reviewed` is `false`
+- `reviewAfter` date has passed (is before today)
+
+If there are 0 pending reviews, skip to Step 2 silently.
+
+If there are pending reviews:
+
+1. Pull current metrics for the affected campaigns using `listCampaigns` and `getCampaignPerformance` (7-day window ending today). Use the `beforeSnapshot` from the change log entry as the pre-change baseline — only fall back to `getCampaignPerformance` for the pre-change period if `beforeSnapshot.metrics` is null. Do this in parallel with fulfilling the user's actual request if possible. Save the `listCampaigns` result for reuse in Step 2.
+
+2. For each pending review, compute the delta:
+   - Compare the `beforeSnapshot` metrics to current metrics for the same entities
+   - Calculate percentage change for spend, conversions, CPA, CTR
+
+3. Present a brief summary BEFORE addressing the user's request:
+
+> **Follow-up on recent changes:**
+>
+> _[Date]: [summary]_
+> Result after [7/14] days: CPA went from $X → $Y ([+/-Z%]). Conversions [increased/decreased] from X → Y. [One sentence assessment: "This is working — the paused keywords were genuinely wasteful" or "Inconclusive — need more time" or "CPA increased — consider undoing with changeId [X]"]
+
+4. Mark the entry as `reviewed: true` and save the `reviewResult`:
+```json
+{
+  "reviewed": true,
+  "reviewedAt": "<ISO 8601>",
+  "reviewResult": {
+    "afterSnapshot": { "spend7d": 0, "conversions7d": 0, "cpa7d": 0, "ctr7d": 0 },
+    "assessment": "positive|negative|inconclusive",
+    "note": "<one line summary>"
+  }
+}
+```
+
+5. If the assessment is `negative` (CPA increased >20% or conversions dropped >20% with no corresponding spend decrease), proactively suggest:
+
+> "This change may have hurt performance. Want me to undo it? (changeId: [X], within 7-day undo window: [yes/no])"
+
+### Step 2: Check account baseline for anomalies
+
+Read `~/.adsagent/account-baseline.json`. If it exists AND was last updated more than 24 hours ago:
+
+1. Get current campaign metrics — reuse the `listCampaigns` result from Step 1 if available, otherwise call `listCampaigns` now.
+2. Compare each campaign's 7-day metrics to the `rolling30d` baseline.
+3. Flag any campaign where:
+- CPA is >1.5x the 30-day rolling average
+- Conversions dropped >40% vs 30-day average (with no corresponding budget decrease)
+- Spend rate is >1.5x the 30-day daily average (runaway spend)
+- CTR dropped >30% vs 30-day average
+4. If anomalies found, mention them briefly:
+
+> "Heads up: [Campaign X] CPA spiked to $Y this week — that's 60% above its usual $Z. Worth investigating."
+5. Update the baseline (see Account Baseline section below).
+
+If `account-baseline.json` doesn't exist, skip silently — it will be created at session end.
+
+### Step 3: Proceed with user's request
+
+Now handle whatever the user actually asked for.
+
 ## MCP Server Detection
 
 Before calling any Google Ads tool, detect which MCP server is available:
@@ -167,7 +233,113 @@ All write tools return a `changeId` on success. Use this with `undoChange` to re
 3. **Show numbers clearly.** Format cost as dollars, show CTR as percentages, include date ranges.
 4. **Recommend before acting.** When you spot waste (high-spend zero-conversion keywords, irrelevant search terms), recommend the action and wait for approval.
 5. **Guardrails are server-side.** Bid changes >25% and budget changes >50% will be rejected by the server. Don't try to circumvent this.
-6. **After every write, note the `changeId`.** Tell the user they can undo the change within 7 days. Use `getChanges` to review recent operations.
+6. **After every write, log the change.** Follow the Change Tracking workflow below — record the change to `~/.adsagent/change-log.json` with before-metrics and a review window. Tell the user the change is logged and when follow-up will happen. They can also undo within 7 days using `getChanges` and `undoChange`.
+
+## Change Tracking
+
+After every successful write operation, log the change to `~/.adsagent/change-log.json` for follow-up tracking.
+
+### After every write
+
+1. **Record the change.** Append an entry to the `changes` array in `~/.adsagent/change-log.json` (create the file if it doesn't exist):
+
+```json
+{
+  "changes": [
+    {
+      "id": "chg_<unix_timestamp_ms>",
+      "timestamp": "<ISO 8601>",
+      "action": "<action_type>",
+      "summary": "<human-readable one-liner, e.g. 'Paused 5 keywords in Campaign X'>",
+      "details": {
+        "campaignId": "<if applicable>",
+        "campaignName": "<if applicable>",
+        "affectedEntities": ["<keyword/ad/campaign IDs>"],
+        "entityNames": ["<keyword text or campaign names for readability>"]
+      },
+      "beforeSnapshot": {
+        "metrics": {
+          "spend30d": 0,
+          "clicks30d": 0,
+          "conversions30d": 0,
+          "cpa30d": 0,
+          "ctr30d": 0
+        },
+        "note": "Metrics for affected entities at time of change"
+      },
+      "changeIds": ["<changeId(s) returned by the write tool>"],
+      "reviewAfter": "<ISO 8601 — 7 days after timestamp for bid/keyword changes, 14 days for structural changes>",
+      "reviewWindow": "<7d or 14d>",
+      "reviewed": false,
+      "reviewResult": null
+    }
+  ]
+}
+```
+
+2. **Capture before-metrics.** Before executing the write, pull the current metrics for the entities being changed. Use the data you already have in context from the analysis that led to this action — do NOT make extra API calls just for the snapshot. If you don't have metrics in context (e.g., user directly asked to pause a keyword without an analysis), note `"beforeSnapshot": { "metrics": null, "note": "No pre-change metrics available — direct user action" }`.
+3. **Set the review window.** Use these defaults:
+- Bid changes: 7 days
+- Keyword pauses/enables: 7 days
+- Negative keyword additions: 7 days
+- Budget changes: 7 days
+- Campaign creates/pauses/restructures: 14 days
+- Ad copy changes: 14 days
+4. **Ask about follow-up.** After logging the change, tell the user:
+
+> "Change logged. I'll check the impact when you next open a session after [reviewAfter date]. You can also ask me 'review my changes' anytime."
+
+### Change log rules
+
+- The `change-log.json` file should never exceed 200 entries. If it does, remove the oldest reviewed entries first, then oldest unreviewed entries.
+- Multiple related writes in one session (e.g., pausing 5 keywords from the same analysis) should be grouped as a single change entry with all `changeIds` and `affectedEntities` listed together.
+- The `summary` field must be human-readable and specific: "Paused 5 non-converting keywords in 'Pet Daycare - Seattle' saving ~$340/month" — not "Made changes to keywords."
+
+## Account Baseline
+
+Maintain `~/.adsagent/account-baseline.json` to enable anomaly detection across sessions.
+
+### When to update
+
+Update the baseline at the END of any session where you pulled campaign performance data. Do not make extra API calls just to update the baseline — use data you already have.
+
+### Schema
+
+```json
+{
+  "accountId": "<from config>",
+  "lastUpdated": "<ISO 8601>",
+  "campaigns": {
+    "<campaignId>": {
+      "name": "<campaign name>",
+      "rolling30d": {
+        "avgDailySpend": 0,
+        "totalConversions": 0,
+        "avgCpa": 0,
+        "avgCtr": 0,
+        "avgConvRate": 0,
+        "totalSpend": 0
+      },
+      "recent7d": {
+        "spend": 0,
+        "conversions": 0,
+        "cpa": 0,
+        "ctr": 0,
+        "clicks": 0,
+        "impressions": 0
+      },
+      "snapshotDate": "<ISO 8601>"
+    }
+  }
+}
+```
+
+### Rules
+
+- Only store aggregate metrics — never store raw keyword data or search terms in the baseline.
+- Overwrite `recent7d` every update. Compute `rolling30d` as a weighted average: `rolling30d = (0.7 * previous_rolling30d) + (0.3 * current_7d_annualized)`. This gives recent data more weight while smoothing noise.
+- If a campaign is new (not in the baseline), initialize `rolling30d` = `recent7d` values.
+- Cap the file at 50 campaigns. If the account has more, only track campaigns with spend > $0 in the last 30 days.
 
 ## Reference Documents
 
