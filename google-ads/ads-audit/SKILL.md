@@ -29,35 +29,48 @@ Read these reference documents during analysis for expert-level context:
 
 Read these before starting Phase 2 analysis. They contain the numeric thresholds that separate a generic audit from an expert one.
 
+## Step 0: Policy Freshness Check
+
+Before auditing, verify that the policy assumptions underpinning this audit are current.
+
+1. Read `../shared/policy-registry.json` and check each entry: if `last_verified` + `stale_after_days` < today's date, the entry is stale.
+2. **High-volatility stale entries:** Use WebSearch to check for recent Google Ads changes related to each stale entry's `area` (e.g., "Google Ads broad match behavior changes 2026"). Compare findings against the `assumption` field. If discrepancies are found:
+   - Display a warning banner at the top of the audit: `⚠️ Policy drift detected: [area] — [brief description of what changed]. Recommendations in this area may need manual verification.`
+   - Suggest updating `policy-registry.json` with corrected assumptions and today's date.
+3. **Moderate-volatility stale entries:** Note them in the audit output as an informational line (e.g., "ℹ️ [area] last verified [date] — may warrant a check") but do not block the audit.
+4. **Stable stale entries:** Skip — these rarely change.
+
+If no high-volatility entries are stale, proceed directly to Phase 1 with no output from this step.
+
 ## Phase 1: Pull Account Data
 
 Gather everything in parallel before asking the user a single question. The goal is to show up informed.
 
-**Pull all data calls simultaneously to minimize wait time. Use parallel tool calls — every call below is independent and can run at the same time.**
+**Use the adaptive data fetching algorithm from `../shared/gaql-cookbook.md`.** The approach varies by account size — read the cookbook's "Adaptive data fetching algorithm" section. Here's the summary:
 
-**Account basics:**
-- `mcp__adsagent__getAccountInfo` — business name, currency, timezone
-- `mcp__adsagent__getAccountSettings` — auto-tagging, tracking template, conversion setup
+### Phase 1A: Account basics + sizing probe (parallel)
 
-**Campaign structure:**
-- `mcp__adsagent__listCampaigns` — all campaigns with spend, clicks, conversions
-- `mcp__adsagent__listAdGroups` — ad groups per campaign (focus on top-spend campaigns)
+Pull these simultaneously — they don't require campaign IDs and they tell you the account size:
 
-**Performance data:**
-- `mcp__adsagent__getCampaignPerformance` — daily trends for the last 30 days
-- `mcp__adsagent__getKeywords` — top keywords with quality scores, bids, conversions
-- `mcp__adsagent__getSearchTermReport` — actual search queries triggering ads
-- `mcp__adsagent__getImpressionShare` — search IS, top IS, budget-lost IS, rank-lost IS
+- `getAccountInfo` — business name, currency, timezone
+- `getAccountSettings` — auto-tagging, tracking template, conversion setup
+- `listCampaigns(limit: 100)` — all campaigns with spend, clicks, conversions **(also serves as the sizing probe — always pass limit: 100, default is 20)**
+- `getConversionActions` — what conversions are set up
+- `getRecommendations` — Google's optimization suggestions
 
-**Ads and conversions:**
-- `mcp__adsagent__listAds` — ad copy, status, and per-ad metrics
-- `mcp__adsagent__getConversionActions` — what conversions are set up and how they're configured
-- `mcp__adsagent__getNegativeKeywords` — existing negative keyword coverage
+### Phase 1B: Adaptive data pull (depends on account size)
 
-**Recommendations:**
-- `mcp__adsagent__getRecommendations` — Google's optimization suggestions (evaluate critically, don't blindly follow)
+Count the enabled campaigns with spend from Phase 1A, then follow the cookbook:
 
-**Minimum data for a meaningful audit:** `listCampaigns`, `getKeywords`, and `getImpressionShare` must return data. If the account has zero campaigns or zero spend, skip to Phase 3 (business context) — there's nothing to audit yet, but the context is still valuable for account setup.
+- **1-3 campaigns:** Run all 7 standard GAQL queries in parallel. Also run `getCampaignSettings(campaignId)` and `listAds(campaignId)` per campaign (needed for Display Network detection, bidding strategy assessment, and ad copy scoring). Done.
+- **4-10 campaigns:** Run all 7 GAQL queries + `getCampaignSettings` and `listAds` for top 3-5 campaigns by spend. If keywords or search terms hit the 50-row limit, supplement with `getKeywords`/`getSearchTermReport` for the top 2-3 campaigns.
+- **10+ campaigns:** Use the tiered approach — GAQL for account-wide overview (impression share, ad groups, negatives, daily performance), then per-campaign helpers (`getCampaignSettings`, `getKeywords`, `getSearchTermReport`, `listAds`) for the top campaigns that cover 80% of spend.
+
+### Fallback
+
+If `runGaqlQuery` errors or is unavailable, fall back to per-campaign helper tools for each active campaign, run in parallel.
+
+**Minimum data for a meaningful audit:** Campaign list, keyword data, impression share, and conversion actions must return data. If the account has zero campaigns or zero spend, skip to Phase 3 (business context).
 
 ## Phase 2: Analyze and Score
 
@@ -169,7 +182,7 @@ Read `references/account-health-scoring.md` for the detailed rubric per dimensio
 - Check pin strategy: H1 should typically be pinned to the most relevant service+location headline
 - Identify ad groups with CTR below industry benchmark — these need copy refresh
 
-**6. Impression share** (Score 0-5)
+**6. Impression share** (Score 0-5) — **Data limit:** `getImpressionShare` supports max 90 days (not 365 like other tools). For GAQL impression share queries, the same 90-day practical limit applies.
 
 | Score | Criteria |
 |-------|----------|
@@ -492,7 +505,7 @@ If wasted spend > 15% of total:
 
 ### Landing Page Problems
 
-If CTR is healthy (>3%) but conversion rate is below 2% across multiple ad groups:
+If CTR is above industry benchmark (check `../ads/references/industry-benchmarks.md`) but conversion rate is below industry average across multiple ad groups:
 
 > "Your ads get clicks but conversions are low — the landing pages likely don't match the ad promise. Run `/ads-landing` to audit keyword-to-landing-page alignment."
 

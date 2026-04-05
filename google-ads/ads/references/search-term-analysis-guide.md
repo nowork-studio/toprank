@@ -8,13 +8,15 @@ Systematic framework for interpreting search term reports, mining keywords, buil
 
 Understanding what Google actually matches to each match type is the foundation of search term analysis.
 
-### Match Type Definitions (Current Behavior, 2024-2025)
+### Match Type Definitions (Current Behavior, 2025-2026)
 
 | Match Type | Syntax | What It Matches | Example Keyword | Example Matched Queries |
 |-----------|--------|----------------|-----------------|------------------------|
 | **Broad Match** | `keyword` | Themes, intent, related concepts; uses AI to determine relevance | `plumber services` | "plumber near me", "fix leaky faucet", "emergency pipe repair", "plumbing contractor reviews" |
-| **Phrase Match** | `"keyword"` | Queries that include the meaning of the keyword; word order matters for meaning | `"plumber services"` | "plumber services near me", "affordable plumber services in austin", "residential plumber services" |
+| **Phrase Match** | `"keyword"` | Queries that include the meaning of the keyword; word order matters for meaning. In practice, semantic overlap with Broad match is nearly complete in most verticals (2025-2026). | `"plumber services"` | "plumber services near me", "affordable plumber services in austin", "residential plumber services" |
 | **Exact Match** | `[keyword]` | Queries that match the exact meaning including close variants | `[plumber services]` | "plumber services", "plumber service", "plumbing services", "services plumber" |
+
+> **Note (2026):** Phrase and Broad match overlap is nearly 100% in many verticals. Running both on the same keyword is redundant. In most cases, choose one: Broad with Smart Bidding for maximum reach, or Exact for maximum control. Adding Phrase match alongside Broad rarely changes which queries you match.
 
 ### Close Variants (All Match Types)
 
@@ -99,6 +101,19 @@ FOR EACH search term in the report:
 
 ---
 
+## Important: Negatives Are Now a Supplementary Layer (2026)
+
+Traditional negative keyword lists remain useful but are no longer the primary lever for query control. Several Google Ads changes have reduced their precision:
+
+- **Brand Exclusions**: Campaign-level brand exclusion lists (launched 2023, expanded 2024-2025) are now the recommended way to block competitor or irrelevant brand traffic. They work at the brand-entity level, not the keyword level, so they catch variations that keyword negatives miss.
+- **Account-Level Suitability Settings**: Google's account-level content suitability and brand safety controls filter categories of queries before negative keywords are even evaluated. Check these settings before building extensive negative lists.
+- **Search Themes (Performance Max / Broad Match)**: Google's AI-driven query expansion (Search Themes in PMax, and Broad match's intent matching) can serve ads on queries that don't contain any of your keyword text. Negative keywords only block queries containing the negative term literally — they cannot block conceptually related queries that the AI matches to. This means negative keyword lists give **false confidence** in query control when running Broad match or PMax campaigns.
+- **Google's LLM-powered bidding** has real-time signal advantages (device, location, time, audience, query context) that static negative lists cannot replicate. Smart Bidding can effectively "negative out" low-value queries by bidding them down to near-zero, often more precisely than manual negatives.
+
+**Bottom line**: Use negatives for clear-cut exclusions (job seekers, DIY, competitors you don't want to conquest). But don't rely on them as your primary quality control mechanism — Brand Exclusions, suitability settings, and Smart Bidding now carry more of that weight.
+
+---
+
 ## Negative Keyword Strategy
 
 ### Negative Match Type Selection
@@ -134,7 +149,7 @@ Is only this specific query irrelevant?
 
 ### Universal Negative Keyword Lists
 
-Build these shared lists and apply across all campaigns in the account.
+Build these shared lists and apply across all campaigns in the account. **Caveat (2026):** These lists are a useful starting point for clear-cut exclusions, but they give false confidence when running Broad match or Performance Max campaigns. Google's Search Themes and AI-driven query expansion can serve ads on conceptually related queries that don't literally contain any of these negative terms. Treat these lists as a supplementary layer, not a complete shield.
 
 #### General Exclusions (Apply to All Commercial Campaigns)
 
@@ -226,7 +241,7 @@ Categorize search terms by intent to determine campaign-level strategy.
 | Phrase Match | CPA <= 130% of account average | Review search terms; add negatives for irrelevant phrase matches |
 | Broad Match | CPA <= 160% of account average | Review search terms aggressively; consider tightening to phrase; ensure smart bidding is active |
 
-**Rule**: If broad match CPA is > 200% of exact match CPA for the same keyword, switch to phrase match. Broad match should only be used with smart bidding (tCPA or tROAS) which adjusts bids per query.
+**Rule**: If broad match CPA is > 200% of exact match CPA for the same keyword, review search terms and add negatives or Brand Exclusions. Switching to Phrase match is unlikely to help given the near-complete semantic overlap between Phrase and Broad in most verticals (2026). Instead, ensure Smart Bidding (tCPA or tROAS) is active — Google's LLM bidding has real-time signal advantages that adjust bids per query more precisely than match type restrictions. If CPA remains unacceptable after negative refinement and Smart Bidding, consider pausing the broad match variant and running exact match only.
 
 ---
 
@@ -248,7 +263,7 @@ Critical:        Wasted spend > 20% of total spend
 
 | Pattern | How to Identify | Fix |
 |---------|----------------|-----|
-| Broad match runaway | High spend, low relevance search terms, mostly from broad match keywords | Add negatives; consider switching to phrase match |
+| Broad match runaway | High spend, low relevance search terms, mostly from broad match keywords | Add negatives and Brand Exclusions; ensure Smart Bidding is active; if CPA remains unacceptable, switch to exact match only |
 | Wrong-intent matches | Commercial keyword matching to informational queries | Add informational signal words as negatives |
 | Competitor term leakage | Your ads showing for competitor brand names (unintentionally) | Add competitor names as exact negatives (unless conquesting) |
 | Geographic mismatch | Queries from locations you don't serve | Tighten location targeting; add location negatives |

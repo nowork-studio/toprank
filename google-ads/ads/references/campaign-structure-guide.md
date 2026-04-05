@@ -10,9 +10,9 @@ Account structure best practices for Google Ads. Covers campaign organization, a
 
 | Era | Strategy | Keywords per Ad Group | Rationale | Current Status |
 |-----|----------|-----------------------|-----------|----------------|
-| 2012-2017 | **SKAG** (Single Keyword Ad Groups) | 1 | Maximize ad relevance; exact control over which ad shows for which keyword | **Deprecated** — close variants and smart bidding made this counterproductive |
-| 2017-2020 | **STAG** (Single Theme Ad Groups) | 3-7 | Group close variants; reduce account complexity while maintaining relevance | **Transitional** — still viable but often too granular |
-| 2020-present | **Themed Ad Groups** | 10-20 | Leverage smart bidding; consolidate conversion data; match Google's AI-driven auction system | **Current best practice** |
+| 2012-2017 | **SKAG** (Single Keyword Ad Groups) | 1 | Maximize ad relevance; exact control over which ad shows for which keyword | **Detrimental** — Google's LLM-based bidding and matching systems actively perform worse with single-keyword isolation; theme-based clustering provides the signal density these systems need |
+| 2017-2020 | **STAG** (Single Theme Ad Groups) | 3-7 | Group close variants; reduce account complexity while maintaining relevance | **Outdated** — too granular for modern LLM-based bidding; consolidate into themed ad groups of 10-20 keywords |
+| 2020-2026+ | **Themed Ad Groups** | 10-20 | Leverage smart bidding; consolidate conversion data; match Google's AI-driven auction system | **Current best practice** |
 
 ### Why SKAGs No Longer Work
 
@@ -20,6 +20,7 @@ Account structure best practices for Google Ads. Covers campaign organization, a
 |---------|------------|
 | Close variants eliminated keyword-level control | Google matches exact match keywords to synonyms, paraphrases, and implied-intent queries regardless of ad group structure |
 | Data fragmentation kills smart bidding | A SKAG with 5 conversions/month cannot feed tCPA effectively; the same 50 conversions consolidated into one themed ad group can |
+| LLM-based systems need signal density | Google's bidding and matching now use LLM models that require diverse, theme-rich keyword clusters to build accurate intent representations; single-keyword ad groups starve these models of contextual signal |
 | Account management overhead | 500 SKAGs = 500 ad groups to manage, each needing unique ads; 25 themed groups covers the same keywords with 95% less maintenance |
 | Google rewards consolidation | Google's recommendation engine and smart bidding algorithms perform better with fewer, larger ad groups |
 
@@ -31,7 +32,7 @@ Account structure best practices for Google Ads. Covers campaign organization, a
 | Theme definition | Keywords should share the same intent AND could be answered by the same landing page |
 | Ads per ad group | 2-3 RSAs (Responsive Search Ads) |
 | Landing page | 1 primary landing page per ad group (all keywords should be relevant to that page) |
-| Match types | Mix of exact and phrase match within the same ad group is fine; broad match only with smart bidding |
+| Match types | Exact + broad match is the standard pairing; phrase and broad now overlap ~100% in many verticals, so phrase match adds minimal incremental value. Use broad match only with smart bidding |
 
 ### Theme Grouping Examples
 
@@ -65,7 +66,7 @@ Create a new campaign when you need any of these to differ:
 
 | Scenario | Why Splitting Hurts | Better Approach |
 |----------|-------------------|-----------------|
-| Splitting by match type (Exact campaign, Phrase campaign, Broad campaign) | Fragments conversion data; smart bidding needs all data in one place | Mix match types within ad groups |
+| Splitting by match type (Exact campaign, Phrase campaign, Broad campaign) | Fragments conversion data; smart bidding needs all data in one place. Phrase and broad now overlap ~100% in many verticals, making three-way splits pointless | Mix match types within ad groups; use exact + broad as the standard pairing |
 | Splitting every service into its own campaign | 20 campaigns with 5 conversions/month each = too thin for smart bidding | Group related services into one campaign with themed ad groups |
 | Splitting brand + non-brand into 10+ campaigns each | Management overhead; inconsistent settings | 1 brand campaign + 2-4 non-brand campaigns organized by service line |
 | Splitting by device (mobile campaign, desktop campaign) | Fragments data; smart bidding adjusts bids by device automatically | Use device bid adjustments within one campaign if needed |
@@ -76,11 +77,11 @@ Create a new campaign when you need any of these to differ:
 
 | Campaign | Purpose | Bid Strategy | Budget Allocation |
 |----------|---------|-------------|-------------------|
-| **Brand** | Own brand terms | Target IS (95% top of page) or Manual CPC | 5-10% of total budget |
+| **Brand** | Own brand terms | Target IS (95% top of page) | 5-10% of total budget |
 | **Non-Brand Core** | Highest-value services/products | tCPA or tROAS | 50-60% of total budget |
 | **Non-Brand Secondary** | Lower-priority or newer services | tCPA or Maximize Conversions | 15-20% of total budget |
-| **Competitor** | Competitor brand terms (optional) | Manual CPC (tight control) | 5-10% of total budget |
-| **Testing** | New keywords, audiences, ad copy tests | Maximize Conversions or Manual CPC | 10-15% of total budget |
+| **Competitor** | Competitor brand terms (optional) | Target IS (with max CPC cap) or Maximize Conversions (budget-capped) | 5-10% of total budget |
+| **Testing** | New keywords, audiences, ad copy tests | Maximize Conversions (budget-capped) or Maximize Clicks (with max CPC cap) | 10-15% of total budget |
 | **Remarketing (Display/Search)** | Re-engage past visitors | tCPA | 5-10% of total budget |
 
 ---
@@ -215,7 +216,7 @@ Review these settings for every new campaign. Incorrect defaults waste budget.
 | **Ad schedule** | Set to business hours if B2B; 24/7 if B2C with online conversion | 24/7 (default) | B2B: Why pay for 2am clicks? B2C: online conversions happen at all hours |
 | **Device targeting** | All devices (use bid adjustments if needed) | All devices (default is fine) | Smart bidding adjusts by device; manual campaigns may need mobile bid adjustment |
 | **Brand exclusions** | Exclude own brand from non-brand campaigns | None (default) | Prevent brand queries from inflating non-brand campaign performance metrics |
-| **Dynamic search ads** | Off unless intentionally using DSA | Sometimes on by default | DSA can match to unexpected pages; use only when deliberately set up |
+| **Dynamic search ads** | Off unless intentionally using DSA. Note: DSA is being superseded by Performance Max, which provides broader automation with asset-group-level control | Sometimes on by default | DSA can match to unexpected pages; use only when deliberately set up. For new campaigns, prefer Performance Max over DSA |
 
 ### Location Targeting Detail
 

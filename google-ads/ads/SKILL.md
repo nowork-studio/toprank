@@ -112,7 +112,7 @@ Manage Google Ads campaigns via the MCP server.
 - **getTrackingTemplate** — Current tracking template at account/campaign/ad-group/ad level
 - **listAdGroups** — Ad groups in a campaign with metrics
 - **listAds** — Ads in a campaign/ad group with copy, URLs, status, metrics
-- **getImpressionShare** — Search/top/abs-top IS and budget/rank-lost IS
+- **getImpressionShare** — Search/top/abs-top IS and budget/rank-lost IS (max 90 days, not 365)
 - **getConversionActions** — Conversion actions and settings
 - **getAccountSettings** — Auto-tagging, tracking template, conversion tracking IDs
 - **getCampaignSettings** — Bidding, network, locations, schedule
@@ -120,20 +120,21 @@ Manage Google Ads campaigns via the MCP server.
 - **getRecommendations** — Google optimization recommendations
 
 ### Write (mutates the account — always confirm with user first)
-All write tools return a `changeId` on success. Use this with `undoChange` to reverse the operation within 7 days.
+All write tools return a `changeId` on success. Use this with `undoChange` to reverse the operation within 7 days (only if the entity hasn't been modified since).
 - **pauseKeyword** — Stop a keyword
-- **enableKeyword** — Re-enable a paused keyword
+- **enableKeyword** — Re-enable a paused keyword (needs adGroupId + criterionId only — no campaignId, unlike pauseKeyword)
 - **addKeyword** — Add a new keyword to an ad group
 - **updateBid** — Change CPC bid (manual/enhanced CPC only, max 25% change)
-- **addNegativeKeyword** — Block irrelevant search terms (phrase match)
+- **addNegativeKeyword** — Block irrelevant search terms (always phrase match at campaign level — no exact match or account-level option)
 - **removeNegativeKeyword** — Remove a negative keyword
-- **updateCampaignBudget** — Change daily budget (max 50% change)
-- **createCampaign** — Create a full paused search campaign
+- **updateCampaignBudget** — Change daily budget (max 50% change, min $1/day)
+- **createCampaign** — Create a full paused search campaign. Headlines (3-15, max 30 chars each), descriptions (2-4, max 90 chars each), finalUrl required. Default bidding: MAXIMIZE_CONVERSIONS
 - **pauseCampaign** — Pause all ads in a campaign
 - **enableCampaign** — Re-enable a paused campaign
+- **removeCampaign** — **PERMANENTLY** delete a campaign and all its ad groups, ads, keywords (cannot be undone — use pauseCampaign instead in almost all cases)
 - **setTrackingTemplate** — Set/clear tracking template
 - **createAdGroup** — Create a new ad group
-- **createAd** — Create a new Responsive Search Ad
+- **createAd** — Create a new Responsive Search Ad. Headlines (3-15, max 30 chars each), descriptions (2-4, max 90 chars each), finalUrl required
 - **pauseAd** — Pause an ad
 - **enableAd** — Re-enable an ad
 - **updateAdFinalUrl** — Change an ad's landing page URL
@@ -141,7 +142,7 @@ All write tools return a `changeId` on success. Use this with `undoChange` to re
 - **bulkUpdateBids** — Update up to 50 keyword bids in one call (each capped at 25% change)
 - **bulkPauseKeywords** — Pause up to 100 keywords in one call (partial success possible)
 - **bulkAddKeywords** — Add up to 100 keywords to an ad group in one call (partial success possible)
-- **moveKeywords** — Move keywords between ad groups in the same campaign (adds to destination first, pauses source on success, rolls back on failure)
+- **moveKeywords** — Move keywords between ad groups in the same campaign (adds to destination first, pauses source on success, rolls back on failure). **Match type defaults to PHRASE — does NOT inherit from source.** Specify matchType explicitly to preserve original match types. Max 100 keywords.
 - **renameCampaign** — Rename a campaign
 - **renameAdGroup** — Rename an ad group
 - **updateCampaignSettings** — Update network targeting (Google Search, Search Partners, Display Network) and/or location targeting (add/remove geo targets by geo target constant ID, e.g. '2840' for US, '200840' for Seattle-Tacoma DMA). Also supports negative location targeting (exclusions).
@@ -280,8 +281,8 @@ When interpreting Google Ads data, apply these specific rules. Every recommendat
 
 | QS Range | Monthly Spend | Action | Priority |
 |----------|--------------|--------|----------|
-| 1-4 | >$100/month | Priority fix — read `references/quality-score-framework.md` for diagnostic tree | Critical |
-| 1-4 | <$100/month | Fix if keyword is strategically important, otherwise pause and reallocate budget | Medium |
+| 1-4 | >1x account CPA/month | Priority fix — read `references/quality-score-framework.md` for diagnostic tree | Critical |
+| 1-4 | <1x account CPA/month | Fix if keyword is strategically important, otherwise pause and reallocate budget | Medium |
 | 5-6 | Any | Monitor — improve landing page relevance and ad copy match. Check QS subcomponents (expected CTR, ad relevance, landing page experience) to identify the bottleneck | Low |
 | 7-8 | Any | Healthy — focus on scaling. Small QS gains here have diminishing returns | None |
 | 9-10 | Any | Excellent — do not touch QS factors. Focus entirely on bid and budget optimization | None |
@@ -303,10 +304,10 @@ Evaluate every keyword against the account's average CPA. If the account has no 
 | CPA 50-100% of account avg | Maintain current bid. Monitor weekly | Healthy, contributing keyword |
 | CPA 100-150% of account avg | Review search terms for this keyword. Tighten match type or add negatives | Borderline — often fixable with better targeting |
 | CPA > 150% of account avg | Decrease bid 15-25%. If CPA > 200% avg after 2 weeks, pause | Underperformer dragging down account |
-| 0 conversions, >$200 spend | Pause immediately OR move to exact match with 25% lower bid | Enough data to conclude this keyword doesn't convert at current targeting |
-| 0 conversions, $100-200 spend, QS > 6 | Give 2 more weeks. Check landing page alignment and search term relevance | May need more data — QS suggests the ad/page are relevant |
-| 0 conversions, $100-200 spend, QS < 5 | Pause. QS + no conversions = wrong keyword or wrong landing page | Two signals pointing the same direction |
-| 0 conversions, <$100 spend | Too early to judge on conversions. Evaluate CTR and search term quality instead | Insufficient data for conversion-based decisions |
+| 0 conversions, spend >2x account CPA | Pause immediately OR move to exact match with 25% lower bid | Enough data to conclude this keyword doesn't convert at current targeting |
+| 0 conversions, spend 1-2x account CPA, QS > 6 | Give 2 more weeks. Check landing page alignment and search term relevance | May need more data — QS suggests the ad/page are relevant |
+| 0 conversions, spend 1-2x account CPA, QS < 5 | Pause. QS + no conversions = wrong keyword or wrong landing page | Two signals pointing the same direction |
+| 0 conversions, spend <1x account CPA | Too early to judge on conversions. Evaluate CTR and search term quality instead | Insufficient data for conversion-based decisions |
 | 0 impressions for 30+ days | Pause — this is a zombie keyword. Check: is the bid too low? Match type too restrictive? Keyword paused at ad group level? | Dead weight cluttering the account |
 
 **Accounts WITHOUT conversion data (no conversion tracking or <10 total conversions):**
@@ -315,21 +316,23 @@ Evaluate every keyword against the account's average CPA. If the account has no 
 |-----------|--------|
 | CTR > 5% and CPC < account avg | Likely high-intent — prioritize for conversion tracking setup |
 | CTR < 1% after 500+ impressions | Poor relevance — pause or rewrite ad copy |
-| Spend > $500 total with no conversion tracking | Flag as critical: "You're spending $X with no way to measure results. Set up conversion tracking before any optimization." |
+| Significant spend with no conversion tracking | Flag as critical: "You're spending $X with no way to measure results. Set up conversion tracking before any optimization." |
 
 ### Search Terms
 
 Analyze every search term report with these rules. Cross-reference `references/search-term-analysis-guide.md` for the full relevance scoring methodology.
 
+**Tool constraint:** `addNegativeKeyword` only supports **phrase match at campaign level**. No exact match or account-level negatives are available via the tool. Keep this in mind when applying the rules below.
+
 | Condition | Action | Match Type |
 |-----------|--------|------------|
 | 3+ conversions, not already a keyword | Add as keyword | Phrase match initially — let it prove itself before going broad |
 | 1-2 conversions, relevant to business | Flag for review — add if CPA is acceptable | Exact match to control spend |
-| 0 conversions, 10+ clicks | Add as negative | Phrase match at campaign level |
+| 0 conversions, 10+ clicks | Add as negative | Phrase match at campaign level (only option via `addNegativeKeyword`) |
 | 0 conversions, 5-9 clicks | Flag for review — check: is it relevant? Is the landing page right? | May need more data OR a landing page fix, not a negative |
 | 0 conversions, <5 clicks | Too early — skip unless clearly irrelevant | — |
-| Clearly irrelevant (competitor name, wrong service, wrong location) | Add as negative immediately regardless of click count | Exact match for competitor names, phrase match for wrong services |
-| Contains "free", "DIY", "jobs", "salary" (non-commercial intent) | Add as negative unless the business serves that intent | Phrase match at account level (shared negative list) |
+| Clearly irrelevant (competitor name, wrong service, wrong location) | Add as negative immediately regardless of click count | Phrase match at campaign level (covers competitor names sufficiently since phrase match blocks any query containing the term) |
+| Contains "free", "DIY", "jobs", "salary" (non-commercial intent) | Add as negative unless the business serves that intent | Phrase match at campaign level — add to each relevant campaign individually |
 | Brand misspelling or variation | Add as keyword if not already covered | Exact match |
 
 ### Impression Share
@@ -345,7 +348,7 @@ Impression share tells you WHY you're not showing for searches. The combination 
 | **Budget-Lost IS > 40%** | Severe budget constraint — must address before any other optimization. Either double the budget or cut keyword count by 50%+ | Priority: fix rank issues first to get more value from existing budget, then increase budget | Account is fundamentally misaligned — targeting too many expensive keywords with too little budget and too low quality. Restructure: pick 10-20 best keywords, pause everything else, fix QS, then expand |
 
 **Campaign-level impression share rules:**
-- Search IS < 50% on a campaign spending >$1,000/month → this campaign is underserving demand. Investigate why before increasing budget
+- Search IS < 50% on a campaign consuming >10% of account budget → this campaign is underserving demand. Investigate why before increasing budget
 - Abs Top IS < 10% on brand campaigns → competitors are outbidding on your brand. Increase brand campaign bids or improve brand ad QS
 - Top IS dropped >15 points month-over-month → new competitor or QS degradation. Check auction insights if available
 
@@ -355,9 +358,9 @@ CTR varies dramatically by industry, match type, and ad position. Always compare
 
 | Condition | Diagnosis | Action |
 |-----------|-----------|--------|
-| Search CTR < 2% (any industry) | Ad copy relevance problem — the ad doesn't match what the searcher expects | Rewrite headlines to include the keyword or closest synonym. Check if ad group is too broad (mixed intent keywords) |
+| Search CTR < 2% (varies by industry — check `references/industry-benchmarks.md`) | Ad copy relevance problem — the ad doesn't match what the searcher expects | Rewrite headlines to include the keyword or closest synonym. Check if ad group is too broad (mixed intent keywords) |
 | Search CTR 2-4% | Acceptable for most industries. Check industry benchmark — some industries (legal, B2B SaaS) index higher | Compare to `references/industry-benchmarks.md`. If below industry avg, test new ad copy |
-| Search CTR > 5% but conversion rate < 2% | Ad attracts clicks but landing page doesn't deliver on the ad's promise | Audit landing page: does the headline match the ad? Is the CTA clear? Is the page mobile-friendly? Offer `/ads-landing` |
+| Search CTR > 5% but conversion rate below industry average | Ad attracts clicks but landing page doesn't deliver on the ad's promise | Audit landing page: does the headline match the ad? Is the CTA clear? Is the page mobile-friendly? Offer `/ads-landing` |
 | Search CTR > 8% | Excellent — but verify this isn't inflated by brand terms mixing with non-brand in the same campaign | Segment brand vs non-brand. If non-brand CTR is also >8%, this is genuinely strong copy |
 | Display CTR < 0.5% | Normal for display. Only flag if display is eating significant budget with no conversions | Consider pausing display network in campaign settings if it's not converting |
 | CTR declining month-over-month on stable keywords | Ad fatigue or new competitor in auction | Test new ad variants with `/ads-copy`. Check auction insights for new entrants |
@@ -366,12 +369,12 @@ CTR varies dramatically by industry, match type, and ad position. Always compare
 
 | Condition | Diagnosis | Action |
 |-----------|-----------|--------|
-| Daily budget < $10 with 20+ active keywords | Budget spread too thin — each keyword gets pennies | Reduce to 5-10 highest-performing keywords OR increase budget to give each keyword $0.50-1.00/day minimum |
-| Daily budget < $10 with <10 keywords | Acceptable for testing or very low-CPC niches | Monitor — ensure at least 10-15 clicks/day for meaningful data |
+| Daily budget < 10x average CPC with 20+ active keywords | Budget spread too thin — each keyword gets pennies | Reduce to 5-10 highest-performing keywords OR increase budget to give each keyword at least 1 click/day |
+| Daily budget < 10x average CPC with <10 keywords | Acceptable for testing or very low-CPC niches | Monitor — ensure at least 10-15 clicks/day for meaningful data |
 | One campaign consuming >60% of budget with <40% of conversions | Budget misallocation — money flowing to the wrong campaign | Shift 20-30% of that campaign's budget to the higher-converting campaign. If no other campaign converts better, the problem is the campaign itself, not the budget split |
 | Campaign with conversions hitting budget limit daily (budget-lost IS > 30%) | Proven campaign being starved | Increase budget 25-50% (within server guardrail). This is the lowest-risk budget increase |
-| Campaign with 0 conversions after $500+ total spend | Not a budget problem — it's a targeting or conversion tracking problem | Do NOT increase budget. Audit keywords, search terms, landing pages, and conversion tracking first |
-| Account spending <$50/day total across all campaigns | Low-data environment — statistical significance takes weeks | Consolidate into fewer campaigns/ad groups. Avoid A/B tests until daily volume supports them (min 30 clicks/day per variant) |
+| Campaign with 0 conversions after spending >5x account CPA | Not a budget problem — it's a targeting or conversion tracking problem | Do NOT increase budget. Audit keywords, search terms, landing pages, and conversion tracking first |
+| Account generating <30 clicks/day total across all campaigns | Low-data environment — statistical significance takes weeks | Consolidate into fewer campaigns/ad groups. Avoid A/B tests until daily volume supports them (min 30 clicks/day per variant) |
 
 ## Wasted Spend Calculation
 
@@ -412,11 +415,11 @@ Wasted Spend Breakdown (Last 30 Days):
 
 ### "How are my ads doing?" — Performance Summary
 
-**Step 1: Pull data (parallel)**
+**Step 1: Pull data (parallel — 4 calls total)**
 - `getAccountInfo` — business name, currency
-- `listCampaigns` — all campaigns with spend, clicks, conversions
-- `getImpressionShare` — traffic coverage
-- `getCampaignPerformance` — daily trends (last 30 days)
+- `listCampaigns(limit: 100)` — all campaigns with spend, clicks, conversions
+- `runGaqlQuery` — impression share for all campaigns (see `../shared/gaql-cookbook.md` "Impression share" pattern)
+- `runGaqlQuery` — daily performance (use LAST_7_DAYS for 2+ campaigns to stay under 50-row limit, see `../shared/gaql-cookbook.md`)
 
 **Step 2: Analyze**
 - Calculate account-level CPA, CTR, conversion rate
@@ -429,12 +432,18 @@ Wasted Spend Breakdown (Last 30 Days):
 
 ### "Find wasted spend" — Waste Audit
 
-**Step 1: Pull data (parallel)**
-- `listCampaigns` → identify top 3-5 campaigns by spend
-- `getKeywords` for each top campaign → all keywords with spend, conversions, QS
-- `getSearchTermReport` for each top campaign → actual queries
-- `getCampaignSettings` for each → check if Display Network is enabled
-- `getNegativeKeywords` for each → current negative coverage
+**Step 1: Pull data (2 phases, see `../shared/gaql-cookbook.md`)**
+
+*Phase 1 (parallel — 4 calls):*
+- `listCampaigns(limit: 100)` → all campaigns + identify top 3 by spend
+- `runGaqlQuery` → "Zero-conversion high-spend keywords" pattern (directly surfaces waste)
+- `runGaqlQuery` → "Search terms" pattern (ordered by spend, for irrelevant term detection)
+- `runGaqlQuery` → "Negative keywords" pattern (current coverage)
+
+*Phase 2 (parallel, depends on Phase 1):*
+- `getCampaignSettings` for top 3 campaigns → check if Display Network is enabled (major waste source)
+
+If the zero-conversion query returns 50 rows (hit the limit), there's significant waste — supplement with `getKeywords` for the top 2-3 campaigns by spend to get the full picture.
 
 **Step 2: Analyze**
 - Apply the Wasted Spend Calculation above
@@ -454,17 +463,22 @@ For each waste source, show:
 
 ### "Optimize bids" — Bid Optimization
 
-**Step 1: Pull data (parallel)**
-- `getKeywords` → all keywords with CPA, CPC, conversions, QS
-- `getImpressionShare` → identify where bid increases would capture more traffic
-- `getCampaignSettings` → confirm bid strategy (manual/enhanced CPC — bid changes only work with these)
+**Step 1: Pull data (2 phases, see `../shared/gaql-cookbook.md`)**
+
+*Phase 1 (parallel):*
+- `listCampaigns(limit: 100)` → size the account
+- GAQL "Keywords with QS" query → all keywords with CPA, CPC, conversions, QS across campaigns
+- GAQL "Impression share" query → where bid increases would capture more traffic
+
+*Phase 2 (depends on Phase 1):*
+- `getCampaignSettings` for target campaigns → confirm bid strategy (manual/enhanced CPC only)
 
 **Step 2: Analyze using keyword performance heuristics**
 - Segment keywords into tiers:
   - **Scale** (CPA < 50% avg): increase bid 15-25%
   - **Maintain** (CPA 50-100% avg): no change
   - **Reduce** (CPA 100-150% avg): decrease bid 10-15%, add negatives
-  - **Pause** (CPA > 200% avg or $200+ spend with 0 conversions): pause
+  - **Pause** (CPA > 200% avg or spend >2x account CPA with 0 conversions): pause
 - Cross-reference with impression share: only increase bids on keywords where rank-lost IS > 20% (there's traffic to capture)
 - Check bid strategy compatibility: if using Target CPA or Maximize Conversions, manual bid changes are blocked — recommend bid strategy adjustment instead (see `references/bid-strategy-decision-tree.md`)
 
@@ -478,11 +492,16 @@ For each waste source, show:
 
 ### "Scale winning keywords" — Growth Optimization
 
-**Step 1: Pull data (parallel)**
-- `getKeywords` → find keywords with: conversions > 2, CPA < account avg, QS > 6
-- `getSearchTermReport` → find converting search terms not yet added as keywords
-- `getImpressionShare` → check how much more traffic is available
-- `getCampaignSettings` → check budget headroom
+**Step 1: Pull data (2 phases, see `../shared/gaql-cookbook.md`)**
+
+*Phase 1 (parallel):*
+- `listCampaigns(limit: 100)` → size the account + identify top campaigns
+- GAQL "Keywords with QS" query → find keywords with conversions > 2, CPA < avg, QS > 6
+- GAQL "Converting search terms" query → search terms with conversions (cross-reference against keyword list to find gaps)
+- GAQL "Impression share" query → how much more traffic is available
+
+*Phase 2 (depends on Phase 1):*
+- `getCampaignSettings` for target campaigns → check budget headroom
 
 **Step 2: Identify scaling opportunities**
 - **Bid increases**: Keywords with CPA < 50% avg AND rank-lost IS > 20% — room to grow
@@ -497,11 +516,12 @@ For each action, estimate the impact:
 
 ### "Fix quality scores" — QS Diagnostic
 
-**Step 1: Pull data (parallel)**
-- `getKeywords` → all keywords with QS and QS subcomponents
-- `listAdGroups` → ad group structure (keyword count per group)
-- `listAds` → ad copy per ad group
-- `getSearchTermReport` → search term relevance to ad groups
+**Step 1: Pull data (parallel, see `../shared/gaql-cookbook.md`)**
+- `listCampaigns(limit: 100)` → size the account
+- GAQL "Keywords with QS" query → all keywords with QS across campaigns
+- GAQL "Ad groups" query → ad group structure
+- GAQL "Ad copy" query → RSA headlines/descriptions per ad group
+- GAQL "Search terms" query → search term relevance to ad groups
 
 **Step 2: Diagnose using `references/quality-score-framework.md`**
 - Group keywords by QS: count in each 1-4, 5-6, 7-8, 9-10 bucket
@@ -512,16 +532,20 @@ For each action, estimate the impact:
 - Check ad group sizes: any ad group with >25 keywords likely has QS problems from mixed intent
 
 **Step 3: Present action plan prioritized by spend**
-Fix high-spend, low-QS keywords first — they waste the most money. A QS improvement from 4 to 6 typically reduces CPC by 15-25%.
+Fix high-spend, low-QS keywords first — they waste the most money. A QS improvement from 4 to 6 can approximately reduce CPC by 15-25% (varies by auction dynamics and competition).
 
 ### "Restructure campaigns" — Account Restructure
 
-**Step 1: Pull data (parallel)**
-- `listCampaigns` → all campaigns
-- `listAdGroups` for each → ad group count and themes
-- `getKeywords` for top campaigns → keyword count and themes per ad group
-- `getCampaignSettings` → current targeting and bid strategies
-- `getNegativeKeywords` → current negative coverage
+**Step 1: Pull data (2 phases, see `../shared/gaql-cookbook.md`)**
+
+*Phase 1 (parallel):*
+- `listCampaigns(limit: 100)` → all campaigns + size the account
+- GAQL "Ad groups" query → ad group structure across all campaigns
+- GAQL "Keywords with QS" query → keyword themes per ad group
+- GAQL "Negative keywords" query → current coverage (note: truncates at 50 rows, supplement with `getNegativeKeywords` per campaign for full picture)
+
+*Phase 2 (depends on Phase 1):*
+- `getCampaignSettings` for top campaigns → targeting and bid strategies
 
 **Step 2: Diagnose structural issues using `references/campaign-structure-guide.md`**
 Common problems:
@@ -593,6 +617,19 @@ Use this structure for every performance summary. Consistent formatting helps us
 - [Specific positive finding with numbers]
 ```
 
+### Freshness Notes for High-Volatility Recommendations
+
+When making recommendations in these areas, prefix the recommendation with a freshness disclaimer sourced from `../shared/policy-registry.json`:
+
+- Bid strategy recommendations (`bid-strategy-behavior`)
+- Match type behavior advice (`match-type-behavior`)
+- Experiment/testing guidance (`experiment-testing`)
+- PMax configuration advice (`pmax-configuration`)
+
+Format: _"Based on Google Ads behavior as of [last_verified date from registry]. Verify current behavior if this recommendation is critical to your strategy."_
+
+Only add this for the high-volatility areas listed above. Do not add freshness notes for stable knowledge like QS components, impression share metrics, or CTR benchmarks.
+
 **Rules for the report:**
 - Every issue must have a dollar amount or conversion count attached
 - Every action must reference a specific campaign, keyword, or ad group by name
@@ -625,7 +662,7 @@ Present the terms with their conversion data and let the user approve before add
 
 ### Landing Page Misalignment
 
-If CTR is strong (>4%) but conversion rate is below 2% on multiple ad groups:
+If CTR is above industry benchmark but conversion rate is below industry average on multiple ad groups:
 
 > "Your ads are getting clicks but conversions are low — this usually means the landing page doesn't match what the ad promises. Run `/ads-landing` to audit keyword-to-landing-page alignment."
 

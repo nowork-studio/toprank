@@ -10,17 +10,21 @@ Quality Score (QS) is a 1-10 keyword-level metric composed of three sub-componen
 
 | Component | Weight (approx.) | Rating Scale | What Google Evaluates |
 |-----------|------------------|--------------|----------------------|
-| **Expected CTR** | ~39% | Below Average / Average / Above Average | Historical CTR of the keyword normalized for ad position, extensions, and format |
-| **Ad Relevance** | ~22% | Below Average / Average / Above Average | How closely your ad copy matches the intent and language of the keyword |
-| **Landing Page Experience** | ~39% | Below Average / Average / Above Average | Page load speed, mobile-friendliness, content relevance, navigation clarity, trust signals |
+| **Expected CTR** | ~35-40% | Below Average / Average / Above Average | Historical CTR of the keyword normalized for ad position, extensions, and format |
+| **Ad Relevance** | ~20-25% | Below Average / Average / Above Average | How closely your ad copy matches the intent and language of the keyword |
+| **Landing Page Experience** | ~35-40% | Below Average / Average / Above Average | Page load speed, mobile-friendliness, content relevance, navigation clarity, trust signals |
 
-**Key insight**: Landing Page Experience and Expected CTR together account for ~78% of QS. Ad Relevance is the smallest factor but often the easiest to fix.
+**Disclaimer**: Google has never published official QS component weights. The ranges above are estimates derived from third-party regression studies and may shift over time. Use them directionally, not as exact figures.
+
+**Key insight**: Landing Page Experience and Expected CTR together account for the majority (~70-80%) of QS. Ad Relevance is the smallest factor but often the easiest to fix.
 
 ---
 
 ## QS Impact on Cost-Per-Click
 
-Quality Score directly modifies your actual CPC through the Ad Rank formula. Below are the approximate CPC modifiers relative to QS 5 (the neutral baseline):
+Quality Score directly modifies your actual CPC through the Ad Rank formula. Below are the approximate CPC modifiers relative to QS 5 (the neutral baseline).
+
+> **Caveat**: These CPC impact figures are approximate estimates from third-party studies (notably WordStream and Optmyzr), not Google-published data. Actual CPC modifiers vary by auction, vertical, and account history.
 
 | Quality Score | CPC Modifier vs. QS 5 Baseline | Effective CPC at $2.00 Benchmark | Impact on Budget |
 |--------------|-------------------------------|----------------------------------|-----------------|
@@ -36,6 +40,8 @@ Quality Score directly modifies your actual CPC through the Ad Rank formula. Bel
 | 1 | +400% premium | $10.00 | Bleeding budget — immediate action |
 
 **Rule of thumb**: Every 1-point QS increase above 5 saves ~16% on CPC. Every 1-point decrease below 5 costs ~50% more on CPC.
+
+> **Smart Bidding context**: Throughout this playbook, where the advice says "increase bids," accounts using Smart Bidding (tCPA, tROAS, Maximize Conversions, Maximize Conversion Value) should adjust their target CPA or target ROAS instead. Smart Bidding sets bids automatically per auction — manual bid changes are overridden.
 
 ---
 
@@ -81,14 +87,17 @@ START: Keyword Quality Score
 
 Expected CTR is position-adjusted, meaning Google accounts for your average position. A "Below Average" rating means your ads get fewer clicks than competitors in similar positions.
 
-### Position-Adjusted CTR Benchmarks (Search Network)
+### CTR Benchmarks by Impression Location (Search Network)
 
-| Average Position | Expected CTR Floor (Below Average threshold) | Good CTR | Excellent CTR |
-|-----------------|---------------------------------------------|----------|---------------|
-| 1.0 - 1.5 | < 4.0% | 5.0-8.0% | > 8.0% |
-| 1.5 - 2.5 | < 2.5% | 3.5-6.0% | > 6.0% |
-| 2.5 - 3.5 | < 1.5% | 2.5-4.5% | > 4.5% |
-| 3.5+ | < 1.0% | 1.5-3.0% | > 3.0% |
+Average Position was deprecated by Google in September 2019. Use Impression Location segments instead:
+
+| Impression Location | Expected CTR Floor (Below Average threshold) | Good CTR | Excellent CTR |
+|--------------------|---------------------------------------------|----------|---------------|
+| **Absolute Top** (first position above organic) | < 5.0% | 6.0-9.0% | > 9.0% |
+| **Top** (above organic results, positions 2-4) | < 2.5% | 3.5-6.0% | > 6.0% |
+| **Other** (bottom of page or secondary placements) | < 1.0% | 1.5-3.0% | > 3.0% |
+
+> Use the "Top vs. Other" and "Abs. Top vs. Top" impression share metrics to understand where your ads appear. These replaced average position as the standard diagnostic.
 
 ### Fix Actions (Priority Order)
 
@@ -124,7 +133,7 @@ Ad Relevance measures how well your ad copy matches the keyword's intent and lan
 |----------|---------|-----|
 | Keyword not in any headline | Google sees weak topical match | Add keyword or close synonym to Headline 1 or 2 |
 | Keyword in headline but different intent | Ad promises something the keyword doesn't seek | Rewrite headline to match the search intent (informational, commercial, transactional) |
-| Ad group has 30+ keywords | Impossible for 1 ad to be relevant to all keywords | Split into ad groups of 10-20 tightly themed keywords |
+| Ad group has 30+ keywords | Impossible for 1 ad to be relevant to all keywords | Split into tighter ad groups: 5-10 keywords for broad match accounts (broad needs fewer keywords per group since each keyword matches widely), 10-20 for exact/phrase match accounts |
 | Generic ad copy across all ad groups | Same ads everywhere = low relevance for specific terms | Write unique RSAs per ad group with keyword-specific headlines |
 | Using only broad match keywords | Google matches queries far from original keyword | Review search terms; add phrase/exact match for high-value terms |
 
@@ -201,7 +210,7 @@ When you have limited time, prioritize fixes by impact and effort:
 | P1 | Expected CTR | CTR < position-adjusted floor | Rewrite headlines, add extensions | +1 to +2 QS points |
 | P1 | Landing Page | No HTTPS or broken mobile layout | Fix technical issues | +1 to +2 QS points |
 | P2 | Ad Relevance | Ad group has 30+ keywords | Split into tighter ad groups | +1 to +2 QS points |
-| P2 | Expected CTR | Broad match diluting CTR | Add negative keywords from search terms | +1 QS point |
+| P2 | Expected CTR | Broad match diluting CTR | Add negative keywords from search terms (note: negatives have reduced precision under Search Themes / PMax — see search term analysis guide) | +1 QS point |
 | P3 | Landing Page | Generic trust signals | Add reviews, certifications, guarantees | +0.5 to +1 QS point |
 | P3 | Expected CTR | Ad extensions not showing | Enable all relevant extension types | +0.5 to +1 QS point |
 

@@ -59,6 +59,10 @@ Use whichever MCP server prefix was detected:
 
 Always pass `accountId` from `~/.adsagent/config.json` to every tool call (except `listConnectedAccounts`).
 
+### Prefer GAQL for multi-campaign reads
+
+When a workflow needs data from 2+ campaigns, use `runGaqlQuery` with bulk queries instead of per-campaign helper calls. See `../shared/gaql-cookbook.md` for ready-to-use query patterns. This typically reduces API calls from `N × data_types` to just the number of data types (e.g., 7 queries instead of 30+). Fall back to per-campaign helpers if GAQL errors or you need >50 rows for a single campaign.
+
 ## Step 5: Proceed
 
 Config is loaded. Hand control back to the invoking skill.

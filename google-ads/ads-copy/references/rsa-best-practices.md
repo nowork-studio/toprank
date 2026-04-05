@@ -2,6 +2,8 @@
 
 Expert knowledge for writing, testing, and optimizing Responsive Search Ads. Specific character limits, formula tables, pinning strategies, and performance benchmarks.
 
+> **PMax cross-reference:** For accounts running Performance Max campaigns alongside Search, coordinate RSA messaging with PMax asset groups. PMax may serve text ads on Search inventory — ensure your RSA headlines and descriptions complement (not duplicate) PMax asset group text assets. See PMax documentation for asset group best practices.
+
 ---
 
 ## Character Limits
@@ -134,7 +136,7 @@ Should I pin this headline?
 |   +-- YES --> Leave unpinned (let Google optimize)
 |   +-- NO --> Continue
 |
-+-- Do you have 100+ conversions/month in this ad group?
++-- Do you have 50+ conversions/month at the campaign level?
 |   +-- YES --> Leave unpinned (enough data for Google to optimize)
 |   +-- NO --> Consider pinning your best 2-3 headlines to Positions 1-2
 |
@@ -147,9 +149,9 @@ DEFAULT --> Leave unpinned. Google's ML needs freedom to test combinations.
 |-----------|----------------------|----------------------|
 | 0 pins | Neutral to positive | Maximum reach |
 | 1-2 pins | Minor reduction | Minimal impact |
-| 3-5 pins | Moderate reduction | 10-15% fewer impressions |
-| 6+ pins | Significant reduction | 20-40% fewer impressions |
-| All pinned | Severe; ad strength drops to "Poor" | 40-70% fewer impressions |
+| 3-5 pins | Moderate reduction | Noticeable impression reduction (Google has not published exact figures) |
+| 6+ pins | Significant reduction | Substantial impression reduction — diminishes RSA's optimization ability |
+| All pinned | Severe; ad strength drops to "Poor" | Major impression reduction — effectively negates the RSA format's advantages |
 
 ### Pinning Rules
 
@@ -219,9 +221,9 @@ DEFAULT --> Leave unpinned. Google's ML needs freedom to test combinations.
 
 | Metric | Minimum Threshold | Ideal Threshold |
 |--------|------------------|-----------------|
-| Clicks per variant | 100 | 250+ |
+| Clicks per variant | 200 | 500+ |
 | Duration | 14 days | 30 days |
-| Conversions per variant | 30 | 50+ |
+| Conversions per variant | 50 | 100+ |
 | Impressions per variant | 1,000 | 5,000+ |
 
 ### When to Call a Winner Early
@@ -291,7 +293,7 @@ DEFAULT --> Leave unpinned. Google's ML needs freedom to test combinations.
 | Too many similar headlines | Google shows redundant combinations; wastes ad slots | Write from 5+ distinct angles |
 | All headlines same length | Looks repetitive; Google prefers mixing short + long | Vary between 15-30 chars |
 | No CTA headlines | Misses click intent when Google picks non-CTA combination | Include 2-3 CTA headlines |
-| Pinning everything | Reduces Google's optimization ability by 40-70% | Pin only what is legally or brand-required |
+| Pinning everything | Substantially reduces Google's optimization ability | Pin only what is legally or brand-required |
 | Ignoring ad strength entirely | Missing easy wins from insufficient asset diversity | Aim for "Good" minimum unless justified |
 | Only 3 headlines provided | Minimum assets = minimum reach and no testing | Always provide 8+ headlines |
 | Duplicate keywords in headlines | Wastes headline slots repeating same keyword | Each headline should add new info |

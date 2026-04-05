@@ -25,19 +25,19 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 | 0 | None | No conversion tracking installed |
 | 1 | Basic | Tag fires but no values assigned; only 1 conversion action |
 | 2 | Partial | Multiple conversion actions with values, but gaps: missing phone calls OR form submissions OR key pages |
-| 3 | Solid | All key actions tracked (form, phone, purchase); values assigned; conversion window set correctly |
-| 4 | Advanced | Score 3 + enhanced conversions enabled; conversion linker tag present; GCLID auto-tagging on |
-| 5 | Best-in-class | Score 4 + offline conversion import OR store visit tracking; Consent Mode v2 implemented; data-driven attribution model |
+| 3 | Solid | All key actions tracked (form, phone, purchase); values assigned; conversion window set correctly; Consent Mode v2 implemented (mandatory for EU since March 2024) |
+| 4 | Advanced | Score 3 + enhanced conversions enabled; conversion linker tag present; GCLID auto-tagging on; Consent Mode v2 verified across all regions |
+| 5 | Best-in-class | Score 4 + offline conversion import OR store visit tracking; server-side tagging implemented; data-driven attribution model |
 
 ### Conversion Tracking Red Flags
 
 | Signal | Severity | What It Means |
 |--------|----------|---------------|
-| 0 conversions in 30 days with spend >$500 | Critical | Tracking likely broken or missing |
+| 0 conversions in 30 days with spend >5x account CPA | Critical | Tracking likely broken or missing |
 | Conversion rate >50% | Critical | Tag firing on page load, not actual conversions |
 | All conversions = "Website" (no action names) | High | Default tracking, no meaningful segmentation |
 | "Include in conversions" set to YES for micro-conversions | Medium | Inflated conversion counts, misleading CPA |
-| Last-click attribution on high-funnel campaigns | Medium | Under-crediting awareness campaigns |
+| Last-click attribution on any campaigns | High | Deprecated since 2023 — data-driven attribution (DDA) is now the only model for new conversion actions. Migrate existing conversion actions to DDA immediately |
 
 ---
 
@@ -56,7 +56,7 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 
 | Check | Passing Threshold | Failing Signal |
 |-------|------------------|----------------|
-| Keywords per ad group | 10-20 | >30 per ad group |
+| Keywords per ad group | 5-15 (broad match: 5-10; exact/phrase: 10-20) | >30 per ad group |
 | Ad groups per campaign | 5-15 | >25 or just 1 |
 | Brand vs. non-brand separation | Separate campaigns | Mixed in same campaign |
 | Campaign naming convention | Consistent pattern | No pattern (e.g., "Campaign 1", "test") |
@@ -70,11 +70,11 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 | Score | Level | Criteria |
 |-------|-------|----------|
 | 0 | Failing | Average QS <4; >50% zombie keywords; no match type strategy |
-| 1 | Poor | Average QS 4-5; 30-50% zombie keywords; all broad match |
-| 2 | Below Average | Average QS 5-6; 20-30% zombie keywords; mostly broad match with some phrase |
+| 1 | Poor | Average QS 4-5; 30-50% zombie keywords; broad match without Smart Bidding or negatives |
+| 2 | Below Average | Average QS 5-6; 20-30% zombie keywords; broad match with Smart Bidding but insufficient negatives |
 | 3 | Good | Average QS 6-7; <20% zombie keywords; intentional match type strategy; negatives in place |
-| 4 | Strong | Average QS 7-8; <10% zombie keywords; match type tiering (exact for high-value, phrase/broad for discovery) |
-| 5 | Excellent | Average QS 8+; <5% zombie keywords; SKAGs or tightly themed groups; bid adjustments by match type |
+| 4 | Strong | Average QS 7-8; <10% zombie keywords; intentional match type strategy aligned with Smart Bidding |
+| 5 | Excellent | Average QS 8+; <5% zombie keywords; tightly themed ad groups aligned to Smart Bidding signals; comprehensive negative coverage |
 
 ### Keyword Sub-Metric Thresholds
 
@@ -82,7 +82,7 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 |------------|----------|------------|----|---------| 
 | Average Quality Score | <4 | 4-5 | 6-7 | 8+ |
 | Zombie keywords (0 impressions, 90 days) | >50% | 30-50% | 10-30% | <10% |
-| % Exact match keywords | 0% | <20% | 20-50% | 50%+ for top converters |
+| Match type intentionality | No strategy | Single match type only | Some match type variation | Deliberate match type strategy aligned with campaign goals and Smart Bidding |
 | % Keywords with QS <5 | >40% | 25-40% | 10-25% | <10% |
 | Negative keyword count vs. active keywords | 0 negatives | <10% ratio | 10-30% ratio | 30%+ ratio |
 
@@ -199,7 +199,7 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 | 2 | Below Average | 15-20% wasted spend; CPA 1.5-2x benchmark |
 | 3 | Average | 10-15% wasted spend; CPA within 1-1.5x benchmark; top 20% keywords drive 50%+ conversions |
 | 4 | Good | 5-10% wasted spend; CPA at or below benchmark; strong conversion concentration |
-| 5 | Excellent | <5% wasted spend; CPA well below benchmark; top 20% keywords drive 60%+ conversions; no keyword spending >$200 with 0 conversions |
+| 5 | Excellent | <5% wasted spend; CPA well below benchmark; top 20% keywords drive 60%+ conversions; no keyword spending >2x account CPA with 0 conversions |
 
 ### Wasted Spend Calculation
 
@@ -222,7 +222,7 @@ Wasted Spend % = (Spend on keywords with 0 conversions AND >10 clicks) / Total S
 | Top 20% keywords' share of conversions | >50% | 30-50% | <30% |
 | Top 20% keywords' share of spend | <50% | 50-70% | >70% with low conversion share |
 | Single keyword share of total spend | <15% | 15-30% | >30% (concentration risk) |
-| Keywords spending >$100 with 0 conversions | 0-2 | 3-5 | >5 |
+| Keywords spending >1x account CPA with 0 conversions | 0-2 | 3-5 | >5 |
 
 ---
 
@@ -277,7 +277,7 @@ For each dimension scored below 3, the single highest-impact fix:
 | Search Term Quality | Run first-ever search term review; add 20+ obvious negatives | Build negative keyword lists by theme; block top wasters | Set up bi-weekly review cadence; mine converting terms |
 | Ad Copy | Create RSA with 8+ headlines for every ad group | Add headlines to reach 8+; ensure 3+ distinct angles | Add second RSA for A/B testing; improve headline variety |
 | Impression Share | Check if budget is depleting before noon; adjust bids down or narrow targeting | Identify top budget-loss campaign; increase budget or narrow geo/schedule | Improve QS on rank-lost keywords; test bid strategies |
-| Spend Efficiency | Pause all keywords with >$100 spend and 0 conversions immediately | Set max CPC caps; pause keywords with >20 clicks and 0 conversions | Reallocate budget from low-efficiency to high-efficiency keywords |
+| Spend Efficiency | Pause all keywords with spend >1x account CPA and 0 conversions immediately | Set max CPC caps; pause keywords with >20 clicks and 0 conversions | Reallocate budget from low-efficiency to high-efficiency keywords |
 
 ---
 

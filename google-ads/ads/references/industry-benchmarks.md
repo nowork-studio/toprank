@@ -1,6 +1,8 @@
 # Google Ads Industry Performance Benchmarks
 
-Industry-specific benchmarks for Google Ads performance evaluation. Data ranges based on widely-published WordStream, Google, and LOCALiQ industry reports (2024-2025). Use these as diagnostic baselines, not absolute targets.
+Industry-specific benchmarks for Google Ads performance evaluation. Data ranges based on widely-published WordStream, Google, and LOCALiQ industry reports (2024-2025 vintage). Use these as diagnostic baselines, not absolute targets.
+
+> **Inflation adjustment (2026)**: These benchmarks reflect 2024-2025 data. Google Ads CPCs have been rising 10-20% year-over-year due to increased competition, AI-driven bidding adoption, and SERP layout changes (AI Overviews reducing organic clicks, pushing more demand to paid). When comparing your 2026 performance to these tables, adjust CPC and CPA benchmarks upward by 10-20% to account for market inflation.
 
 ---
 
@@ -11,6 +13,8 @@ These benchmarks represent **averages across all advertisers**, including poorly
 ---
 
 ## Search Network Benchmarks by Industry
+
+> **2026 note**: CPC and CPA figures below are 2024-2025 averages. For 2026 planning, adjust upward by 10-20%. AI Overviews and other SERP layout changes are compressing organic CTR, increasing advertiser demand for paid placements, and driving costs higher across most verticals.
 
 | Industry | Avg CPC | Avg CTR | Avg Conv Rate | Avg CPA | Notes |
 |----------|---------|---------|---------------|---------|-------|
@@ -40,6 +44,8 @@ These benchmarks represent **averages across all advertisers**, including poorly
 ---
 
 ## Display Network Benchmarks by Industry
+
+> **2026 note**: Display CPC figures below are 2024-2025 averages. Display costs have inflated less than Search (5-10% YoY) but still trend upward. Adjust accordingly.
 
 | Industry | Avg CPC (Display) | Avg CTR (Display) | Avg Conv Rate (Display) | Notes |
 |----------|-------------------|-------------------|------------------------|-------|
@@ -77,7 +83,7 @@ These benchmarks represent **averages across all advertisers**, including poorly
 |-------------|--------------|-----|
 | **Lost IS (Budget)** > 20% | Budget runs out before end of day | Increase daily budget or reduce keyword scope |
 | **Lost IS (Budget)** 5-20% | Mild budget constraint | Acceptable if intentional; increase budget for high-ROI campaigns |
-| **Lost IS (Rank)** > 30% | Ad Rank too low (QS or bid issue) | Improve QS first (free); increase bids second (costs money) |
+| **Lost IS (Rank)** > 30% | Ad Rank too low (QS or bid issue) | Improve QS first (free); for Smart Bidding accounts, loosen target CPA/ROAS to allow higher bids; for manual bidding, increase bids (costs money) |
 | **Lost IS (Rank)** 10-30% | Moderate rank issues | Focus QS improvement on highest-volume keywords |
 | **Lost IS (Rank)** < 10% | Healthy competitive position | Monitor; no urgent action needed |
 
@@ -92,7 +98,9 @@ These benchmarks represent **averages across all advertisers**, including poorly
 | Position 3 (Top) | 2.5-3.5% | 4.0-5.5% | 1.5-2.0% |
 | Position 4+ (Other) | 1.0-2.0% | 2.0-3.0% | 0.5-1.0% |
 
-**Interpretation**: If your ads are in Position 1 but CTR is < 5%, your ad copy is underperforming. If your CTR is 8%+ in Position 1, your ad copy is strong; focus optimization on CPA and conversion rate instead.
+**Interpretation**: If your ads are in Absolute Top position but CTR is < 5%, your ad copy is underperforming. If your CTR is 8%+ in Absolute Top, your ad copy is strong; focus optimization on CPA and conversion rate instead.
+
+> **SERP layout changes (2026)**: AI Overviews (formerly SGE) now appear on a significant percentage of informational and commercial queries. When AI Overviews are present, they push ads and organic results further down the page, compressing CTR for all ad positions. CTR benchmarks above may overstate expected performance for queries where AI Overviews dominate. Monitor your Absolute Top impression share and CTR trends together — declining CTR with stable impression share may indicate AI Overview interference rather than ad copy issues.
 
 ---
 
@@ -184,7 +192,11 @@ Different conversion types have inherently different values. Compare your CPA to
 | CPA | 10-30% higher than desktop | Baseline | Mobile more expensive per conversion | Despite cheaper clicks, lower conv rate drives CPA up |
 | Bounce Rate | 55-65% | 35-45% | Mobile 50% higher | Mobile pages must load fast and be thumb-friendly |
 
+> **2026 update**: The mobile-desktop conversion rate gap has been narrowing steadily as mobile checkout, autofill, and payment experiences improve (Apple Pay, Google Pay, one-tap checkout). In verticals with strong mobile UX (e-commerce, local services, click-to-call), the gap is now closer to 20-30% rather than the 40-60% shown above. B2B and complex SaaS remain desktop-dominant.
+
 ### Device Strategy Decision
+
+> **Smart Bidding note (2026)**: Device bid adjustments are **ignored** by Smart Bidding strategies (tCPA, tROAS, Maximize Conversions, Maximize Conversion Value). Smart Bidding automatically adjusts bids per device based on real-time conversion signals. The recommendations below apply only to Manual CPC or Enhanced CPC campaigns. For Smart Bidding campaigns, optimize the mobile experience (page speed, form simplicity) instead of adjusting bids — the algorithm will find the right bid per device.
 
 | Scenario | Recommended Device Strategy |
 |----------|---------------------------|

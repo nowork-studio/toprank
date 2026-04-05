@@ -85,14 +85,18 @@ Gather these fields. Don't ask them as a rigid checklist — pull what you can f
 
 ### Bootstrapping from existing data
 
-Before asking the user anything, try to fill fields from what's already available:
+Before asking the user anything, try to fill fields from what's already available. Start with account-level calls, then use campaign IDs from `listCampaigns` for per-campaign tools:
 
-- `mcp__adsagent__getAccountInfo` → business name, location hints
-- `mcp__adsagent__listCampaigns` → service categories, geo targeting
-- `mcp__adsagent__listAds` → current voice, headlines in use
-- `mcp__adsagent__getKeywords` → keyword landscape
-- `mcp__adsagent__getSearchTermReport` → real user language, long-tail opportunities
-- `mcp__adsagent__getImpressionShare` → competitive pressure signals
+1. **Account-level (parallel, no campaignId needed):**
+   - `getAccountInfo` → business name, location hints
+   - `listCampaigns(limit: 100)` → service categories from campaign names, identify top campaigns by spend
+
+2. **Per-campaign (parallel, requires campaignId from step 1):**
+   - `listAds(campaignId)` → current voice, headlines in use
+   - `getKeywords(campaignId)` → keyword landscape
+   - `getSearchTermReport(campaignId)` → real user language, long-tail opportunities
+   - `getImpressionShare(campaignId)` → competitive pressure signals (max 90 days)
+   - `getCampaignSettings(campaignId)` → geo targeting, network settings
 
 Present what you found and ask the user to confirm/correct/fill gaps. This is faster and more accurate than starting from zero.
 
@@ -194,11 +198,19 @@ Cross-reference against the business context — if the user says "write copy fo
 
 Pull data before writing — copy should be grounded in what converts, not guesses.
 
-**Current ad performance:**
-- `mcp__adsagent__listAds` — existing headlines/descriptions and their metrics
-- `mcp__adsagent__getKeywords` — active keywords
-- `mcp__adsagent__getSearchTermReport` — actual user queries (reveals real language and intent)
-- `mcp__adsagent__getCampaignPerformance` — CTR/conversion benchmarks to beat
+**Current ad performance (use GAQL for multi-campaign research, see `../shared/gaql-cookbook.md`):**
+
+If the user specified a single campaign/ad group, use helper tools directly. If researching across campaigns (common for brand-wide copy refresh), use GAQL:
+- GAQL "Ad copy" query → existing headlines/descriptions and their metrics across all campaigns
+- GAQL "Keywords with QS" query → active keywords and what's converting
+- GAQL "Search terms" query → actual user queries (reveals real language and intent)
+- GAQL "Impression share" query → CTR/conversion benchmarks to beat
+
+For single-campaign work, the per-campaign helpers are simpler:
+- `listAds(campaignId)` — existing headlines/descriptions
+- `getKeywords(campaignId)` — active keywords
+- `getSearchTermReport(campaignId)` — actual user queries
+- `getCampaignPerformance(campaignId)` — CTR benchmarks
 
 **Use seasonality context.** If business context shows peak months, factor that into copy urgency. During slow months, lean on evergreen value props. During peaks, lean on scarcity and timeliness.
 
@@ -311,7 +323,7 @@ After user approves a variant, push it live:
 - **Update existing:** `mcp__adsagent__updateAdAssets` — replace headlines/descriptions on a live ad
 - **Enable when ready:** `mcp__adsagent__enableAd`
 
-Always confirm before any write operation. Note the `changeId` returned — user can undo within 7 days via `mcp__adsagent__undoChange`.
+Always confirm before any write operation. Note the `changeId` returned — user can undo within 7 days (if the entity hasn't been modified since) via `mcp__adsagent__undoChange`.
 
 ### 6. A/B test (if running one)
 
@@ -356,7 +368,7 @@ After deciding a winner: pause the loser with `mcp__adsagent__pauseAd`, keep the
 2. **Research before writing.** Always pull current performance data. Don't write copy in a vacuum.
 3. **Character limits are hard.** Count every headline (<=30) and description (<=90). No exceptions. When in doubt, count again.
 4. **Never deploy without confirmation.** Show the exact copy, get a yes, then create/update.
-5. **Note changeIds.** Every write returns one. Tell the user they can undo within 7 days.
+5. **Note changeIds.** Every write returns one. Tell the user they can undo within 7 days (if the entity hasn't been modified since).
 6. **Ground copy in conversion data.** If conversion data is available, use the language that converts. Customer language > marketing language.
 7. **Seasonal awareness.** Check the business context for peak/slow months. Adjust urgency and messaging accordingly.
 8. **Defer to /ads for account management.** This skill writes copy and deploys ads. For bid/budget/keyword work, use `/ads`.
