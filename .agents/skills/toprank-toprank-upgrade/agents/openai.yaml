@@ -1,6 +1,0 @@
-interface:
-  display_name: "toprank-toprank-upgrade"
-  short_description: "Upgrade toprank skills to the latest version. Detects global vs vendored   install, runs the upgrade, and shows what's n"
-  default_prompt: "Use toprank-toprank-upgrade for this task."
-policy:
-  allow_implicit_invocation: true

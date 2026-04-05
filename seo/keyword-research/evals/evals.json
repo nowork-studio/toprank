@@ -1,0 +1,47 @@
+{
+  "skill_name": "keyword-research",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Find keyword opportunities for a boutique pet boarding facility in Austin, TX. We specialize in cage-free boarding and dog daycare.",
+      "expected_output": "A keyword research report with seed keywords expanded into clusters, intent classification for each keyword, difficulty assessment, and prioritized recommendations. Should include local keywords (Austin-specific), service keywords (cage-free, daycare), and long-tail opportunities.",
+      "files": [],
+      "expectations": [
+        "Generates 20+ keyword suggestions organized into topic clusters",
+        "Classifies each keyword by search intent (informational, commercial, transactional)",
+        "Includes local keyword variants with 'Austin' and 'near me'",
+        "Identifies long-tail opportunities (e.g., 'cage-free dog boarding austin tx')",
+        "Prioritizes keywords by a scoring framework (not just listed randomly)",
+        "Suggests content types for each cluster (blog post, landing page, FAQ)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I run a SaaS tool for restaurant inventory management. We're trying to build organic traffic from scratch — no existing content. What keywords should we start with?",
+      "expected_output": "A prioritized keyword strategy for a zero-content SaaS site, focusing on low-competition informational keywords first (content marketing funnel), then building toward commercial terms. Should identify the buyer journey and suggest a phased approach.",
+      "files": [],
+      "expectations": [
+        "Recommends starting with low-competition informational keywords (not jumping to high-competition commercial terms)",
+        "Maps keywords to a buyer journey or funnel (awareness → consideration → decision)",
+        "Includes question-based keywords that could drive early traffic",
+        "Identifies competitor landscape and suggests differentiated angles",
+        "Provides a phased content calendar or sequencing recommendation",
+        "Includes both B2B and practitioner keywords (restaurant owners AND managers)"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Research keywords around 'AI code review tools'. I want to understand the competitive landscape and find gaps.",
+      "expected_output": "A competitive keyword analysis showing what terms the major players rank for, where gaps exist, and which long-tail or question-based keywords are underserved. Should include GEO-relevant keywords (queries likely to trigger AI answers).",
+      "files": [],
+      "expectations": [
+        "Identifies major competitors in the space and their likely keyword targets",
+        "Finds gap keywords — terms with search demand but weak existing content",
+        "Includes comparison keywords ('X vs Y' format)",
+        "Flags GEO-relevant keywords where AI answers may appear in search",
+        "Distinguishes between developer-audience and manager-audience keywords",
+        "Provides actionable next steps (which keywords to write content for first)"
+      ]
+    }
+  ]
+}

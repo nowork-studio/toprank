@@ -1,0 +1,33 @@
+{
+  "skill_name": "setup-cms",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Connect my WordPress site to toprank.",
+      "expected_output": "The skill should detect if a CMS is already configured, then guide the user through WordPress setup: asking for the WordPress URL, username, and Application Password. It should explain how to create an Application Password in WordPress Admin.",
+      "files": [],
+      "expectations": [
+        "Runs CMS detection first to check for existing configuration",
+        "Asks for WordPress URL, username, and Application Password",
+        "Explains how to create an Application Password (WordPress Admin → Users → Profile)",
+        "Asks about content type (posts vs pages) with a default",
+        "Saves credentials to .env.local",
+        "Tests the connection after saving credentials"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I want to set up my Contentful space for SEO analysis.",
+      "expected_output": "The skill should guide the user through Contentful setup: asking for Space ID, Environment (with 'master' default), Delivery API key, and Content Type ID. Should explain where to find each value in the Contentful dashboard.",
+      "files": [],
+      "expectations": [
+        "Identifies the user wants Contentful (not generic CMS picker)",
+        "Asks for Space ID and explains where to find it (Settings → General)",
+        "Asks for Delivery API key and explains where to find it (Settings → API keys)",
+        "Offers 'master' as default environment",
+        "Asks for Content Type ID or helps the user identify it",
+        "Tests the connection with a preflight check after saving"
+      ]
+    }
+  ]
+}

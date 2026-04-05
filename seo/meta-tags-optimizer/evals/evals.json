@@ -1,0 +1,47 @@
+{
+  "skill_name": "meta-tags-optimizer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Optimize the meta tags for this page. Current title: 'Services - ABC Company'. Current description: 'We offer services.' Target keyword: 'commercial cleaning services dallas'.",
+      "expected_output": "Multiple title tag and meta description variations that include the target keyword, are within character limits (title ~60 chars, description ~155 chars), and are significantly more compelling than the generic originals. Should include character counts and explain why the originals are poor.",
+      "files": [],
+      "expectations": [
+        "Identifies specific problems with the current tags (generic, no keyword, no location, no value prop)",
+        "Generates 3+ title tag variations within ~60 character limit",
+        "Generates 3+ meta description variations within ~155 character limit",
+        "All variations include the target keyword or close variant",
+        "Includes character counts for each variation",
+        "At least one variation includes a CTA or urgency element in the description"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Create Open Graph and Twitter card meta tags for our new blog post: 'The Complete Guide to Sourdough Bread for Beginners'. URL: https://bakersjournal.com/sourdough-guide",
+      "expected_output": "Complete OG and Twitter Card meta tag HTML with og:title, og:description, og:image guidance, og:url, twitter:card, twitter:title, twitter:description. Tags should be optimized for social sharing with engaging copy distinct from the SEO meta description.",
+      "files": [],
+      "expectations": [
+        "Includes all required Open Graph tags (og:title, og:description, og:type, og:url)",
+        "Includes Twitter Card tags (twitter:card, twitter:title, twitter:description)",
+        "OG/Twitter descriptions are optimized for social engagement (may differ from SEO meta description)",
+        "Provides og:image guidance (recommended dimensions, format)",
+        "Output is valid HTML that can be copy-pasted into <head>",
+        "Explains the difference between SEO meta description and social meta tags"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "My homepage title is 'Best Plumber in Chicago | Fast & Affordable | 24/7 Emergency Service | Licensed & Insured | ABC Plumbing'. CTR from Google is only 1.2%. Help me fix it.",
+      "expected_output": "Diagnosis that the title is keyword-stuffed and too long (will be truncated in SERPs), followed by cleaner alternatives that balance keyword inclusion with readability. Should reference the low CTR as evidence the current approach isn't working.",
+      "files": [],
+      "expectations": [
+        "Identifies the title as too long and keyword-stuffed (Google will truncate it)",
+        "Calculates or estimates the character count and shows where truncation occurs",
+        "Explains why keyword stuffing hurts CTR (looks spammy in SERPs)",
+        "Provides 3+ shorter, cleaner alternatives within ~60 characters",
+        "Suggests a meta description to complement the new title",
+        "References the 1.2% CTR as below average and sets a realistic improvement target"
+      ]
+    }
+  ]
+}

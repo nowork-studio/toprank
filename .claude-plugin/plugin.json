@@ -5,5 +5,16 @@
   "author": {
     "name": "nowork-studio"
   },
-  "skills": "./skills/"
+  "skills": [
+    "./google-ads/ads",
+    "./google-ads/ads-audit",
+    "./google-ads/ads-copy",
+    "./seo/seo-analysis",
+    "./seo/content-writer",
+    "./seo/keyword-research",
+    "./seo/meta-tags-optimizer",
+    "./seo/schema-markup-generator",
+    "./seo/setup-cms",
+    "./toprank-upgrade-skill"
+  ]
 }

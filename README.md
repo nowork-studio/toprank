@@ -129,20 +129,20 @@ Add the marketplace and enable the plugin in `~/.claude/settings.json`:
 
 | Skill | What it does |
 |-------|-------------|
-| [`ads-audit`](skills/ads-audit/) | Account audit + business context setup. Run this first. Scores 7 health dimensions, identifies wasted spend, builds business profile. |
-| [`ads`](skills/ads/) | Campaign management. Read performance, optimize keywords, adjust bids/budgets, add negatives, create campaigns. |
-| [`ads-copy`](skills/ads-copy/) | RSA copy generator + A/B testing. Data-driven headlines and descriptions with character counts and pin positions. |
+| [`ads-audit`](google-ads/ads-audit/) | Account audit + business context setup. Run this first. Scores 7 health dimensions, identifies wasted spend, builds business profile. |
+| [`ads`](google-ads/ads/) | Campaign management. Read performance, optimize keywords, adjust bids/budgets, add negatives, create campaigns. |
+| [`ads-copy`](google-ads/ads-copy/) | RSA copy generator + A/B testing. Data-driven headlines and descriptions with character counts and pin positions. |
 
 ### SEO
 
 | Skill | What it does |
 |-------|-------------|
-| [`seo-analysis`](skills/seo-analysis/) | Full SEO audit with GSC data. Quick wins, traffic drops, technical issues, 30-day action plan. |
-| [`content-writer`](skills/content-writer/) | SEO content creation following E-E-A-T guidelines. Blog posts, landing pages, content improvements. |
-| [`keyword-research`](skills/keyword-research/) | Keyword discovery, intent classification, topic clusters, prioritized content calendar. |
-| [`meta-tags-optimizer`](skills/meta-tags-optimizer/) | Title tags, meta descriptions, OG/Twitter cards with A/B variations and CTR estimates. |
-| [`schema-markup-generator`](skills/schema-markup-generator/) | JSON-LD structured data for rich results. FAQ, HowTo, Article, Product, LocalBusiness. |
-| [`setup-cms`](skills/setup-cms/) | Connect WordPress, Strapi, Contentful, or Ghost for automated SEO field audits. |
+| [`seo-analysis`](seo/seo-analysis/) | Full SEO audit with GSC data. Quick wins, traffic drops, technical issues, 30-day action plan. |
+| [`content-writer`](seo/content-writer/) | SEO content creation following E-E-A-T guidelines. Blog posts, landing pages, content improvements. |
+| [`keyword-research`](seo/keyword-research/) | Keyword discovery, intent classification, topic clusters, prioritized content calendar. |
+| [`meta-tags-optimizer`](seo/meta-tags-optimizer/) | Title tags, meta descriptions, OG/Twitter cards with A/B variations and CTR estimates. |
+| [`schema-markup-generator`](seo/schema-markup-generator/) | JSON-LD structured data for rich results. FAQ, HowTo, Article, Product, LocalBusiness. |
+| [`setup-cms`](seo/setup-cms/) | Connect WordPress, Strapi, Contentful, or Ghost for automated SEO field audits. |
 
 All skills are namespaced: `/toprank:ads`, `/toprank:seo-analysis`, etc.
 
@@ -155,27 +155,21 @@ Toprank is a Claude Code plugin. Each skill is a `SKILL.md` file with supporting
 ```
 toprank/
 ├── .claude-plugin/
-│   ├── plugin.json              <- plugin metadata
+│   ├── plugin.json              <- plugin metadata (explicit skill paths)
 │   └── marketplace.json         <- registry entry
 ├── .mcp.json                    <- AdsAgent MCP server (auto-configured)
-├── skills/
-│   ├── seo-analysis/
-│   │   ├── SKILL.md             <- SEO audit workflow
-│   │   ├── scripts/             <- Python scripts for GSC API
-│   │   ├── references/          <- domain expertise docs
-│   │   └── evals/               <- quality tests
-│   ├── ads/
-│   │   ├── SKILL.md             <- Google Ads management
-│   │   ├── references/          <- benchmarks, decision trees
-│   │   └── evals/               <- quality tests
-│   ├── ads-audit/
-│   ├── ads-copy/
-│   ├── keyword-research/
-│   ├── meta-tags-optimizer/
-│   ├── schema-markup-generator/
-│   ├── content-writer/
-│   ├── setup-cms/
-│   └── toprank-upgrade/
+├── google-ads/
+│   ├── ads/                     <- campaign management
+│   ├── ads-audit/               <- account audit + business context
+│   └── ads-copy/                <- RSA copy generator + A/B testing
+├── seo/
+│   ├── seo-analysis/            <- full SEO audit with GSC data
+│   ├── content-writer/          <- E-E-A-T content creation
+│   ├── keyword-research/        <- keyword discovery + topic clusters
+│   ├── meta-tags-optimizer/     <- title tags, meta descriptions, OG
+│   ├── schema-markup-generator/ <- JSON-LD structured data
+│   └── setup-cms/               <- CMS connector
+├── toprank-upgrade-skill/       <- self-updater
 ├── test/                        <- unit + LLM-judge eval tests
 └── VERSION
 ```

@@ -1,0 +1,47 @@
+{
+  "skill_name": "schema-markup-generator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Generate FAQ schema for my dental practice page. FAQs:\n1. How much does teeth whitening cost? - Professional teeth whitening costs $300-$800 depending on the method.\n2. Does dental insurance cover whitening? - Most dental insurance plans do not cover cosmetic whitening.\n3. How long does whitening last? - Results typically last 6-12 months with proper care.",
+      "expected_output": "Valid JSON-LD FAQPage schema with all 3 Q&A pairs properly structured, ready to paste into HTML. Should include @context, @type, and mainEntity array with Question/Answer pairs.",
+      "files": [],
+      "expectations": [
+        "Output is valid JSON-LD (parseable JSON with @context and @type)",
+        "Uses FAQPage schema type with mainEntity array",
+        "All 3 questions and answers are included with correct Question/acceptedAnswer structure",
+        "Includes implementation instructions (where to place in HTML)",
+        "Mentions Google's FAQ rich result eligibility requirements",
+        "JSON-LD is wrapped in a <script type='application/ld+json'> tag"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Create schema markup for my local bakery: Sweet Crumbs Bakery, 456 Oak St, Portland OR 97201. Open Mon-Sat 7am-6pm, Sun 8am-3pm. Phone: 503-555-0123. We specialize in sourdough bread and custom cakes.",
+      "expected_output": "LocalBusiness JSON-LD schema with name, address (PostalAddress), telephone, openingHoursSpecification for each day, and relevant product/service mentions. Should use the most specific @type (Bakery, not just LocalBusiness).",
+      "files": [],
+      "expectations": [
+        "Uses Bakery as @type (more specific than generic LocalBusiness)",
+        "Includes properly structured PostalAddress with street, city, state, zip",
+        "Has openingHoursSpecification for Mon-Sat and Sunday with different hours",
+        "Includes telephone in proper format",
+        "Mentions or includes product/service offerings (sourdough, custom cakes)",
+        "Output is valid, parseable JSON-LD"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I have a product page for 'Premium Yoga Mat - EcoFlex Pro'. Price: $89.99. Rating: 4.7/5 from 234 reviews. In stock. Brand: EcoFlex. Generate the right schema.",
+      "expected_output": "Product schema with AggregateRating and Offer sub-schemas. Should include name, brand, offers (price, currency, availability), and aggregateRating (ratingValue, reviewCount). May also suggest Review schema for individual reviews.",
+      "files": [],
+      "expectations": [
+        "Uses Product @type with correct name and brand",
+        "Includes Offer with price (89.99), priceCurrency (USD), and availability (InStock)",
+        "Includes AggregateRating with ratingValue (4.7) and reviewCount (234)",
+        "Uses Schema.org availability enum (https://schema.org/InStock)",
+        "Output is valid JSON-LD that would pass Google's Rich Results Test",
+        "Suggests additional properties that could enhance the rich result (image, description, sku)"
+      ]
+    }
+  ]
+}

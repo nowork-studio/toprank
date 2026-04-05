@@ -1,0 +1,49 @@
+{
+  "skill_name": "content-writer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a blog post targeting the keyword 'how to clean a dryer vent'. My site is a home services company called CleanAir Pros based in Denver.",
+      "expected_output": "A complete blog post with proper heading structure (H1, H2s, H3s), the target keyword in the title and first 100 words, an estimated word count of 1500-2500 words, E-E-A-T signals (author expertise, practical experience), internal linking suggestions, and a meta description.",
+      "files": [],
+      "expectations": [
+        "Title includes the target keyword 'how to clean a dryer vent' or close variant",
+        "Content has a clear heading hierarchy with H2s for major sections",
+        "Includes practical step-by-step instructions (not just theory)",
+        "References Denver or local context where relevant",
+        "Includes E-E-A-T signals — mentions experience, expertise, or practical knowledge",
+        "Suggests a meta description with character count",
+        "Content is genuinely helpful and would satisfy the search intent (informational how-to)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Improve this landing page content for our dog grooming service. Target keyword: 'dog grooming austin'. Here's the current page:\n\n# Dog Grooming\n\nWe groom dogs. Our groomers are experienced. We offer baths, haircuts, and nail trims.\n\nCall us today!\n\nPrices start at $40.",
+      "expected_output": "A rewritten landing page that is conversion-focused, includes the target keyword naturally, adds social proof sections, has a clear CTA, includes service details with pricing structure, and addresses customer pain points. Should identify that the original is thin content with no location specificity, no trust signals, and no differentiation.",
+      "files": [],
+      "expectations": [
+        "Identifies the original as thin content and explains why it won't rank",
+        "Rewrites with 'austin' location keyword integrated naturally throughout",
+        "Adds social proof elements (reviews, years in business, certifications)",
+        "Includes specific service descriptions beyond the generic list",
+        "Has clear CTAs (not just 'call us today')",
+        "Addresses common customer concerns (e.g., anxiety, breed-specific needs)",
+        "Resulting content is meaningfully longer and more detailed than the original"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I need a comparison landing page: 'tankless vs tank water heaters'. We sell and install both but want to push tankless. We're Pacific Plumbing in Portland, OR.",
+      "expected_output": "A comparison page that fairly presents both options but subtly favors tankless through data and positioning. Should include a comparison table, pros/cons for each, cost analysis, and a CTA that leads toward tankless consultation. The content should satisfy commercial investigation intent.",
+      "files": [],
+      "expectations": [
+        "Includes a comparison table or structured comparison format",
+        "Presents both options fairly (not a one-sided sales pitch)",
+        "Uses data points (energy savings, lifespan, upfront cost vs long-term) to favor tankless",
+        "Includes Portland/Oregon-specific context (climate, energy costs, rebates)",
+        "Has conversion elements (CTA for consultation, phone number placeholder)",
+        "Satisfies commercial investigation search intent — helps the reader make a decision"
+      ]
+    }
+  ]
+}

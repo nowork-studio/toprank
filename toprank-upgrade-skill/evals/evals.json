@@ -1,0 +1,30 @@
+{
+  "skill_name": "toprank-upgrade",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Upgrade toprank to the latest version.",
+      "expected_output": "The skill should detect the install type (global-git, local-git, or vendored), save the current version, run the appropriate upgrade command, and show a What's New summary from the CHANGELOG.",
+      "files": [],
+      "expectations": [
+        "Detects the install type by checking known paths in order",
+        "Saves the old version number before upgrading",
+        "Runs the correct upgrade method for the detected install type",
+        "Shows a What's New summary with bullet points from CHANGELOG",
+        "Reports the version change (old → new)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Is toprank up to date?",
+      "expected_output": "The skill should run a forced update check and report whether the user is on the latest version. If already up to date, it should confirm with the current version number. If an update is available, it should offer to upgrade.",
+      "files": [],
+      "expectations": [
+        "Runs the update check script with --force flag",
+        "If already latest: tells the user their current version and confirms it's up to date",
+        "If update available: shows old vs new version and offers to upgrade",
+        "Does not attempt an upgrade without user confirmation when just checking"
+      ]
+    }
+  ]
+}

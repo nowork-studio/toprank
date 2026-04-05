@@ -1,6 +1,0 @@
-interface:
-  display_name: "toprank-content-writer"
-  short_description: "Write SEO-optimized blog posts, landing pages, and content improvements   following Google's E-E-A-T and Helpful Content"
-  default_prompt: "Use toprank-content-writer for this task."
-policy:
-  allow_implicit_invocation: true

@@ -1,1 +1,0 @@
-/Users/tongchen/Documents/Projects/ads-agent/.claude/skills/toprank/schema-markup-generator/SKILL.md

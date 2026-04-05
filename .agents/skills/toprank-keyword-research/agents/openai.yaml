@@ -1,6 +1,0 @@
-interface:
-  display_name: "toprank-keyword-research"
-  short_description: "Discover, analyze, and prioritize keywords for SEO and GEO content strategies.   Identifies high-value opportunities bas"
-  default_prompt: "Use toprank-keyword-research for this task."
-policy:
-  allow_implicit_invocation: true
