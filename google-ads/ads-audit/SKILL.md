@@ -17,6 +17,32 @@ This is the starting point for any Google Ads account. It does two things:
 
 Run this before anything else. If another ads skill finds `business-context.json` missing, it should point the user here.
 
+## Scope Detection
+
+The user may pass arguments that narrow the audit to specific campaigns, services, or focus areas. Parse the arguments before starting data collection.
+
+### How to determine scope
+
+| User says | Scope | Behavior |
+|-----------|-------|----------|
+| No arguments / "audit my ads" | **Full account** | Audit all campaigns, all dimensions |
+| "focus on grooming" / "grooming campaigns" | **Service-scoped** | Filter to campaigns matching the service keyword. Still pull account-level data for context (conversion tracking, account settings), but deep-dive analysis, scoring, and recommendations focus on the matched campaigns only |
+| "campaign X" / specific campaign name | **Campaign-scoped** | Same as service-scoped but matched to exact campaign(s) |
+| "just check wasted spend" / "impression share" | **Dimension-scoped** | Full data pull but report only the requested dimension(s) in depth. Scorecard still shows all 7 dimensions for context, but detailed findings and actions focus on the requested area |
+
+### Scope threading rules
+
+1. **Always pull `listCampaigns` unfiltered first** — you need the full picture to identify which campaigns match the scope and to calculate account-wide metrics like total spend (needed for waste percentages)
+2. **Filter deep-dive data to scoped campaigns** — In Phase 1B, only pull per-campaign data (`getCampaignSettings`, `getKeywords`, `getSearchTermReport`, `listAds`) for campaigns matching the scope. This saves API calls and keeps the analysis focused
+3. **Score dimensions relative to scope** — If scoped to grooming campaigns, keyword health score reflects grooming keywords only, not the whole account. Make this explicit in the report header: "Scoped to: [Grooming campaigns]"
+4. **Account-wide dimensions still get scored** — Conversion tracking and account settings are account-level regardless of scope. Score them normally but note when issues affect the scoped campaigns specifically
+5. **Persona discovery uses scoped data** — Build personas from search terms within the scoped campaigns only
+6. **Business context is always full-account** — `business-context.json` captures the whole business, not just the scoped segment. Don't narrow business context to the scope
+
+### Scope matching
+
+Match campaign names, ad group names, and keyword themes using case-insensitive substring matching. For example, "grooming" matches campaigns named "Tukwila Grooming Search", "Grooming Test", etc. If no campaigns match, tell the user what campaigns exist and ask them to clarify.
+
 ## Reference Documents
 
 Read these reference documents during analysis for expert-level context:
@@ -58,13 +84,32 @@ Pull these simultaneously — they don't require campaign IDs and they tell you 
 - `getConversionActions` — what conversions are set up
 - `getRecommendations` — Google's optimization suggestions
 
+**After Phase 1A, apply scope filtering:** If the user specified a scope (see Scope Detection above), identify which campaigns match. Log the matched campaigns and their IDs. If no campaigns match, stop and ask the user to clarify. For the rest of the audit, "active campaigns" means scope-matched campaigns (or all campaigns if no scope was specified).
+
 ### Phase 1B: Adaptive data pull (depends on account size)
 
-Count the enabled campaigns with spend from Phase 1A, then follow the cookbook:
+Count the **in-scope** enabled campaigns with spend from Phase 1A, then follow the cookbook. When scoped, only pull per-campaign data for in-scope campaigns — but still run account-wide GAQL queries (they're cheap and provide context for scoring):
 
-- **1-3 campaigns:** Run all 7 standard GAQL queries in parallel. Also run `getCampaignSettings(campaignId)` and `listAds(campaignId)` per campaign (needed for Display Network detection, bidding strategy assessment, and ad copy scoring). Done.
-- **4-10 campaigns:** Run all 7 GAQL queries + `getCampaignSettings` and `listAds` for top 3-5 campaigns by spend. If keywords or search terms hit the 50-row limit, supplement with `getKeywords`/`getSearchTermReport` for the top 2-3 campaigns.
-- **10+ campaigns:** Use the tiered approach — GAQL for account-wide overview (impression share, ad groups, negatives, daily performance), then per-campaign helpers (`getCampaignSettings`, `getKeywords`, `getSearchTermReport`, `listAds`) for the top campaigns that cover 80% of spend.
+- **1-3 in-scope campaigns:** Run all 7 standard GAQL queries in parallel. Also run `getCampaignSettings(campaignId)` and `listAds(campaignId)` per in-scope campaign (needed for Display Network detection, bidding strategy assessment, and ad copy scoring). Done.
+- **4-10 in-scope campaigns:** Run all 7 GAQL queries + `getCampaignSettings` and `listAds` for top 3-5 in-scope campaigns by spend. If keywords or search terms hit the 50-row limit, supplement with `getKeywords`/`getSearchTermReport` for the top 2-3 in-scope campaigns.
+- **10+ in-scope campaigns:** Use the tiered approach — GAQL for account-wide overview (impression share, ad groups, negatives, daily performance), then per-campaign helpers (`getCampaignSettings`, `getKeywords`, `getSearchTermReport`, `listAds`) for the top in-scope campaigns that cover 80% of in-scope spend.
+
+### Geo-targeting verification
+
+`getCampaignSettings` has a known blind spot: it often returns empty `locationTargeting` and `null` `proximityTargeting` even when campaigns have active geo-targeting. Always verify geo-targeting via GAQL for each in-scope campaign:
+
+```
+SELECT campaign.id, campaign.name,
+       campaign_criterion.type, campaign_criterion.negative,
+       campaign_criterion.location.geo_target_constant,
+       campaign_criterion.proximity.radius,
+       campaign_criterion.proximity.radius_units
+FROM campaign_criterion
+WHERE campaign.id IN (<in-scope campaign IDs>)
+  AND campaign_criterion.type IN ('LOCATION', 'PROXIMITY')
+```
+
+`radius_units` values: 0 = meters, 1 = kilometers, 2 = miles. Do NOT claim "no geo-targeting" based solely on `getCampaignSettings` — the GAQL query is authoritative.
 
 ### Fallback
 
@@ -75,6 +120,8 @@ If `runGaqlQuery` errors or is unavailable, fall back to per-campaign helper too
 ## Phase 2: Analyze and Score
 
 Work through each dimension. For each one, assign a numeric score (0-5) and a status label.
+
+**Scope-aware scoring:** When the audit is scoped, score campaign-level dimensions (structure, keyword health, search terms, ad copy, impression share, spend efficiency) using only in-scope data. Account-level dimensions (conversion tracking) are scored account-wide but with notes about how issues affect the scoped campaigns. The overall health score reflects scoped performance — this gives the user a focused view of the area they care about.
 
 ### Scoring Framework
 
@@ -232,11 +279,7 @@ WASTED SPEND =
     Spend on campaigns with Display Network enabled where display clicks > 20 AND display conversions = 0
 ```
 
-Express as:
-1. Dollar amount (30 days)
-2. Percentage of total spend
-3. Annualized projection
-4. Breakdown by category with specific keywords/terms named
+Use these numbers internally for scoring. In the report, mention the total waste figure in the verdict paragraph. Individual wasteful keywords/terms appear as evidence under the relevant dimension (keyword health or search term quality) — max 3 examples per category, not exhaustive lists.
 
 ## Phase 2.5: Persona Discovery
 
@@ -256,7 +299,7 @@ Discover 2-3 customer personas from the ad data. This runs in parallel with Phas
 
 ### Persona Template
 
-For each discovered persona:
+Use this full template for the persisted JSON file. In the **report output**, personas appear as a compact 3-column table (name, example searches, value) — see Phase 4. The JSON file has the full detail for downstream skills like `/ads-copy`:
 
 | Field | Description | Example |
 |-------|-------------|---------|
@@ -301,7 +344,9 @@ These personas feed directly into `/ads-copy` for headline generation and `/ads`
 
 ## Phase 3: Build Business Context
 
-Now that you understand the account, fill in the business context. Pull as much as possible from the data you already have — only ask the user for what you can't infer.
+**Skip this phase for scoped audits if `~/.adsagent/business-context.json` already exists and has a recent `audit_date`.** A scoped audit (e.g., "focus on grooming") should deliver findings fast, not re-interview the user. Only run Phase 3 on the first full-account audit or if business-context.json is missing/stale (>90 days old).
+
+Pull as much as possible from the data you already have — only ask the user for what you can't infer.
 
 ### What to infer from account data
 
@@ -381,80 +426,62 @@ Include `audit_date` (today's date) and `account_id` so future skills know when 
 
 ## Phase 4: Deliver the Audit Report
 
-Present findings as a concise, actionable report. No fluff — every line should either inform a decision or recommend an action.
+The report follows an **onion structure** — lead with the verdict, then actions, then evidence. The reader should get the full picture in the first 10 lines, and only needs to keep reading if they want the supporting data.
 
-### Report format
+**The #1 rule: no duplication.** Each finding appears in exactly one place. The scorecard summarizes, the actions tell you what to do, the evidence shows why. If something is in the scorecard's "Key Finding" column, don't repeat it in the evidence section.
+
+### Report structure
 
 ```
-# Google Ads Audit: [Business Name]
-**Account:** [ID] | **Period:** Last 30 days | **Date:** [today]
+# [Business Name] — Ads Audit
+**[Score]/100 · $X,XXX spent (30d) · XX conversions at $XX CPA**
+[If scoped] Scoped to: [description]
+
+[2-3 sentence verdict. What's working, what's broken, and the single biggest
+opportunity in dollar terms. This paragraph should be enough for someone who
+won't read further.]
+
+## What to Fix (in order)
+
+1. **[Specific action]** — [1-line why + expected dollar/conversion impact]
+2. **[Specific action]** — [1-line why + expected impact]
+3. **[Specific action]** — [1-line why + expected impact]
+
+Run `/ads` to execute any of these.
 
 ## Scorecard
-| Dimension            | Score (0-5) | Status    | Key Finding                          |
-|----------------------|-------------|-----------|--------------------------------------|
-| Conversion tracking  | X           | [label]   | [one line — the most important fact] |
-| Campaign structure   | X           | [label]   | [one line]                           |
-| Keyword health       | X           | [label]   | [one line]                           |
-| Search term quality  | X           | [label]   | [one line]                           |
-| Ad copy              | X           | [label]   | [one line]                           |
-| Impression share     | X           | [label]   | [one line]                           |
-| Spend efficiency     | X           | [label]   | [one line]                           |
 
-## Overall Health: [0-100] — [Critical / Needs Work / OK / Strong / Excellent]
+| Dimension | Score | Key Finding |
+|-----------|-------|-------------|
+| Conversion tracking | X/5 | [one line] |
+| Campaign structure | X/5 | [one line] |
+| Keyword health | X/5 | [one line] |
+| Search term quality | X/5 | [one line] |
+| Ad copy | X/5 | [one line] |
+| Impression share | X/5 | [one line] |
+| Spend efficiency | X/5 | [one line] |
 
-## Key Numbers
-- **Total spend (30d):** $X,XXX
-- **Conversions:** XX at $XX.XX CPA
-- **Top campaign:** [name] — XX% of spend, XX% of conversions
-- **Wasted spend (30d):** $X,XXX (XX% of total)
-- **Annualized waste:** ~$XX,XXX
+## Evidence
 
-## Wasted Spend Analysis
-**Total wasted spend (30d):** $X,XXX (XX% of total spend)
-- Non-converting keywords: $X,XXX across N keywords
-  - [keyword 1]: $XXX spent, XX clicks, 0 conversions — [diagnosis]
-  - [keyword 2]: $XXX spent, XX clicks, 0 conversions — [diagnosis]
-  - ... (top 5 by spend)
-- Irrelevant search terms: ~$X,XXX estimated
-  - [term 1]: $XXX, XX clicks — [why it's irrelevant]
-  - [term 2]: $XXX, XX clicks — [why it's irrelevant]
-  - ... (top 5 by spend)
-- Display/structural waste: $XXX (if applicable)
+[Only include dimensions scoring 0-2. Each dimension gets ONE compact block.
+Do NOT repeat what's already in the scorecard or actions — add the supporting
+data that explains the score.]
 
-## Impression Share Analysis
-**Current Search IS:** XX% | **Budget-Lost:** XX% | **Rank-Lost:** XX%
+### [Dimension] (X/5)
+[2-4 lines of data: the specific keywords, search terms, or metrics that
+drove the score. Top 3 examples max — not exhaustive lists. End with the
+fix if it wasn't already an action item above.]
 
-[Use the 2x2 matrix interpretation to diagnose]
+## Personas
 
-Diagnosis: [e.g., "This is primarily a budget problem — the campaign runs out of budget by 2pm daily. 
-Increasing budget 30% would capture an estimated X additional conversions at similar CPA."]
+| Persona | Example searches | Value |
+|---------|-----------------|-------|
+| [name] | [2-3 terms] | [why they matter] |
 
-## Personas Discovered
-| Persona | Searches like... | Converts on... | Value |
-|---------|-----------------|----------------|-------|
-| [name] | [2-3 example search terms] | [converting keywords/services] | [high/med/low + why] |
+## Questions for You
 
-Personas saved to `~/.adsagent/personas/{accountId}.json` — used by `/ads-copy` for headline generation.
-
-## Top 3 Actions (do these first)
-1. **[Action]** — [why, expected impact in dollars or conversions]
-2. **[Action]** — [why, expected impact]
-3. **[Action]** — [why, expected impact]
-
-## Detailed Findings
-[Organized by dimension — only include dimensions that scored 0-3.
-For each, state the problem, show the data, recommend the fix.]
-
-### [Dimension Name] — Score X/5
-**Problem:** [specific issue with numbers]
-**Data:** [the evidence]
-**Fix:** [specific action, which tool/skill to use]
-**Impact:** [estimated improvement in dollars or conversions]
-
-## Business Context Saved
-Saved to `~/.adsagent/business-context.json` — other ads skills
-(/ads-copy, /ads-landing, /ads-compete) will use this automatically.
-[List any fields that are incomplete and need user input later.]
+[Only if business context has gaps that matter for the recommendations.
+Max 2-3 questions. Don't ask what you can infer from the data.]
 ```
 
 ### What makes a good action item
@@ -463,63 +490,32 @@ Saved to `~/.adsagent/business-context.json` — other ads skills
 - **Quantified:** Include the spend, impressions, or conversions at stake
 - **Prioritized:** Highest-impact items first. Stopping waste > starting new things
 - **Actionable with /ads:** Every recommendation should be something the user can execute immediately using the `/ads` skill
-- **Dollar-denominated:** Whenever possible, express impact as "save $X/month" or "gain X conversions/month at $Y CPA"
+- **Dollar-denominated:** Express impact as "save $X/month" or "gain X conversions/month at $Y CPA"
 
-### Scoring thresholds for action priority
+### Output discipline
 
-| Overall Score | Recommended Next Step |
-|---------------|----------------------|
-| 0-25 | "Your account has critical issues. I'd recommend pausing spend on the worst campaigns and fixing conversion tracking and structure before resuming." |
-| 26-50 | "There's significant waste to eliminate. Let's fix the top 3 issues — I estimate that saves $X/month. Run `/ads` to execute." |
-| 51-75 | "The account is functional but leaving money on the table. The optimizations below could improve CPA by 15-30%." |
-| 76-100 | "This is a well-managed account. The suggestions below are marginal improvements — focus on scaling what's working." |
+These rules prevent the bloated, repetitive reports that make audits hard to read:
 
-## Conditional Handoffs
+1. **No standalone "Key Numbers" section.** The headline already has spend, conversions, and CPA. Don't repeat them.
+2. **No standalone "Wasted Spend Analysis" section.** Waste data belongs in the relevant Evidence dimension (keyword health or search term quality). Mention the total in the verdict paragraph.
+3. **No standalone "Impression Share Analysis" section.** The diagnosis belongs in the scorecard line + Evidence block if IS scored 0-2.
+4. **Max 3 examples per finding.** Show the top 3 by spend, not an exhaustive list. The user can drill deeper with `/ads`.
+5. **Evidence sections are for data, not narrative.** Don't explain what QS is or how impression share works — just show the numbers that matter.
+6. **The entire report should fit in ~60-80 lines of markdown.** If you're over 100 lines, you're duplicating or over-explaining.
 
-After delivering the report, proactively offer the right next step based on what the audit found.
+### Conditional handoff (pick the single most relevant one)
 
-### Ad Copy Issues
+After the report, add ONE handoff based on the biggest issue found:
 
-If ad copy scored 0-2 (low CTR, low headline variety, few RSAs per ad group):
+| Condition | Handoff |
+|-----------|---------|
+| Ad copy scored 0-2 | Suggest `/ads-copy` for RSA variants |
+| Impression share scored 0-2 | Suggest `/ads` for bid optimization |
+| 3+ converting search terms not yet keywords | Offer to add them via `/ads` |
+| Wasted spend > 15% | Offer to pause/negative via `/ads` |
+| High CTR but low conversion rate | Suggest landing page audit |
 
-> "Your ad copy needs work — [N] ad groups have CTR below [X]% (industry average is [Y]%). Run `/ads-copy` to generate better RSA variants with A/B testing. It'll use the business context I just saved."
-
-### Impression Share / Bid Issues
-
-If impression share scored 0-2 (high budget-lost or rank-lost IS):
-
-> "You're losing [X]% of potential traffic to [budget/rank]. Run `/ads` to optimize bids on your best keywords — I estimate [N] additional conversions/month are available."
-
-### Keyword Gaps
-
-If search term analysis found 3+ converting terms not yet added as keywords:
-
-> "I found [N] search terms converting that aren't keywords yet. Want me to add them now via `/ads`? Here they are:
-> | Term | Conversions | CPA | Recommended Match Type |"
-
-### Waste Elimination
-
-If wasted spend > 15% of total:
-
-> "You're wasting ~$[X]/month ([Y]% of spend). Want me to pause the non-converting keywords and add the negative keywords? I'll show each change before making it. Run `/ads` to execute."
-
-### Landing Page Problems
-
-If CTR is above industry benchmark (check `../ads/references/industry-benchmarks.md`) but conversion rate is below industry average across multiple ad groups:
-
-> "Your ads get clicks but conversions are low — the landing pages likely don't match the ad promise. Run `/ads-landing` to audit keyword-to-landing-page alignment."
-
-### Competitive Intelligence
-
-If impression share is declining or the user asks about competitors:
-
-> "Run `/ads-compete` to monitor your competitive landscape — see who's bidding on your terms and how your share is trending."
-
-### Always Offer
-
-At the end of every audit:
-
-> "Run `/ads` to execute any of these recommendations. I've saved your business context and personas — all ads skills will use them automatically."
+Don't list all possible handoffs — pick the one that matches the #1 action item.
 
 ## Rules
 
