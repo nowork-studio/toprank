@@ -125,7 +125,7 @@ All write tools return a `changeId` on success. Use this with `undoChange` to re
 - **enableKeyword** — Re-enable a paused keyword (needs adGroupId + criterionId only — no campaignId, unlike pauseKeyword)
 - **addKeyword** — Add a new keyword to an ad group
 - **updateBid** — Change CPC bid (manual/enhanced CPC only, max 25% change)
-- **addNegativeKeyword** — Block irrelevant search terms (always phrase match at campaign level — no exact match or account-level option)
+- **addNegativeKeyword** — Block irrelevant search terms at campaign level (supports BROAD, PHRASE, or EXACT match; default: PHRASE)
 - **removeNegativeKeyword** — Remove a negative keyword
 - **updateCampaignBudget** — Change daily budget (max 50% change, min $1/day)
 - **createCampaign** — Create a full paused search campaign. Headlines (3-15, max 30 chars each), descriptions (2-4, max 90 chars each), finalUrl required. Default bidding: MAXIMIZE_CONVERSIONS
@@ -322,17 +322,17 @@ Evaluate every keyword against the account's average CPA. If the account has no 
 
 Analyze every search term report with these rules. Cross-reference `references/search-term-analysis-guide.md` for the full relevance scoring methodology.
 
-**Tool constraint:** `addNegativeKeyword` only supports **phrase match at campaign level**. No exact match or account-level negatives are available via the tool. Keep this in mind when applying the rules below.
+`addNegativeKeyword` supports **BROAD, PHRASE, or EXACT** match types at campaign level (default: PHRASE). No account-level negatives — add to each campaign individually.
 
 | Condition | Action | Match Type |
 |-----------|--------|------------|
 | 3+ conversions, not already a keyword | Add as keyword | Phrase match initially — let it prove itself before going broad |
 | 1-2 conversions, relevant to business | Flag for review — add if CPA is acceptable | Exact match to control spend |
-| 0 conversions, 10+ clicks | Add as negative | Phrase match at campaign level (only option via `addNegativeKeyword`) |
+| 0 conversions, 10+ clicks | Add as negative | Phrase match at campaign level |
 | 0 conversions, 5-9 clicks | Flag for review — check: is it relevant? Is the landing page right? | May need more data OR a landing page fix, not a negative |
 | 0 conversions, <5 clicks | Too early — skip unless clearly irrelevant | — |
-| Clearly irrelevant (competitor name, wrong service, wrong location) | Add as negative immediately regardless of click count | Phrase match at campaign level (covers competitor names sufficiently since phrase match blocks any query containing the term) |
-| Contains "free", "DIY", "jobs", "salary" (non-commercial intent) | Add as negative unless the business serves that intent | Phrase match at campaign level — add to each relevant campaign individually |
+| Clearly irrelevant (competitor name, wrong service, wrong location) | Add as negative immediately regardless of click count | Exact match for competitor names (precise blocking), phrase match for wrong services (broader blocking) |
+| Contains "free", "DIY", "jobs", "salary" (non-commercial intent) | Add as negative unless the business serves that intent | Phrase match — add to each relevant campaign individually |
 | Brand misspelling or variation | Add as keyword if not already covered | Exact match |
 
 ### Impression Share
@@ -417,7 +417,7 @@ Wasted Spend Breakdown (Last 30 Days):
 
 **Step 1: Pull data (parallel — 4 calls total)**
 - `getAccountInfo` — business name, currency
-- `listCampaigns(limit: 100)` — all campaigns with spend, clicks, conversions
+- `listCampaigns` — all campaigns with spend, clicks, conversions
 - `runGaqlQuery` — impression share for all campaigns (see `../shared/gaql-cookbook.md` "Impression share" pattern)
 - `runGaqlQuery` — daily performance (use LAST_7_DAYS for 2+ campaigns to stay under 50-row limit, see `../shared/gaql-cookbook.md`)
 
@@ -435,7 +435,7 @@ Wasted Spend Breakdown (Last 30 Days):
 **Step 1: Pull data (2 phases, see `../shared/gaql-cookbook.md`)**
 
 *Phase 1 (parallel — 4 calls):*
-- `listCampaigns(limit: 100)` → all campaigns + identify top 3 by spend
+- `listCampaigns` → all campaigns + identify top 3 by spend
 - `runGaqlQuery` → "Zero-conversion high-spend keywords" pattern (directly surfaces waste)
 - `runGaqlQuery` → "Search terms" pattern (ordered by spend, for irrelevant term detection)
 - `runGaqlQuery` → "Negative keywords" pattern (current coverage)
@@ -466,7 +466,7 @@ For each waste source, show:
 **Step 1: Pull data (2 phases, see `../shared/gaql-cookbook.md`)**
 
 *Phase 1 (parallel):*
-- `listCampaigns(limit: 100)` → size the account
+- `listCampaigns` → size the account
 - GAQL "Keywords with QS" query → all keywords with CPA, CPC, conversions, QS across campaigns
 - GAQL "Impression share" query → where bid increases would capture more traffic
 
@@ -495,7 +495,7 @@ For each waste source, show:
 **Step 1: Pull data (2 phases, see `../shared/gaql-cookbook.md`)**
 
 *Phase 1 (parallel):*
-- `listCampaigns(limit: 100)` → size the account + identify top campaigns
+- `listCampaigns` → size the account + identify top campaigns
 - GAQL "Keywords with QS" query → find keywords with conversions > 2, CPA < avg, QS > 6
 - GAQL "Converting search terms" query → search terms with conversions (cross-reference against keyword list to find gaps)
 - GAQL "Impression share" query → how much more traffic is available
@@ -517,7 +517,7 @@ For each action, estimate the impact:
 ### "Fix quality scores" — QS Diagnostic
 
 **Step 1: Pull data (parallel, see `../shared/gaql-cookbook.md`)**
-- `listCampaigns(limit: 100)` → size the account
+- `listCampaigns` → size the account
 - GAQL "Keywords with QS" query → all keywords with QS across campaigns
 - GAQL "Ad groups" query → ad group structure
 - GAQL "Ad copy" query → RSA headlines/descriptions per ad group
@@ -539,7 +539,7 @@ Fix high-spend, low-QS keywords first — they waste the most money. A QS improv
 **Step 1: Pull data (2 phases, see `../shared/gaql-cookbook.md`)**
 
 *Phase 1 (parallel):*
-- `listCampaigns(limit: 100)` → all campaigns + size the account
+- `listCampaigns` → all campaigns + size the account
 - GAQL "Ad groups" query → ad group structure across all campaigns
 - GAQL "Keywords with QS" query → keyword themes per ad group
 - GAQL "Negative keywords" query → current coverage (note: truncates at 50 rows, supplement with `getNegativeKeywords` per campaign for full picture)

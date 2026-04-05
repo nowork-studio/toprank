@@ -89,7 +89,7 @@ Before asking the user anything, try to fill fields from what's already availabl
 
 1. **Account-level (parallel, no campaignId needed):**
    - `getAccountInfo` → business name, location hints
-   - `listCampaigns(limit: 100)` → service categories from campaign names, identify top campaigns by spend
+   - `listCampaigns` → service categories from campaign names, identify top campaigns by spend
 
 2. **Per-campaign (parallel, requires campaignId from step 1):**
    - `listAds(campaignId)` → current voice, headlines in use

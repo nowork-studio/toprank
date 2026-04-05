@@ -54,7 +54,7 @@ Pull these simultaneously — they don't require campaign IDs and they tell you 
 
 - `getAccountInfo` — business name, currency, timezone
 - `getAccountSettings` — auto-tagging, tracking template, conversion setup
-- `listCampaigns(limit: 100)` — all campaigns with spend, clicks, conversions **(also serves as the sizing probe — always pass limit: 100, default is 20)**
+- `listCampaigns` — all campaigns with spend, clicks, conversions **(also serves as the sizing probe — default limit is 100)**
 - `getConversionActions` — what conversions are set up
 - `getRecommendations` — Google's optimization suggestions
 
