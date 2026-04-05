@@ -37,7 +37,7 @@ If there are 0 pending reviews, skip to Step 2 silently.
 
 If there are pending reviews:
 
-1. Pull current metrics for the affected campaigns using `listCampaigns` and `getCampaignPerformance` (7-day window ending today, plus the 7 days before the change for comparison). Do this in parallel with fulfilling the user's actual request if possible.
+1. Pull current metrics for the affected campaigns using `listCampaigns` and `getCampaignPerformance` (7-day window ending today). Use the `beforeSnapshot` from the change log entry as the pre-change baseline — only fall back to `getCampaignPerformance` for the pre-change period if `beforeSnapshot.metrics` is null. Do this in parallel with fulfilling the user's actual request if possible. Save the `listCampaigns` result for reuse in Step 2.
 
 2. For each pending review, compute the delta:
    - Compare the `beforeSnapshot` metrics to current metrics for the same entities
@@ -71,14 +71,14 @@ If there are pending reviews:
 
 Read `~/.adsagent/account-baseline.json`. If it exists AND was last updated more than 24 hours ago:
 
-1. Pull `listCampaigns` to get current metrics (you may already have this data from Step 1).
-1. Compare each campaign's 7-day metrics to the `rolling30d` baseline.
-1. Flag any campaign where:
+1. Get current campaign metrics — reuse the `listCampaigns` result from Step 1 if available, otherwise call `listCampaigns` now.
+2. Compare each campaign's 7-day metrics to the `rolling30d` baseline.
+3. Flag any campaign where:
 - CPA is >1.5x the 30-day rolling average
 - Conversions dropped >40% vs 30-day average (with no corresponding budget decrease)
 - Spend rate is >1.5x the 30-day daily average (runaway spend)
 - CTR dropped >30% vs 30-day average
-1. If anomalies found, mention them briefly:
+4. If anomalies found, mention them briefly:
 
 > "Heads up: [Campaign X] CPA spiked to $Y this week — that's 60% above its usual $Z. Worth investigating."
 5. Update the baseline (see Account Baseline section below).
@@ -277,7 +277,7 @@ After every successful write operation, log the change to `~/.adsagent/change-lo
 }
 ```
 
-2. **Capture before-metrics.** Before executing the write, pull the current metrics for the entities being changed. Use the data you already have in context from the analysis that led to this action — do NOT make extra API calls just for the snapshot. If you don't have metrics in context (e.g., user directly asked to pause a keyword without an analysis), note `"beforeSnapshot": { "note": "No pre-change metrics available — direct user action" }`.
+2. **Capture before-metrics.** Before executing the write, pull the current metrics for the entities being changed. Use the data you already have in context from the analysis that led to this action — do NOT make extra API calls just for the snapshot. If you don't have metrics in context (e.g., user directly asked to pause a keyword without an analysis), note `"beforeSnapshot": { "metrics": null, "note": "No pre-change metrics available — direct user action" }`.
 3. **Set the review window.** Use these defaults:
 - Bid changes: 7 days
 - Keyword pauses/enables: 7 days
