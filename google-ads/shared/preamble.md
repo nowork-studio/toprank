@@ -2,6 +2,18 @@
 
 Every google-ads skill reads this before doing anything else. It handles MCP detection, authentication, and upgrade checks in one place — so individual skills don't repeat this logic.
 
+## Step 0: Check for toprank updates
+
+```bash
+_UPD=$(~/.claude/skills/toprank/bin/toprank-update-check 2>/dev/null || \
+       ~/.claude/skills/stockholm/bin/toprank-update-check 2>/dev/null || true)
+[ -n "$_UPD" ] && echo "$_UPD" || true
+```
+
+If the output contains `UPGRADE_AVAILABLE <old> <new>`: immediately follow the inline upgrade flow in the `/toprank-upgrade` skill (Step 1 onward) to auto-upgrade, then return here and continue.
+
+If the output contains `JUST_UPGRADED <old> <new>`: mention "toprank upgraded from v{old} to v{new}" briefly, then continue.
+
 ## Step 1: Check config cache
 
 Read `~/.adsagent/config.json`. If both `apiKey` and `accountId` are present, skip to Step 4. The MCP server is already configured and the account is selected — no further setup needed.
