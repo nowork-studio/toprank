@@ -4,11 +4,11 @@
     {
       "id": 1,
       "prompt": "Can you help me manage my Google Ads?",
-      "expected_output": "The skill checks for the AdsAgent MCP server connection, then checks for a token in ~/.adsagent/config.json, then checks for an accountId. It should not attempt to pull campaign data before completing the onboarding flow.",
+      "expected_output": "The skill checks for the AdsAgent MCP server connection, then resolves config from the 3-tier chain (project .adsagent.json > Claude project adsagent.json > global ~/.adsagent/config.json), then checks for an accountId. It should not attempt to pull campaign data before completing the onboarding flow.",
       "files": [],
       "expectations": [
         "The skill attempts to verify MCP server connectivity before pulling data",
-        "The skill checks for apiKey in ~/.adsagent/config.json",
+        "The skill resolves apiKey from the 3-tier config chain (project > claude-project > global)",
         "The skill checks for accountId before making campaign API calls",
         "If any setup step is missing, the skill guides the user through resolution before proceeding"
       ]

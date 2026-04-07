@@ -24,11 +24,11 @@ These contain the specific formulas, character counts, and patterns that separat
 
 ## Business Context — Read First, Ask Once
 
-Every ad copy decision depends on understanding the business. This skill stores business context in `~/.adsagent/business-context.json` so it only needs to be gathered once.
+Every ad copy decision depends on understanding the business. This skill stores business context in `{data_dir}/business-context.json` so it only needs to be gathered once.
 
 ### On every invocation:
 
-1. **Read `~/.adsagent/business-context.json`**. If it exists and has content, use it — skip the intake interview.
+1. **Read `{data_dir}/business-context.json`**. If it exists and has content, use it — skip the intake interview.
 2. **If missing or empty**, run the intake interview below, then save the result.
 3. **If the user volunteers new info** (new service, changed positioning, seasonal update), merge it into the existing file.
 
@@ -104,7 +104,7 @@ Present what you found and ask the user to confirm/correct/fill gaps. This is fa
 
 ## Persona-Informed Copy
 
-Cross-reference `~/.adsagent/personas/{accountId}.json` (created by `/ads-audit`) and `~/.adsagent/business-context.json` to ground every piece of copy in real customer data.
+Cross-reference `{data_dir}/personas/{accountId}.json` (created by `/ads-audit`) and `{data_dir}/business-context.json` to ground every piece of copy in real customer data.
 
 ### How personas shape copy decisions
 
@@ -156,7 +156,7 @@ Google's ad strength score optimizes for Google's internal ad diversity goals, n
 
 ## Competitive Differentiation
 
-Read `~/.adsagent/business-context.json` `competitors` and `differentiators` fields. If empty, infer competitors from auction overlap (high impression share keywords where rank-lost IS is elevated suggest active competitors).
+Read `{data_dir}/business-context.json` `competitors` and `differentiators` fields. If empty, infer competitors from auction overlap (high impression share keywords where rank-lost IS is elevated suggest active competitors).
 
 ### Rules for competitive copy
 
@@ -292,7 +292,7 @@ Show 2-3 variants, each with a distinct messaging angle. Name the angle so it's 
 
 ```
 VARIANT A: "[Angle Name — e.g., Trust & Experience]"
-  Target persona: [persona name from ~/.adsagent/personas/]
+  Target persona: [persona name from {data_dir}/personas/]
   H1 [Pin 1]: [Service] in [Location]       (XX chars)
   H2: [Value prop headline]                  (XX chars)
   H3: [Trust headline]                       (XX chars)
@@ -366,7 +366,7 @@ After deciding a winner: pause the loser with `mcp__adsagent__pauseAd`, keep the
 
 ## Rules
 
-1. **Business context first.** Read `~/.adsagent/business-context.json` before doing anything. If it doesn't exist, build it.
+1. **Business context first.** Read `{data_dir}/business-context.json` before doing anything. If it doesn't exist, build it.
 2. **Research before writing.** Always pull current performance data. Don't write copy in a vacuum.
 3. **Character limits are hard.** Count every headline (<=30) and description (<=90). No exceptions. When in doubt, count again.
 4. **Never deploy without confirmation.** Show the exact copy, get a yes, then create/update.

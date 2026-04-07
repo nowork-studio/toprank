@@ -13,7 +13,7 @@ Read and follow `../shared/preamble.md` — it handles MCP detection, token, and
 This is the starting point for any Google Ads account. It does two things:
 
 1. **Audits the account** — surfaces what's working, what's wasting money, and what to fix first
-2. **Builds business context** — gathers and saves business information to `~/.adsagent/business-context.json` so every other ads skill (copy, landing pages, competitive analysis) can use it without re-asking
+2. **Builds business context** — gathers and saves business information to `{data_dir}/business-context.json` so every other ads skill (copy, landing pages, competitive analysis) can use it without re-asking
 
 Run this before anything else. If another ads skill finds `business-context.json` missing, it should point the user here.
 
@@ -322,7 +322,7 @@ Use this full template for the persisted JSON file. In the **report output**, pe
 
 ### Persist Personas
 
-Save to `~/.adsagent/personas/{accountId}.json`:
+Save to `{data_dir}/personas/{accountId}.json`:
 
 ```json
 {
@@ -346,7 +346,7 @@ These personas feed directly into `/ads-copy` for headline generation and `/ads`
 
 ## Phase 3: Build Business Context
 
-**Skip this phase for scoped audits if `~/.adsagent/business-context.json` already exists and has a recent `audit_date`.** A scoped audit (e.g., "focus on grooming") should deliver findings fast, not re-interview the user. Only run Phase 3 on the first full-account audit or if business-context.json is missing/stale (>90 days old).
+**Skip this phase for scoped audits if `{data_dir}/business-context.json` already exists and has a recent `audit_date`.** A scoped audit (e.g., "focus on grooming") should deliver findings fast, not re-interview the user. Only run Phase 3 on the first full-account audit or if business-context.json is missing/stale (>90 days old).
 
 Pull as much as possible from the data you already have — only ask the user for what you can't infer.
 
@@ -431,7 +431,7 @@ Present what you inferred from **both** account data and the website crawl, then
 
 ### Save the context
 
-Write the complete business context to `~/.adsagent/business-context.json`:
+Write the complete business context to `{data_dir}/business-context.json`:
 
 ```json
 {
