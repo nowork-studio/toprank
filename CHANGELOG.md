@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.2] — 2026-04-06
+
+### Changed
+- **Config resolution** — replaced single global config (`~/.adsagent/config.json`) with 3-tier chain: project-level (`.adsagent.json`), Claude project-level (`~/.claude/projects/{path}/adsagent.json`), and global fallback. Fields merge up the chain so a project file with only `accountId` inherits `apiKey` from global.
+- **Project-scoped data storage** — when a project-level config exists, data files (business-context, personas, change-log, account-baseline) are stored in `.adsagent/` relative to the project root instead of globally
+- **Account switching** — now asks whether to save the selection for the current project or globally
+- **Security** — preamble instructs LLM to add `.adsagent.json` and `.adsagent/` to `.gitignore` when using project-local storage
+
+---
+
 ## [0.9.1] — 2026-04-04
 
 ### Added

@@ -14,9 +14,28 @@ If the output contains `UPGRADE_AVAILABLE <old> <new>`: immediately follow the i
 
 If the output contains `JUST_UPGRADED <old> <new>`: mention "toprank upgraded from v{old} to v{new}" briefly, then continue.
 
-## Step 1: Check config cache
+## Step 1: Resolve config
 
-Read `~/.adsagent/config.json`. If both `apiKey` and `accountId` are present, skip to Step 4. The MCP server is already configured and the account is selected — no further setup needed.
+Read config from three locations and merge fields (first non-null, non-empty-string value wins per field):
+
+1. **Project-level** — `.adsagent.json` in the repository root (Claude Code's working directory)
+2. **Claude project-level** — `~/.claude/projects/{project-path}/adsagent.json` (where `{project-path}` is the CWD-based path Claude Code uses for project memory, e.g. `-Users-alice-repos-petshop`)
+3. **Global fallback** — `~/.adsagent/config.json`
+
+Each file uses the same schema: `{ "accountId": "...", "apiKey": "..." }`. Fields merge up the chain — a project file with only `accountId` inherits `apiKey` from global.
+
+If both `apiKey` and `accountId` are resolved after merging, skip to Step 4.
+
+### Resolved data directory
+
+Data files (business-context, personas, change-log, account-baseline) are stored project-locally when a project-level config exists:
+
+- If `.adsagent.json` exists in the current working directory → `{data_dir}` = `.adsagent/` (relative to project root)
+- Otherwise → `{data_dir}` = `~/.adsagent/` (the Claude project-level config alone doesn't trigger project-local data — only a `.adsagent.json` in the repo does)
+
+Create `{data_dir}` if it doesn't exist. Throughout this document and all skills, `{data_dir}` refers to this resolved directory.
+
+**Important:** If using project-local storage (`.adsagent/`), ensure `.adsagent.json` and `.adsagent/` are in the project's `.gitignore` — they contain API keys and business-sensitive data that should not be committed.
 
 ## Step 2: MCP Server Detection
 
@@ -38,7 +57,7 @@ Stop here until the MCP server is available.
 
 ## Step 3: Onboarding (only if config is incomplete)
 
-Read `~/.adsagent/config.json` (create `~/.adsagent/` if it doesn't exist).
+Read the merged config from Step 1. Ensure `~/.adsagent/` exists (needed for the global config file regardless of `{data_dir}`).
 
 ### Token
 
@@ -47,20 +66,25 @@ If `apiKey` is missing:
 > To use AdsAgent, you need a free token. You can get one from [adsagent.org](https://www.adsagent.org).
 > Once you have it, paste it here and I'll save it for you.
 
-Save the token to `~/.adsagent/config.json` when provided.
+Save the token to `~/.adsagent/config.json` (global — API keys are shared across projects).
 
 ### Account selection
 
 If `accountId` is missing:
 
 1. Run `listConnectedAccounts`
-2. **One account** → save automatically, tell the user which was selected
-3. **Multiple accounts** → show numbered list, ask user to pick, save choice
+2. **One account** → save automatically to the highest-priority config file that already exists (project > claude-project > global; if none exist yet, save to `~/.adsagent/config.json`), tell the user which was selected
+3. **Multiple accounts** → show numbered list, ask user to pick, save choice to the same location
 4. **Zero accounts** → direct to [adsagent.org](https://www.adsagent.org) to connect one
 
 ### Switching accounts
 
-If the user explicitly asks to switch accounts, run `listConnectedAccounts`, let them pick, and update `accountId` in `~/.adsagent/config.json`.
+If the user explicitly asks to switch accounts, run `listConnectedAccounts`, let them pick, then ask:
+
+> "Save this account for this project only, or globally?"
+
+- **Project** → write `accountId` to `.adsagent.json` in the current working directory (create the file if needed)
+- **Global** → write `accountId` to `~/.adsagent/config.json`
 
 ## Step 4: Calling tools
 
@@ -69,7 +93,7 @@ Use whichever MCP server prefix was detected:
 - **AdsAgent MCP (default):** `mcp__adsagent__<toolName>` with `accountId` parameter
 - **Google's official MCP:** `mcp__google_ads_mcp__<toolName>`
 
-Always pass `accountId` from `~/.adsagent/config.json` to every tool call (except `listConnectedAccounts`).
+Always pass `accountId` from the resolved config (Step 1) to every tool call (except `listConnectedAccounts`).
 
 ### Prefer GAQL for multi-campaign reads
 

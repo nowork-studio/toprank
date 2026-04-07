@@ -30,7 +30,7 @@ Before fulfilling any user request, silently perform these checks. Do NOT tell t
 
 ### Step 1: Check for pending change reviews
 
-Read `~/.adsagent/change-log.json`. Find entries where:
+Read `{data_dir}/change-log.json`. Find entries where:
 - `reviewed` is `false`
 - `reviewAfter` date has passed (is before today)
 
@@ -70,7 +70,7 @@ If there are pending reviews:
 
 ### Step 2: Check account baseline for anomalies
 
-Read `~/.adsagent/account-baseline.json`. If it exists AND was last updated more than 24 hours ago:
+Read `{data_dir}/account-baseline.json`. If it exists AND was last updated more than 24 hours ago:
 
 1. Get current campaign metrics — reuse the `listCampaigns` result from Step 1 if available, otherwise call `listCampaigns` now.
 2. Compare each campaign's 7-day metrics to the `rolling30d` baseline.
@@ -155,15 +155,15 @@ All write tools return a `changeId` on success. Use this with `undoChange` to re
 3. **Show numbers clearly.** Format cost as dollars, show CTR as percentages, include date ranges.
 4. **Recommend before acting.** When you spot waste (high-spend zero-conversion keywords, irrelevant search terms), recommend the action and wait for approval.
 5. **Guardrails are server-side.** Bid changes >25% and budget changes >50% will be rejected by the server. Don't try to circumvent this.
-6. **After every write, log the change.** Follow the Change Tracking workflow below — record the change to `~/.adsagent/change-log.json` with before-metrics and a review window. Tell the user the change is logged and when follow-up will happen. They can also undo within 7 days using `getChanges` and `undoChange`.
+6. **After every write, log the change.** Follow the Change Tracking workflow below — record the change to `{data_dir}/change-log.json` with before-metrics and a review window. Tell the user the change is logged and when follow-up will happen. They can also undo within 7 days using `getChanges` and `undoChange`.
 
 ## Change Tracking
 
-After every successful write operation, log the change to `~/.adsagent/change-log.json` for follow-up tracking.
+After every successful write operation, log the change to `{data_dir}/change-log.json` for follow-up tracking.
 
 ### After every write
 
-1. **Record the change.** Append an entry to the `changes` array in `~/.adsagent/change-log.json` (create the file if it doesn't exist):
+1. **Record the change.** Append an entry to the `changes` array in `{data_dir}/change-log.json` (create the file if it doesn't exist):
 
 ```json
 {
@@ -219,7 +219,7 @@ After every successful write operation, log the change to `~/.adsagent/change-lo
 
 ## Account Baseline
 
-Maintain `~/.adsagent/account-baseline.json` to enable anomaly detection across sessions.
+Maintain `{data_dir}/account-baseline.json` to enable anomaly detection across sessions.
 
 ### When to update
 
@@ -648,7 +648,7 @@ If you find CTR issues in 2+ ad groups (CTR below industry benchmark or declinin
 
 ### Missing Business Context
 
-If `~/.adsagent/business-context.json` doesn't exist or `audit_date` is more than 90 days old:
+If `{data_dir}/business-context.json` doesn't exist or `audit_date` is more than 90 days old:
 
 > "I don't have business context for this account (or it's stale). Run `/ads-audit` first — it builds your business profile, which improves all recommendations. I can still work without it, but recommendations will be more generic."
 
