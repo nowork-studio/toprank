@@ -168,6 +168,7 @@ toprank/
 │   ├── keyword-research/        <- keyword discovery + topic clusters
 │   ├── meta-tags-optimizer/     <- title tags, meta descriptions, OG
 │   ├── schema-markup-generator/ <- JSON-LD structured data
+│   ├── seo-page/                <- single-page deep analysis
 │   └── setup-cms/               <- CMS connector
 ├── toprank-upgrade-skill/       <- self-updater
 ├── test/                        <- unit + LLM-judge eval tests
@@ -176,9 +177,48 @@ toprank/
 
 ---
 
+## Connectors
+
+Toprank skills reference external tools using the `~~category` placeholder pattern. This makes skills tool-agnostic — they work with any MCP server that provides the required capability.
+
+| Category | Placeholder | Default Server | Alternatives |
+|----------|-------------|---------------|--------------|
+| Google Ads | `~~google-ads` | [AdsAgent MCP](https://www.adsagent.org) (`mcp__adsagent__*`) | Google Ads MCP (`mcp__google_ads_mcp__*`) |
+| Search Console | `~~search-console` | gcloud CLI + Search Console API | Any GSC-compatible MCP server |
+| CMS | `~~cms` | Direct API (WordPress REST, Strapi, Contentful, Ghost) | Any CMS MCP server |
+
+Skills use conditional blocks based on available tools. If a connector is not available, the skill gracefully degrades — for example, `seo-analysis` can still run a technical crawl without GSC data.
+
+**Setup:**
+- **Google Ads:** See `google-ads/shared/preamble.md`. Get a free API key from [adsagent.org](https://www.adsagent.org), set `ADSAGENT_API_KEY`, and the `.mcp.json` auto-configures the MCP server.
+- **Search Console:** See `seo/shared/preamble.md`. Requires Google Cloud SDK, Search Console API enabled, and OAuth login.
+- **CMS:** Run `/toprank:setup-cms` to configure WordPress, Strapi, Contentful, or Ghost.
+
+---
+
 ## Contributing
 
-Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+Each skill lives in its own folder under a category directory:
+
+```
+seo/                      <- SEO skills go here
+└── your-skill-name/
+    ├── SKILL.md          <- required
+    ├── scripts/          <- optional
+    └── references/       <- optional
+
+google-ads/               <- Google Ads skills go here
+└── your-skill-name/
+    └── SKILL.md          <- required
+```
+
+**SKILL.md** needs a frontmatter header with `name` and `description`, then step-by-step instructions in the imperative.
+
+**Scripts:** Python 3.8+ stdlib only (or `requests`). Accept `--output` for file output. stderr for progress, stdout for data.
+
+**Pull requests:** One skill per PR. Test your skill before submitting. Bump `VERSION` and update `CHANGELOG.md`.
+
+Questions? Open an issue.
 
 ---
 

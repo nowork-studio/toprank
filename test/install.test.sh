@@ -170,14 +170,13 @@ assert_contains "$REPO_ROOT/.mcp.json" "adsagent" ".mcp.json has adsagent server
 assert_contains "$REPO_ROOT/.mcp.json" "mcp-remote" ".mcp.json uses mcp-remote"
 assert_contains "$REPO_ROOT/.mcp.json" "ADSAGENT_API_KEY" ".mcp.json references API key env var"
 
-# ─── Test 6: CONNECTORS.md exists ───────────────────────────
+# ─── Test 6: Connectors section in README ─────────────────────
 
 echo ""
 echo "=== 6. Connectors ==="
 
-assert_file "$REPO_ROOT/CONNECTORS.md" "CONNECTORS.md exists"
-assert_contains "$REPO_ROOT/CONNECTORS.md" "~~google-ads" "CONNECTORS.md has Google Ads placeholder"
-assert_contains "$REPO_ROOT/CONNECTORS.md" "~~search-console" "CONNECTORS.md has Search Console placeholder"
+assert_contains "$REPO_ROOT/README.md" "~~google-ads" "README.md has Google Ads connector placeholder"
+assert_contains "$REPO_ROOT/README.md" "~~search-console" "README.md has Search Console connector placeholder"
 
 # ─── Test 7: Reference docs exist ───────────────────────────
 
