@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "SEO and Google Ads skills for Claude Code",
-    "version": "0.9.9"
+    "version": "0.10.0"
   },
   "plugins": [
     {
       "name": "toprank",
       "source": "./",
       "description": "SEO analysis, Google Ads management, keyword research, content optimization, schema markup, and meta tags optimization.",
-      "version": "0.9.9",
+      "version": "0.10.0",
       "author": {
         "name": "nowork-studio"
       },

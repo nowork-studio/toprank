@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.10.0] — 2026-04-08
+
+### Added
+- **PageSpeed Insights API integration** — New `pagespeed.py` script calls the Google PageSpeed Insights API for multiple URLs with concurrent execution. Collects Lighthouse performance scores, Core Web Vitals (LCP, INP, CLS, FCP, TTFB), CrUX field data, optimization opportunities, and diagnostics. Supports both mobile and desktop strategies.
+- **PageSpeed display script** — New `show_pagespeed.py` renders PageSpeed results in a terminal-friendly format with scores, metrics, opportunities, and diagnostics.
+- **Phase 5.5 in SEO analysis** — PageSpeed analysis runs in parallel alongside URL Inspection and CMS detection during audits. Results feed into the report with a dedicated "PageSpeed & Core Web Vitals" section and are logged in the audit history for tracking performance over time.
+- **Preflight PageSpeed checks** — `preflight.py` now auto-enables the PageSpeed Insights API and checks for a `PAGESPEED_API_KEY` in the environment or `~/.toprank/.env`.
+
+---
+
 ## [0.9.9] — 2026-04-08
 
 ### Changed
