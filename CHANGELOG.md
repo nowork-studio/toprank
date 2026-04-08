@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.10.0.1] — 2026-04-08
+
+### Changed
+- **Consolidated root files** — Merged `CONNECTORS.md` and `CONTRIBUTING.md` into `README.md` to reduce file count without losing content. Connectors section now lives under "## Connectors" and contributing guide under "## Contributing" in the main README.
+- **Updated install test** — Test suite now checks for connector content in `README.md` instead of the removed `CONNECTORS.md` file.
+- **Added `seo-page` to directory tree** in README to reflect the new single-page analysis skill.
+
+### Removed
+- **`CONNECTORS.md`** — Content moved to README.md.
+- **`CONTRIBUTING.md`** — Content moved to README.md.
+- **`requirements-test.lock`** — Stale lock file that didn't match `requirements-test.txt`.
+
+---
+
 ## [0.10.0] — 2026-04-08
 
 ### Added
