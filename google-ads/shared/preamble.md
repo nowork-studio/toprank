@@ -5,8 +5,8 @@ Every google-ads skill reads this before doing anything else. It handles MCP det
 ## Step 0: Check for toprank updates
 
 ```bash
-_UPD=$(~/.claude/skills/toprank/bin/toprank-update-check 2>/dev/null || \
-       ~/.claude/skills/stockholm/bin/toprank-update-check 2>/dev/null || true)
+_UPD_BIN=$(ls ~/.claude/plugins/cache/nowork-studio/toprank/*/bin/toprank-update-check 2>/dev/null | head -1)
+[ -n "$_UPD_BIN" ] && _UPD=$("$_UPD_BIN" 2>/dev/null || true) || _UPD=""
 [ -n "$_UPD" ] && echo "$_UPD" || true
 ```
 
