@@ -34,15 +34,36 @@ cold.
 
 ---
 
-## Step 0 — Ask for the Website URL
+## Step 0 — Establish the Website URL
 
-Before doing anything else, ask the user:
+Before doing anything else, check for previously audited sites:
+
+```bash
+ls ~/.toprank/business-context/*.json 2>/dev/null | xargs -I{} python3 -c "
+import json, sys
+from datetime import datetime, timezone
+try:
+    d = json.load(open(sys.argv[1]))
+    gen = datetime.fromisoformat(d.get('generated_at', '1970-01-01T00:00:00+00:00'))
+    age = (datetime.now(timezone.utc) - gen.astimezone(timezone.utc)).days
+    print(f\"{d.get('target_url', d.get('domain','?'))} (audited {age}d ago)\")
+except: pass
+" {}
+```
+
+**If one or more cached sites are listed**, show them and ask:
+
+> "I've audited these sites before — use one, or enter a different URL:
+> 1. https://example.com (audited 12 days ago)
+> 2. Enter a different URL"
+
+If the user picks a cached site, load `target_url` from that domain's `~/.toprank/business-context/<domain>.json` and set it as `$TARGET_URL`. Skip to Phase 0.
+
+**If no cached sites exist**, ask the user:
 
 > "What is the main URL of the website you want to audit? (e.g. https://yoursite.com)"
 
-Wait for their answer. Store this as the **target URL** — it is needed for the
-entire audit: URL Inspection API calls, technical crawl, metadata fetching, and
-matching against GSC properties.
+Wait for their answer. Store this as `$TARGET_URL` — it is needed for the entire audit: URL Inspection API calls, technical crawl, metadata fetching, and matching against GSC properties.
 
 Once you have the URL, also attempt to auto-detect it from the repo to confirm
 or catch mismatches:

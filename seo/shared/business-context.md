@@ -93,6 +93,7 @@ from datetime import datetime, timezone
 
 # --- fill from user answers + inferred data ---
 domain           = "$DOMAIN"
+target_url       = "$TARGET_URL"
 business_name    = "<user answer 1, or inferred from homepage title>"
 business_summary = "<1-2 sentence distillation>"
 industry         = "<inferred from homepage + GSC topics>"
@@ -107,6 +108,7 @@ notes            = "<note if answers were inferred rather than user-provided>"
 
 data = {
     "domain":           domain,
+    "target_url":       target_url,
     "generated_at":     datetime.now(timezone.utc).isoformat(),
     "business_name":    business_name,
     "business_summary": business_summary,
@@ -176,6 +178,7 @@ If GSC was unavailable and the audit is technical-only (Phase 5):
 ```json
 {
   "domain":           "example.com",
+  "target_url":       "https://example.com",
   "generated_at":     "2026-04-07T12:00:00+00:00",
   "business_name":    "Acme Corp",
   "business_summary": "Project management software for remote engineering teams.",
