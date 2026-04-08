@@ -87,6 +87,30 @@ user-provided URL.
 
 ---
 
+## Step 0.5 — Load Audit History
+
+After identifying `$TARGET_URL`, derive the domain (used throughout the entire audit) and check for a previous audit log:
+
+```bash
+DOMAIN=$(python3 -c "import sys; from urllib.parse import urlparse; print(urlparse(sys.argv[1]).netloc.lstrip('www.'))" "$TARGET_URL")
+AUDIT_LOG="$HOME/.toprank/audit-log/${DOMAIN}.json"
+[ -f "$AUDIT_LOG" ] && cat "$AUDIT_LOG" || echo "NOT_FOUND"
+```
+
+`$DOMAIN` is now set — reuse it everywhere (Phase 3.7, Phase 6.5). Do not re-derive it.
+
+**If found**: Extract the most recent entry's `date` and `top_issues`. Show the user a brief one-liner:
+
+> "Last audit: [date]. Previously flagged: [issue #1 title], [issue #2 title]. I'll check whether these are resolved."
+
+Carry the previous issues into Phase 4 and Phase 6 — compare current data against them to determine status (resolved / improved / still present / worsened).
+
+**If not found**: This is the first audit. No action needed.
+
+Do NOT pause for user confirmation — just show the one-liner and continue.
+
+---
+
 ## Phase 0 — Preflight Check
 
 Read and follow `../shared/preamble.md` — it handles script discovery, gcloud auth, and GSC API setup. If credentials are already cached, this is instant.
@@ -399,12 +423,11 @@ reveal what real visitors search for, in their own words.
 ### Check for cached personas
 
 Personas are cached at `~/.toprank/personas/` keyed by domain hostname. Check
-whether a persona file already exists:
+whether a persona file already exists (`$DOMAIN` is already set from Step 0.5):
 
 ```bash
-DOMAIN=$(python3 -c "import sys; from urllib.parse import urlparse; print(urlparse(sys.argv[1]).netloc.lstrip('www.'))" "$TARGET_URL")
 PERSONA_FILE="$HOME/.toprank/personas/$DOMAIN.json"
-[ -f "$PERSONA_FILE" ] && echo "FOUND" && cat "$PERSONA_FILE" || echo "NOT_FOUND"
+[ -f "$PERSONA_FILE" ] && cat "$PERSONA_FILE" || echo "NOT_FOUND"
 ```
 
 **If found and `saved_at` is less than 90 days old**: Show a one-line summary of
@@ -892,194 +915,167 @@ After presenting the schema audit, offer:
 
 ## Phase 6 — Report
 
-Output a structured report. Use this format exactly:
+**The goal of this report is not comprehensiveness — it is clarity.** The user needs to know exactly what to do next, in what order, and why. Lead with the highest-impact actions. Put supporting data after. Omit anything that doesn't change what the user should do.
+
+Output a structured report using this format exactly:
 
 ---
 
-# SEO Analysis Report — [site.com]
-*Analyzed: [date range] | Data: Google Search Console + URL Inspection + Technical Crawl*
+# SEO Report — [site.com]
+*[date] · GSC data: [date range] · [First audit / Previous audit: date]*
 
-## Business Profile
-*(From Phase 3.8 — provides goal and competitive context for all recommendations below)*
+## Audit History
+*(Skip this section entirely on the first audit — do not write "N/A" or "First audit" here; just omit the section.)*
 
-**[Business Name]** — [business_summary from context]
-- **Primary goal**: [primary_goal]
-- **Target audience**: [target_audience]
-- **Competitors tracked**: [competitors list, or "none provided"]
+On subsequent audits, show only what changed from the previous audit's top issues:
 
-## Audience Personas
-*(From Phase 3.7 — drives all recommendations below)*
+| Previously Flagged | Status | Notes |
+|--------------------|--------|-------|
+| [Issue from last audit] | ✅ Resolved / ⚠️ Improved / 🔴 Still present / ↗ Worsened | [1-line update with current metric] |
 
-| Persona | Primary Goal | Key Search Language | Decision Trigger |
-|---------|-------------|---------------------|-----------------|
-| [Persona 1 name] | [goal] | [language samples] | [trigger] |
-| [Persona 2 name] | [goal] | [language samples] | [trigger] |
-| [Persona 3 name if applicable] | | | |
+---
 
-## Executive Summary
-[2-3 sentences: overall health, the single most important thing to fix, and the
-estimated opportunity if fixed. Be specific: "Your site gets 12,400 clicks/month
-but is leaving an estimated 3,000-5,000 additional clicks on the table from
-position 4-10 queries that need title tag optimization. The primary audience —
-[Persona 1 name] — searches using [language] but current titles use [different
-language], which is suppressing CTR."]
+## ⚡ Top Priority Actions
+
+This is the core of the report. Include exactly 3–5 items, ordered by expected click impact. Every item must have a specific URL, a specific metric as evidence, and a specific fix — nothing generic.
+
+Use this format for each:
+
+---
+
+**#1 — [Short title, e.g. "Fix title tag on /pricing"]**
+🔴 Critical / 🟡 High / 🟢 Medium
+**Impact**: ~+[N] clicks/mo · **Effort**: Low / Med / High
+
+**What**: [One sentence describing the problem]
+**Evidence**: [Exact metric — e.g., "ranks #7 for 'your-product pricing': 2,400 impressions/mo, 1.2% CTR (expected ~3% at this position)"]
+**Fix**: [Specific, copy-paste-ready action — e.g., "Change title from 'Pricing' to 'Plans & Pricing — [Value Prop] | [Brand]' (54 chars)"]
+**Why it works**: [One sentence on the mechanism — intent match, persona language, etc.]
+
+---
+
+Repeat for each of the 3–5 items. Do not add a 6th item — triage ruthlessly. An item only makes the list if you can quantify its impact.
+
+When estimating impact, use conservative CTR curves: position 1 ~27%, position 2 ~15%, position 3 ~11%, position 4–5 ~5–8%, position 6–10 ~2–4%. Moving from position 7 to 3 on a 2,400 impression/month query means roughly +170 clicks/month. Always use real numbers from the data.
+
+Every persona-informed recommendation must name the persona and cite the specific language from that persona's `language` field that should appear in the rewrite.
+
+---
 
 ## Traffic Snapshot
 
-| Metric | Value | vs Prior Period |
-|--------|-------|----------------|
-| Total Clicks | X | up/down X% |
-| Impressions | X | up/down X% |
-| Avg CTR | X% | up/down |
-| Avg Position | X | up/down |
+| Metric | Value | vs Prior 28 days |
+|--------|-------|-----------------|
+| Total Clicks | X | ↑/↓ X% |
+| Impressions | X | ↑/↓ X% |
+| Avg CTR | X% | ↑/↓ |
+| Avg Position | X | ↑/↓ |
 
-## Branded vs Non-Branded Split
-*(omit this section if brand terms were not provided)*
-| Segment | Queries | Clicks | Impressions | CTR | Avg Position |
-|---------|---------|--------|-------------|-----|--------------|
-| Branded | X | X | X | X% | X |
-| Non-branded | X | X | X | X% | X |
+*(Branded/non-branded split — only if brand terms were provided):*
+| Segment | Clicks | Impressions | CTR | Avg Position |
+|---------|--------|-------------|-----|--------------|
+| Branded | X | X | X% | X |
+| Non-branded | X | X | X% | X |
 
-[1-2 sentence interpretation: what the split reveals about brand vs organic performance]
-
-## Traffic by Site Section
-| Section | Pages | Clicks | CTR | Avg Position | Notes |
-|---------|-------|--------|-----|--------------|-------|
-| /blog/ | X | X | X% | X | |
-| /products/ | X | X | X% | X | |
-| other | X | X | X% | X | |
-
-[Flag any section with CTR significantly below site average — likely a template problem]
-
-## Quick Wins (Fix These First)
-
-[Numbered list, most impactful first. Every recommendation must include:
-1. The specific page URL
-2. The specific query/keyword
-3. Current metrics (position, impressions, CTR)
-4. What to change (exact new title, description, or action)
-5. Why this will work (the search intent logic)]
-
-Example format: "Update title tag on /pricing from 'Pricing' to 'Plans &
-Pricing — [Actual Value Prop]' — currently ranks #7 for 'your-product pricing'
-with 2,400 monthly impressions but only 1.2% CTR. This is a transactional query
-likely searched by [Persona name] who uses phrases like '[persona language]'.
-The current title does not match their vocabulary or signal the outcome they
-want. A title written in their language — '[example title]' — would increase
-CTR to ~3-5%."
-
-Every persona-informed recommendation must name the persona and include the
-specific language from that persona's profile that should appear in the rewrite.
-
-## URL Inspection Findings
-
-[Results from Phase 3.5. Tables grouped by severity:]
-
-### Critical: Not Indexed
-| Page URL | Coverage State | Last Crawl | Root Cause | Fix |
-|----------|---------------|------------|------------|-----|
-
-### Warnings: Mobile / Rich Result Issues
-| Page URL | Issue | Impact | Fix |
-|----------|-------|--------|-----|
-
-### Crawl Staleness
-[Pages with last crawl > 60 days despite having traffic, with hypothesis and fix.]
-
-## Search Intent Mismatches
-[Pages where the content type does not match what searchers want. For each: the
-query, the current page, the intent, and what to do about it.]
-
-## Keyword Cannibalization
-[Queries where multiple pages compete. Which page should win, what to do with
-the others.]
-
-## Keyword Gaps
-
-### Orphan Keywords (Rankings Without Dedicated Pages)
-| Query | Ranking Page | Position | Monthly Impressions | Recommended Action |
-|-------|-------------|----------|---------------------|--------------------|
-
-### Topic Clusters Needing Pillar Pages
-[Each cluster with constituent queries, impressions, and pillar page recommendation.]
-
-### Business Relevance Gaps
-[Topics the site should rank for based on what it does, but has zero/near-zero
-impressions for. Specific, not generic.]
-
-## Metadata Issues
-
-| Page URL | Issue Type | Current Value | Target Persona | Recommended Fix |
-|----------|-----------|---------------|----------------|-----------------|
-| /example | Title too generic | "Services" | [Persona name] | "[Keyword in their language] Services — [Benefit they care about] \| [Brand]" |
-| /pricing | No meta description | — | [Persona name] | Write 150-160 char description using "[their vocabulary]" and addressing "[their goal]" |
-
-Each metadata fix must use the target persona's vocabulary and address their
-primary goal. Generic titles like "Services" or "Solutions" fail because they
-don't match any persona's search language — replace with the exact terms from
-the persona's `language` field.
-
-## Schema Gaps
-
-| Page URL | Site Type | Missing Schema | Impact | Priority |
-|----------|-----------|---------------|--------|----------|
-| / | SaaS | FAQPage | High — FAQ rich results expand SERP footprint | P1 |
-| /pricing | SaaS | Offer, AggregateRating | High — pricing rich results increase CTR | P1 |
-
-### Existing Schema Errors
-| Page URL | Schema Type | Error | Fix |
-|----------|------------|-------|-----|
-
-## Content Opportunities
-[Topic clusters you partially rank for that need dedicated pages or expanded
-content. Group by theme, suggest page titles, target keywords.]
-
-## Traffic Drops to Investigate
-[Pages/queries with significant declines, with a hypothesis and investigation
-steps for each.]
-
-## Technical Issues
-[Severity: Critical / High / Medium / Low]
-[For each: what it is, which pages, how to fix it, and the impact on rankings
-if left unfixed.]
-
-## CMS SEO Field Audit
-*(Only included when a CMS is configured — WordPress, Strapi, Contentful, or Ghost.)*
-
-| Issue | Count | Top Affected Pages |
-|-------|-------|--------------------|
-| Missing meta title | X | slug-1, slug-2... |
-| Missing meta description | X | ... |
-| Meta title too long (>60 chars) | X | ... |
-| Meta description out of range | X | ... |
-
-**Highest-impact fixes** (pages with most GSC impressions + missing/bad SEO fields):
-[List 5 specific pages: current meta title → recommended meta title, with character counts]
-
-*(For Strapi: "I can push these fixes directly — run `push_strapi_seo.py` after approval.")*
-
-## 30-Day Action Plan
-
-[Prioritized by impact. Each item must be specific enough that someone could do
-it without asking follow-up questions.]
-
-| Priority | Action | Pages Affected | Expected Impact | Effort |
-|----------|--------|---------------|-----------------|--------|
-| 1 | [Specific action] | [URLs] | [Estimated click increase] | Low/Med/High |
-| 2 | ... | ... | ... | ... |
+[1-sentence interpretation of the split — what it reveals about organic vs brand performance]
 
 ---
 
-Every recommendation must be specific and actionable. "Improve your meta
-descriptions" is useless. "Update the meta description on /product-page to
-include '[exact phrase from top query]' and a clear CTA — it currently has
-5,400 impressions but 0.8% CTR, suggesting the snippet does not match what
-searchers expect to see for this transactional query" is useful.
+## Supporting Findings
 
-When estimating impact, use conservative CTR curves: position 1 ~27%, position
-2 ~15%, position 3 ~11%, position 4-5 ~5-8%, position 6-10 ~2-4%. Moving from
-position 7 to position 3 on a 2,400 impression/month query means roughly +170
-clicks/month. Use real numbers from the data.
+This section exists to back up the Priority Actions and surface anything else the user should know. Keep it concise — tables and short bullets, not prose paragraphs. Only include sub-sections where there are actual findings.
+
+### Indexing Issues
+*(From Phase 3.5. Only include if issues found.)*
+| Page | Coverage State | Last Crawl | Fix |
+|------|---------------|------------|-----|
+
+### Keyword Cannibalization
+*(Only include if `cannibalization` data is non-empty.)*
+| Query | Winner Page | Loser Pages | Action |
+|-------|------------|-------------|--------|
+
+### Content Gaps
+*(Queries ranking 11–30 with >200 impressions and no dedicated page.)*
+| Query | Position | Impressions/mo | Recommended Action |
+|-------|----------|---------------|--------------------|
+
+### Metadata Issues
+*(Only pages not already covered in Priority Actions.)*
+| Page | Issue | Current | Recommended Fix |
+|------|-------|---------|-----------------|
+
+### Schema Gaps
+*(High-impact missing schema for this site type.)*
+| Page | Missing | Impact |
+|------|---------|--------|
+
+### Technical Issues
+*(Severity: Critical / High / Medium. Omit Low unless they surface as Priority Actions.)*
+| Issue | Pages Affected | Fix | Severity |
+|-------|---------------|-----|----------|
+
+### Traffic Drops
+*(Pages/queries with >30% decline. Only include if not already in Priority Actions.)*
+| Page / Query | Change | Hypothesis | Next Step |
+|-------------|--------|------------|-----------|
+
+### CMS SEO Audit
+*(Only if a CMS is configured. Top 5 impactful fixes only.)*
+| Page | Issue | Current | Fix |
+|------|-------|---------|-----|
+
+---
+
+## What to Ignore (For Now)
+List 2–3 things the data shows but that don't make the priority list — so the user knows you saw them and deprioritized them deliberately. One line each.
+
+- [e.g., "Device split: mobile CTR 15% below desktop — worth watching but not the bottleneck right now"]
+- [e.g., "Country split: weak CTR in UK — low volume, investigate after core issues fixed"]
+
+---
+
+After the report, write the audit log entry (see Phase 6.5 below before ending).
+
+---
+
+## Phase 6.5 — Write Audit Log
+
+After delivering the report, append a concise entry to the audit log. `$DOMAIN` and `$AUDIT_LOG` are already set from Step 0.5.
+
+```bash
+mkdir -p "$HOME/.toprank/audit-log"
+```
+
+Use Python to append (creates the file with a single-element array if it doesn't exist). Replace all `<FILL>` values with real data from the report before running:
+
+```python
+import json, os
+from datetime import datetime, timezone
+
+log_path = "$AUDIT_LOG"
+existing = json.load(open(log_path)) if os.path.exists(log_path) else []
+
+existing.append({
+    "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+    "traffic_snapshot": {
+        "clicks": <FILL>,
+        "impressions": <FILL>,
+        "avg_ctr_pct": <FILL>,
+        "avg_position": <FILL>
+    },
+    "top_issues": [
+        # One entry per Priority Action (max 5), in priority order
+        {"rank": 1, "title": "<FILL>", "type": "<FILL: title_tag|indexing|cannibalization|schema|content_gap>", "page": "<FILL>", "metric": "<FILL>", "expected_impact": "<FILL>", "status": "open"}
+    ],
+    "resolved_from_previous": []  # populated on next audit from Audit History comparison
+})
+
+json.dump(existing, open(log_path, "w"), indent=2)
+print(f"Audit log saved to {log_path}")
+```
+
+Confirm with a one-liner: "Audit log saved to `~/.toprank/audit-log/$DOMAIN.json`."
 
 ---
 
