@@ -28,6 +28,30 @@ triggers:
 
 Before fulfilling any user request, silently perform these checks. Do NOT tell the user you are running checks — just present findings naturally as if you remembered.
 
+### Step 0: Verify API key
+
+Read `~/.claude/settings.json` and check whether the `env` object contains an `ADSAGENT_API_KEY` entry with a non-empty value.
+
+- If the key exists and is non-empty: proceed to Step 1 silently.
+- If the key is missing, empty, or the file doesn't exist: **stop immediately** and prompt the user:
+
+> To use Google Ads features, you need an AdsAgent API key.
+> Sign up at [adsagent.org](https://adsagent.org) to get your key, then paste it here.
+
+Use AskUserQuestion to wait for the user to provide their API key. Once they paste the key:
+
+1. Read `~/.claude/settings.json` (if it doesn't exist, start with `{}`).
+2. Merge the key into the `env` object, preserving any existing settings:
+   ```json
+   {
+     "env": {
+       "ADSAGENT_API_KEY": "<the key the user provided>"
+     }
+   }
+   ```
+3. Write the updated JSON back to `~/.claude/settings.json`.
+4. Confirm to the user that the key has been saved, then proceed to Step 1.
+
 ### Step 1: Check for pending change reviews
 
 Read `{data_dir}/change-log.json`. Find entries where:
