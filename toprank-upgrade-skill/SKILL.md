@@ -2,10 +2,10 @@
 name: toprank-upgrade
 argument-hint: "<or just run '/toprank-upgrade'>"
 description: >
-  Upgrade toprank skills to the latest version. Detects global vs vendored
-  install, runs the upgrade, and shows what's new. Use when asked to "upgrade
-  toprank", "update toprank skills", or "get latest version". Also handles
-  inline upgrade prompts when a skill detects UPGRADE_AVAILABLE at startup.
+  Upgrade toprank plugin to the latest version. Updates the marketplace repo,
+  installs the new version to the plugin cache, and updates installed_plugins.json.
+  Use when asked to "upgrade toprank", "update toprank", or "get latest version".
+  Also handles inline upgrade prompts when a skill detects UPGRADE_AVAILABLE at startup.
 allowed-tools:
   - Bash
   - Read
@@ -14,7 +14,16 @@ allowed-tools:
 
 # /toprank-upgrade
 
-Upgrade toprank skills to the latest version and show what's new.
+Upgrade the toprank plugin to the latest version and show what's new.
+
+## Key paths
+
+| What | Path |
+|------|------|
+| Marketplace repo | `~/.claude/plugins/marketplaces/nowork-studio/` |
+| Plugin cache | `~/.claude/plugins/cache/nowork-studio/toprank/<version>/` |
+| Installed plugins | `~/.claude/plugins/installed_plugins.json` |
+| Update state | `~/.toprank/` |
 
 ---
 
@@ -24,65 +33,97 @@ This section is used when a skill preamble outputs `UPGRADE_AVAILABLE`.
 
 ### Step 1: Auto-upgrade
 
-Log "Auto-upgrading toprank v{old} → v{new}..." and proceed to Step 2.
-
-If `./setup` fails, restore from backup (`.bak` directory) and warn: "Auto-upgrade failed — restored previous version. Run `/toprank-upgrade` manually."
+Log "Upgrading toprank v{old} → v{new}..." and proceed to Step 2.
 
 ---
 
-### Step 2: Detect install type
+### Step 2: Detect current install
 
 ```bash
-if [ -d "$HOME/.claude/skills/toprank/.git" ]; then
-  INSTALL_TYPE="global-git"; INSTALL_DIR="$HOME/.claude/skills/toprank"
-elif [ -d "$HOME/.claude/skills/stockholm/.git" ]; then
-  INSTALL_TYPE="global-git"; INSTALL_DIR="$HOME/.claude/skills/stockholm"
-elif [ -d ".claude/skills/toprank/.git" ]; then
-  INSTALL_TYPE="local-git"; INSTALL_DIR=".claude/skills/toprank"
-elif [ -d ".claude/skills/stockholm/.git" ]; then
-  INSTALL_TYPE="local-git"; INSTALL_DIR=".claude/skills/stockholm"
-elif [ -d "$HOME/.claude/skills/toprank" ]; then
-  INSTALL_TYPE="vendored-global"; INSTALL_DIR="$HOME/.claude/skills/toprank"
-elif [ -d "$HOME/.claude/skills/stockholm" ]; then
-  INSTALL_TYPE="vendored-global"; INSTALL_DIR="$HOME/.claude/skills/stockholm"
-else
-  echo "ERROR: toprank skills not found"; exit 1
+# Find the currently installed plugin path
+INSTALLED_DIR=$(ls -d ~/.claude/plugins/cache/nowork-studio/toprank/*/ 2>/dev/null | grep -v '.bak' | head -1)
+if [ -z "$INSTALLED_DIR" ]; then
+  echo "ERROR: toprank plugin not found in cache"; exit 1
 fi
-echo "Install type: $INSTALL_TYPE at $INSTALL_DIR"
+MARKETPLACE_DIR="$HOME/.claude/plugins/marketplaces/nowork-studio"
+if [ ! -d "$MARKETPLACE_DIR/.git" ]; then
+  echo "ERROR: marketplace repo not found at $MARKETPLACE_DIR"; exit 1
+fi
+echo "Current install: $INSTALLED_DIR"
+echo "Marketplace repo: $MARKETPLACE_DIR"
 ```
 
 ### Step 3: Save old version
 
 ```bash
-OLD_VERSION=$(cat "$INSTALL_DIR/VERSION" 2>/dev/null || echo "unknown")
+OLD_VERSION=$(cat "$INSTALLED_DIR/VERSION" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
 ```
 
-### Step 4: Upgrade
+### Step 4: Update marketplace repo and install
 
-**For git installs** (global-git, local-git):
 ```bash
-cd "$INSTALL_DIR"
-STASH_OUTPUT=$(git stash 2>&1)
+cd "$MARKETPLACE_DIR"
 git fetch origin
 git reset --hard origin/main
-./setup
-```
-If the stash output contains "Saved working directory", warn: "Note: local changes were stashed. Run `git stash pop` in the install directory to restore them."
+NEW_VERSION=$(cat VERSION | tr -d '[:space:]')
+GIT_SHA=$(git rev-parse HEAD)
 
-**For vendored installs** (vendored, vendored-global):
+# Create new versioned cache directory
+NEW_CACHE_DIR="$HOME/.claude/plugins/cache/nowork-studio/toprank/$NEW_VERSION"
+if [ -d "$NEW_CACHE_DIR" ]; then
+  rm -rf "$NEW_CACHE_DIR"
+fi
+mkdir -p "$NEW_CACHE_DIR"
+
+# Copy plugin files (exclude .git to save space)
+rsync -a --exclude='.git' "$MARKETPLACE_DIR/" "$NEW_CACHE_DIR/"
+```
+
+If the copy fails, warn: "Upgrade failed — the old version is still active. Run `/toprank-upgrade` manually." and stop.
+
+### Step 5: Update installed_plugins.json
+
+Read `~/.claude/plugins/installed_plugins.json`, then update the `toprank@nowork-studio` entry:
+
 ```bash
-TMP_DIR=$(mktemp -d)
-git clone --depth 1 https://github.com/nowork-studio/toprank.git "$TMP_DIR/toprank"
-# Remove stale backup from a previous failed upgrade if present.
-rm -rf "$INSTALL_DIR.bak"
-mv "$INSTALL_DIR" "$INSTALL_DIR.bak"
-mv "$TMP_DIR/toprank" "$INSTALL_DIR"
-cd "$INSTALL_DIR" && ./setup
-rm -rf "$INSTALL_DIR.bak" "$TMP_DIR"
-```
-If `./setup` fails, restore: `rm -rf "$INSTALL_DIR" && mv "$INSTALL_DIR.bak" "$INSTALL_DIR"` and warn the user.
+python3 -c "
+import json, os
+from datetime import datetime, timezone
 
-### Step 5: Write marker + clear cache
+path = os.path.expanduser('~/.claude/plugins/installed_plugins.json')
+with open(path) as f:
+    data = json.load(f)
+
+data['plugins']['toprank@nowork-studio'] = [{
+    'scope': 'user',
+    'installPath': os.path.expanduser('~/.claude/plugins/cache/nowork-studio/toprank/$NEW_VERSION'),
+    'version': '$NEW_VERSION',
+    'installedAt': data['plugins'].get('toprank@nowork-studio', [{}])[0].get('installedAt', datetime.now(timezone.utc).isoformat()),
+    'lastUpdated': datetime.now(timezone.utc).isoformat(),
+    'gitCommitSha': '$GIT_SHA'
+}]
+
+with open(path, 'w') as f:
+    json.dump(data, f, indent=4)
+print('Updated installed_plugins.json: toprank@nowork-studio -> v$NEW_VERSION')
+"
+```
+
+### Step 6: Clean up old cache versions
+
+Remove old versioned cache directories (keep only the new one):
+
+```bash
+for dir in ~/.claude/plugins/cache/nowork-studio/toprank/*/; do
+  ver=$(basename "$dir")
+  if [ "$ver" != "$NEW_VERSION" ]; then
+    rm -rf "$dir"
+    echo "Removed old cache: $ver"
+  fi
+done
+```
+
+### Step 7: Write marker + clear update state
 
 ```bash
 mkdir -p ~/.toprank
@@ -91,9 +132,9 @@ rm -f ~/.toprank/last-update-check
 rm -f ~/.toprank/update-snoozed
 ```
 
-### Step 6: Show What's New
+### Step 8: Show What's New
 
-Read `$INSTALL_DIR/CHANGELOG.md`. Find all version entries between the old version and the new version. Summarize as 3-7 bullets grouped by theme — focus on user-facing changes, skip internal refactors.
+Read `$NEW_CACHE_DIR/CHANGELOG.md`. Find all version entries between the old version and the new version. Summarize as 3-7 bullets grouped by theme — focus on user-facing changes, skip internal refactors.
 
 Format:
 ```
@@ -104,10 +145,10 @@ What's new:
 - [bullet 2]
 - ...
 
-Enjoy the new skills!
+The new version will be fully active on your next Claude Code session.
 ```
 
-### Step 7: Continue
+### Step 9: Continue
 
 After showing What's New, continue with whatever skill the user originally invoked.
 
@@ -119,10 +160,11 @@ When invoked directly as `/toprank-upgrade`:
 
 1. Force a fresh update check (bypass cache and snooze):
 ```bash
-~/.claude/skills/toprank/bin/toprank-update-check --force 2>/dev/null || \
-~/.claude/skills/stockholm/bin/toprank-update-check --force 2>/dev/null || true
+_UPD_BIN=$(ls ~/.claude/plugins/cache/nowork-studio/toprank/*/bin/toprank-update-check 2>/dev/null | head -1)
+[ -n "$_UPD_BIN" ] && _UPD=$("$_UPD_BIN" --force 2>/dev/null || true) || _UPD=""
+echo "$_UPD"
 ```
 
-2. If `UPGRADE_AVAILABLE <old> <new>`: follow Steps 2–6 above.
+2. If `UPGRADE_AVAILABLE <old> <new>`: follow Steps 2–8 above.
 
 3. If no `UPGRADE_AVAILABLE` output: tell the user "You're already on the latest version (v{LOCAL})."
