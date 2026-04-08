@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.7] — 2026-04-08
+
+### Changed
+- **Plugin-aware auto-upgrade** — Rewrote the upgrade system from the old `~/.claude/skills/` paths to the new `~/.claude/plugins/cache/` plugin model. The upgrade flow now updates the marketplace repo, copies to a versioned cache directory, and updates `installed_plugins.json` directly.
+- **Preamble script discovery** — Both `bin/preamble.md` and `google-ads/shared/preamble.md` now find `toprank-update-check` via glob in the plugin cache instead of hardcoded skill paths.
+
+### Removed
+- **Legacy skill paths** — Dropped all references to `~/.claude/skills/toprank/`, `~/.claude/skills/stockholm/`, and the `./setup` script that no longer exists in the plugin model.
+
+---
+
 ## [0.9.6] — 2026-04-08
 
 ### Added
