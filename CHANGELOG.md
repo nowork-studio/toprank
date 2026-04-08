@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.6] — 2026-04-08
+
+### Added
+- **Business relevance gate for keyword evaluation** — The `/ads` skill now classifies keywords into Tier 1 (Core), Tier 2 (Adjacent), and Tier 3 (Irrelevant) before applying performance heuristics. Core keywords that directly describe the business are never paused — they get a diagnostic workflow instead.
+- **Statistical significance gate** — Conversion-based decisions now require expected conversions >= 3 before acting. Prevents false negatives from small sample sizes.
+- **Core Keyword Diagnostic workflow** — 6-step diagnostic for underperforming Tier 1 keywords: statistical significance, sibling comparison, match type analysis, QS subcomponents, position/impression share, and optimization recommendations.
+
+### Changed
+- **Wasted spend calculation** excludes Tier 1 (Core) keywords. A core keyword with 0 conversions is an optimization opportunity, not waste.
+- **Bid optimization and waste audit workflows** updated to classify keywords by business relevance before applying performance actions.
+
+---
+
 ## [0.9.5] — 2026-04-07
 
 ### Changed
