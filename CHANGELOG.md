@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.9] — 2026-04-08
+
+### Changed
+- **API key check moved to shared preamble** — Moved the `ADSAGENT_API_KEY` verification from the `/ads` skill into the shared preamble so all google-ads skills (`/ads`, `/ads-audit`, `/ads-copy`) verify the key automatically. The key is saved to `~/.claude/settings.json` under `env` (not config files) since the MCP server reads it from the environment.
+- **Preamble rewrite** — Clean step numbering (0–5), fixed MCP detection to always run (was skipped for returning users with saved accountId), eliminated duplicate `listConnectedAccounts` calls, explicit deep-merge instructions for settings.json to avoid clobbering existing env vars.
+- **Removed `apiKey` from config schema** — Config files (`.adsagent.json`, `config.json`) now only store `accountId`. API key storage is exclusively in `~/.claude/settings.json`.
+
+---
+
 ## [0.9.8.0] — 2026-04-08
 
 ### Added

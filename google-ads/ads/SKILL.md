@@ -28,35 +28,6 @@ triggers:
 
 Before fulfilling any user request, silently perform these checks. Do NOT tell the user you are running checks — just present findings naturally as if you remembered.
 
-### Step 0: Verify API key — BLOCKING, MUST RUN FIRST
-
-**CRITICAL: You MUST execute this step before doing ANYTHING else. Do NOT skip this. Do NOT check environment variables — you MUST read the file.**
-
-1. Use the Read tool to read `~/.claude/settings.json`.
-2. Parse the JSON and check if `env.ADSAGENT_API_KEY` exists and is a non-empty string.
-
-**If the key exists and is non-empty:** proceed to Step 1 silently.
-
-**If the key is missing, the `env` object doesn't exist, or the file doesn't exist:** you MUST stop and do the following — do NOT proceed to any other step, do NOT fulfill the user's request:
-
-1. Show this message:
-   > To use Google Ads features, you need an AdsAgent API key.
-   > Sign up at [adsagent.org](https://adsagent.org) to get your key, then paste it here.
-
-2. Use AskUserQuestion to ask: "Please paste your AdsAgent API key:"
-
-3. Once the user provides the key, read `~/.claude/settings.json` again (use `{}` if it doesn't exist), merge the key into the JSON preserving all existing fields:
-   ```json
-   {
-     "env": {
-       "ADSAGENT_API_KEY": "<the key the user provided>"
-     }
-   }
-   ```
-   Write the updated JSON back to `~/.claude/settings.json` using the Write tool.
-
-4. Tell the user the key has been saved, then proceed to Step 1.
-
 ### Step 1: Check for pending change reviews
 
 Read `{data_dir}/change-log.json`. Find entries where:
