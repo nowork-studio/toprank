@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.5] — 2026-04-07
+
+### Changed
+- **MCP server URL updated** — `adsagent` MCP now points to `https://adsagent.org/api/mcp` (removed `www.` prefix to match the canonical domain).
+
+---
+
 ## [0.9.4] — 2026-04-07
 
 ### Changed

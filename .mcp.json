@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y", "mcp-remote",
-        "https://www.adsagent.org/api/mcp",
+        "https://adsagent.org/api/mcp",
         "--transport", "http-first",
         "--header", "Authorization:Bearer ${ADSAGENT_API_KEY}"
       ]
