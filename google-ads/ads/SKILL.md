@@ -292,9 +292,37 @@ When interpreting Google Ads data, apply these specific rules. Every recommendat
 - Ad Relevance "Below Average" → keyword doesn't belong in this ad group. Move it to a tighter ad group or write ad copy that matches the keyword theme
 - Landing Page Experience "Below Average" → page load speed, mobile friendliness, or content relevance issue. This is the hardest to fix from within Google Ads — flag for website team
 
+### Keyword Classification (mandatory first step)
+
+Before evaluating any keyword's performance metrics, classify it into a business relevance tier. This prevents the critical mistake of pausing a keyword that is the business's most relevant term just because it had a short run of poor metrics.
+
+Classify by asking: "Would someone searching this term potentially want to buy what this business sells?" Derive the answer from account structure — campaign names, ad group names, ad copy headlines, landing page URLs, and `business-context.json` if available. Do not require manual input.
+
+| Tier | Definition | Examples | Implication |
+|------|-----------|----------|-------------|
+| **Tier 1 (Core)** | Keyword directly describes what the business sells or its primary service | "dog boarding near me" for a dog boarding company, "personal injury lawyer" for a PI firm, "emergency plumber [city]" for a plumbing company | **Never pause.** When underperforming, diagnose and optimize — see Core Keyword Diagnostic below |
+| **Tier 2 (Adjacent)** | Related to the business but not a primary service, or a geographic/intent variant | "dog daycare" in a boarding-focused campaign, "pet care near me", "lawyer free consultation" for a paid-consultation firm | Standard heuristics apply, but only after passing the Statistical Significance Gate |
+| **Tier 3 (Irrelevant)** | Wrong intent, wrong service, competitor names, or unrelated searches | "dog grooming" in a boarding-only ad group, "cat hotel" in a dog boarding account, "[competitor name] reviews" | Existing aggressive pause heuristics apply as-is |
+
+**How to classify without business-context.json:** Look at the campaign name (usually contains the service), the ad group name (usually contains the keyword theme), the ad headlines (what the business is promising), and the landing page URL (what page the business chose). If the keyword matches 2+ of these signals, it's Tier 1. If it matches 1, it's likely Tier 2. If it matches none, it's Tier 3.
+
+### Statistical Significance Gate
+
+Before making any conversion-based decision (pause, bid decrease, or labeling a keyword "non-converting"), check whether there's enough data to draw conclusions:
+
+1. **Calculate expected conversions:** `keyword_clicks × account_average_conversion_rate`
+2. **If expected conversions < 3**, the sample is insufficient — normal statistical variance can easily explain 0 conversions. Label as **"Insufficient data — monitor"** and do NOT make conversion-based decisions.
+3. **Only apply conversion-based heuristics** when expected conversions ≥ 3 and actual conversions are still 0 (or significantly below expected).
+
+This prevents false negatives from small samples. Example: 27 clicks at a 7.6% account conversion rate = 2.05 expected conversions. Since 2.05 < 3, getting 0 conversions is within normal variance — not a signal to pause.
+
+For accounts with very low conversion rates (<2%), the click threshold for significance becomes high. In these cases, also consider CTR and search term quality as secondary signals — but still do not pause Tier 1 keywords without sufficient conversion data.
+
 ### Keyword Performance
 
 Evaluate every keyword against the account's average CPA. If the account has no conversions, use CTR and cost thresholds instead.
+
+> **Prerequisite:** Apply Keyword Classification and the Statistical Significance Gate first. The tables below apply to **Tier 2 and Tier 3 keywords only**. For Tier 1 (Core) keywords, see the Core Keyword Diagnostic workflow below — never pause a core keyword.
 
 **Accounts WITH conversion data:**
 
@@ -304,9 +332,9 @@ Evaluate every keyword against the account's average CPA. If the account has no 
 | CPA 50-100% of account avg | Maintain current bid. Monitor weekly | Healthy, contributing keyword |
 | CPA 100-150% of account avg | Review search terms for this keyword. Tighten match type or add negatives | Borderline — often fixable with better targeting |
 | CPA > 150% of account avg | Decrease bid 15-25%. If CPA > 200% avg after 2 weeks, pause | Underperformer dragging down account |
-| 0 conversions, spend >2x account CPA | Pause immediately OR move to exact match with 25% lower bid | Enough data to conclude this keyword doesn't convert at current targeting |
+| 0 conversions, spend >2x account CPA | **Tier 2/3 only.** Pause immediately OR move to exact match with 25% lower bid. For Tier 1 keywords, run the Core Keyword Diagnostic instead | Enough data to conclude this keyword doesn't convert at current targeting |
 | 0 conversions, spend 1-2x account CPA, QS > 6 | Give 2 more weeks. Check landing page alignment and search term relevance | May need more data — QS suggests the ad/page are relevant |
-| 0 conversions, spend 1-2x account CPA, QS < 5 | Pause. QS + no conversions = wrong keyword or wrong landing page | Two signals pointing the same direction |
+| 0 conversions, spend 1-2x account CPA, QS < 5 | **Tier 2/3 only.** Pause. For Tier 1 keywords, run the Core Keyword Diagnostic instead | Two signals pointing the same direction — but only for non-core keywords |
 | 0 conversions, spend <1x account CPA | Too early to judge on conversions. Evaluate CTR and search term quality instead | Insufficient data for conversion-based decisions |
 | 0 impressions for 30+ days | Pause — this is a zombie keyword. Check: is the bid too low? Match type too restrictive? Keyword paused at ad group level? | Dead weight cluttering the account |
 
@@ -317,6 +345,25 @@ Evaluate every keyword against the account's average CPA. If the account has no 
 | CTR > 5% and CPC < account avg | Likely high-intent — prioritize for conversion tracking setup |
 | CTR < 1% after 500+ impressions | Poor relevance — pause or rewrite ad copy |
 | Significant spend with no conversion tracking | Flag as critical: "You're spending $X with no way to measure results. Set up conversion tracking before any optimization." |
+
+### Core Keyword Diagnostic
+
+When a Tier 1 (Core) keyword has 0 conversions or CPA > 200% of account average, do NOT pause. Instead, run this diagnostic to find the real problem and fix it:
+
+1. **Statistical significance** — Does the keyword have enough clicks to draw conclusions? Calculate `keyword_clicks × account_avg_conversion_rate`. If expected conversions < 3, the data is insufficient. Report: "Insufficient data to conclude this keyword doesn't convert. Need ~X more clicks before drawing conclusions." Monitor and revisit.
+
+2. **Compare to siblings** — Do similar keywords in the same campaign convert? If yes, the landing page works — the problem is specific to this keyword's match type, ad relevance, or position. If no sibling keywords convert either, the issue is likely the campaign/landing page, not this keyword.
+
+3. **Match type check** — Is it broad match attracting irrelevant search terms? Pull the search term report for this keyword. If >30% of triggered searches are irrelevant, recommend tightening to phrase match before considering any other action.
+
+4. **QS subcomponent diagnosis** — Which component is below average?
+   - Expected CTR below avg → ad copy doesn't resonate with this keyword's intent. Needs headline refresh
+   - Ad Relevance below avg → keyword may be in the wrong ad group. Consider moving to a tighter theme
+   - Landing Page below avg → the page doesn't match what searchers expect. Flag for landing page review
+
+5. **Position and impression share** — Is the keyword only showing in low positions (avg position > 4) due to QS or bid issues? Low positions have significantly lower conversion rates. If rank-lost IS > 50%, the keyword isn't getting a fair chance.
+
+6. **Recommend optimization, not removal.** Prescribe specific actions: tighten match type, improve ad copy relevance, adjust bids for better position, fix landing page alignment. Only after optimization attempts fail over 2+ weeks with statistically sufficient data (expected conversions ≥ 3) should a core keyword be considered for pause — and even then, flag it as a significant decision requiring explicit user confirmation with full context about why this core term is being removed.
 
 ### Search Terms
 
@@ -385,7 +432,10 @@ Calculate and report wasted spend on every performance review. This is the singl
 ```
 WASTED SPEND = 
   Keyword Waste:
-    Sum of spend on keywords where (conversions = 0 AND clicks > 10)
+    Sum of spend on Tier 2/3 keywords where (conversions = 0 AND clicks > 10)
+    NOTE: Exclude Tier 1 (Core) keywords — a core keyword with 0 conversions is an
+    optimization opportunity, not waste. Report it separately under "Core keywords
+    needing optimization" if applicable.
   + Search Term Waste:
     Sum of spend on search terms where relevance_score < 2
     (use the 1-5 relevance scoring from references/search-term-analysis-guide.md)
@@ -447,7 +497,7 @@ If the zero-conversion query returns 50 rows (hit the limit), there's significan
 
 **Step 2: Analyze**
 - Apply the Wasted Spend Calculation above
-- For each non-converting keyword: check QS, check spend, check days active. Apply the keyword performance heuristics
+- For each non-converting keyword: first classify (Tier 1/2/3), then check QS, spend, days active, and statistical significance. Apply the keyword performance heuristics — remembering that Tier 1 keywords go through the Core Keyword Diagnostic, not the pause path
 - For each irrelevant search term: score relevance using `references/search-term-analysis-guide.md`, calculate spend attributed
 - Check for Display Network bleed: display clicks with no conversions
 - Check for negative keyword gaps: obvious irrelevant terms not yet blocked
@@ -474,11 +524,12 @@ For each waste source, show:
 - `getCampaignSettings` for target campaigns → confirm bid strategy (manual/enhanced CPC only)
 
 **Step 2: Analyze using keyword performance heuristics**
-- Segment keywords into tiers:
+- First, classify all keywords into Tier 1/2/3 using the Keyword Classification section
+- Then segment by performance:
   - **Scale** (CPA < 50% avg): increase bid 15-25%
   - **Maintain** (CPA 50-100% avg): no change
   - **Reduce** (CPA 100-150% avg): decrease bid 10-15%, add negatives
-  - **Pause** (CPA > 200% avg or spend >2x account CPA with 0 conversions): pause
+  - **Pause** (CPA > 200% avg or spend >2x account CPA with 0 conversions): pause — **Tier 2/3 only.** For Tier 1 keywords, run the Core Keyword Diagnostic instead
 - Cross-reference with impression share: only increase bids on keywords where rank-lost IS > 20% (there's traffic to capture)
 - Check bid strategy compatibility: if using Target CPA or Maximize Conversions, manual bid changes are blocked — recommend bid strategy adjustment instead (see `references/bid-strategy-decision-tree.md`)
 
