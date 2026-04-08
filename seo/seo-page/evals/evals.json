@@ -1,0 +1,23 @@
+{
+  "skill_name": "seo-page",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "analyze https://www.adsagent.org — how's the SEO on the homepage?",
+      "expected_output": "A scored single-page report covering E-E-A-T, content quality, on-page SEO, metadata audit, heading structure, schema markup, and actionable fixes for the homepage",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "can you check this page for me? https://www.pawsvip.com/services/dog-grooming — I want to know if the content is good enough to rank",
+      "expected_output": "A comprehensive page analysis with E-E-A-T scores, search intent analysis (transactional intent for service page), content quality assessment, competitive comparison, and specific fixes",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "what's wrong with this blog post's SEO? https://www.adsagent.org/blog/google-ads-optimization-guide",
+      "expected_output": "A detailed content quality audit for a blog post — informational intent alignment, E-E-A-T evaluation, helpful content signals, readability analysis, heading structure review, and prioritized fixes",
+      "files": []
+    }
+  ]
+}
