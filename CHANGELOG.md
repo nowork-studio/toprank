@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.3] — 2026-04-07
+
+### Added
+- **SEO business context** (`seo/shared/business-context.md`) — persistent per-domain business profile for SEO skills. Caches business name, summary, industry, primary goal, target audience, locations, brand terms, competitors, and key topics at `~/.toprank/business-context/<domain>.json`. Fresh for 90 days; auto-refreshes when stale.
+- **`seo-analysis` Phase 3.8** — business context generation after GSC data is collected. First run asks 3 targeted questions and infers the rest from GSC + homepage. Subsequent runs are silent (cache load only).
+- **`seo-analysis` Phase 2 fast-path** — brand terms are loaded from business context cache when available, skipping the manual question entirely.
+- **Phase 6 report Business Profile section** — report now opens with a business context block (name, goal, audience, competitors) so all recommendations read as contextual rather than generic.
+
+---
+
 ## [0.9.2] — 2026-04-06
 
 ### Changed

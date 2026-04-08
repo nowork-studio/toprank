@@ -120,7 +120,13 @@ Use the target URL from Step 0 and the GSC property list from Phase 1 to find
 the matching property.
 
 ### Collect brand terms
-Ask: "What's your brand name? Enter one or more comma-separated terms (e.g. `Acme, AcmeCorp, acme.io`) — used to separate branded from non-branded traffic. Press Enter to skip."
+
+First, run the Loading section from `../shared/business-context.md`. This sets `CACHE_STATUS` (one of `fresh_loaded`, `stale`, or `not_found`).
+
+**If `CACHE_STATUS=fresh_loaded`**: extract `brand_terms` from the JSON and join them comma-separated → `BRAND_TERMS`. Skip asking the user. Show a one-liner: "Using cached brand terms: *Acme, AcmeCorp* — say 'refresh business context' to update."
+
+**If `CACHE_STATUS=stale` or `not_found`**: ask the user:
+> "What's your brand name? Enter one or more comma-separated terms (e.g. `Acme, AcmeCorp, acme.io`) — used to separate branded from non-branded traffic. Press Enter to skip."
 
 Store the response as `BRAND_TERMS`. If skipped, leave empty — the script handles it gracefully.
 
@@ -375,12 +381,10 @@ Personas are cached at `~/.toprank/personas/` keyed by domain hostname. Check
 whether a persona file already exists:
 
 ```bash
-DOMAIN=$(echo "<target-url>" | python3 -c "import sys; from urllib.parse import urlparse; print(urlparse(sys.stdin.read().strip()).netloc.replace('www.',''))")
+DOMAIN=$(python3 -c "import sys; from urllib.parse import urlparse; print(urlparse(sys.argv[1]).netloc.lstrip('www.'))" "$TARGET_URL")
 PERSONA_FILE="$HOME/.toprank/personas/$DOMAIN.json"
 [ -f "$PERSONA_FILE" ] && echo "FOUND" && cat "$PERSONA_FILE" || echo "NOT_FOUND"
 ```
-
-Replace `<target-url>` with the actual target URL from Step 0.
 
 **If found and `saved_at` is less than 90 days old**: Show a one-line summary of
 each persona and continue. No confirmation pause needed — the user already
@@ -485,6 +489,24 @@ still run persona discovery before Phase 5's analysis — but rely only on the
 homepage content (already fetched) and URL structure. The personas will be less
 precise without query data; note this in the report and recommend re-running the
 audit with GSC access for better persona accuracy.
+
+---
+
+## Phase 3.8 — Business Context
+
+Read and follow `../shared/business-context.md`.
+
+By this point you have GSC data (Phase 3) and homepage content — the two inputs needed to infer business facts before asking the user anything. The goal is to ask as few questions as possible while generating a complete, useful profile.
+
+Branch on `CACHE_STATUS` from Phase 2:
+
+**`fresh_loaded`**: business context is already in memory. No action needed — proceed to Phase 4.
+
+**`not_found`**: run the Generation flow from `../shared/business-context.md`. Seed `brand_terms` with `$BRAND_TERMS` from Phase 2 if the user provided them; supplement with additional brand signals inferred from GSC queries.
+
+**`stale`**: run Generation to refresh. `CACHE_STATUS=stale` means the file was loaded — use those values to pre-fill the three questions so the user confirms or corrects rather than re-enters from scratch.
+
+This phase adds ~30 seconds and one exchange with the user on first run. On all subsequent runs it is silent (cache load only). The payoff: Phase 6 recommendations reference the business by name, compare against real competitors, and focus on the primary goal rather than giving generic SEO advice.
 
 ---
 
@@ -855,6 +877,14 @@ Output a structured report. Use this format exactly:
 
 # SEO Analysis Report — [site.com]
 *Analyzed: [date range] | Data: Google Search Console + URL Inspection + Technical Crawl*
+
+## Business Profile
+*(From Phase 3.8 — provides goal and competitive context for all recommendations below)*
+
+**[Business Name]** — [business_summary from context]
+- **Primary goal**: [primary_goal]
+- **Target audience**: [target_audience]
+- **Competitors tracked**: [competitors list, or "none provided"]
 
 ## Audience Personas
 *(From Phase 3.7 — drives all recommendations below)*
