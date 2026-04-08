@@ -316,13 +316,92 @@ def check_quota_project():
         return False
 
 
+def check_pagespeed_api():
+    """Ensure the PageSpeed Insights API is enabled in the active project.
+    Non-fatal — PageSpeed is optional but recommended."""
+    try:
+        result = subprocess.run(
+            ["gcloud", "services", "list", "--enabled",
+             "--filter=config.name:pagespeedonline.googleapis.com",
+             "--format=value(config.name)"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except subprocess.TimeoutExpired:
+        print("WARNING: Timed out checking PageSpeed API status.", file=sys.stderr)
+        return
+
+    if result.returncode != 0:
+        print("WARNING: Could not check PageSpeed API status (gcloud error).", file=sys.stderr)
+        print("  PageSpeed analysis will still work with an API key.", file=sys.stderr)
+        return
+
+    if "pagespeedonline.googleapis.com" in result.stdout:
+        print("PageSpeed Insights API: enabled", file=sys.stderr)
+        return
+
+    print("PageSpeed Insights API is not enabled. Enabling it now...", file=sys.stderr)
+    try:
+        enable_result = subprocess.run(
+            ["gcloud", "services", "enable", "pagespeedonline.googleapis.com"],
+            capture_output=True, text=True, timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        print("WARNING: Timed out enabling PageSpeed API.", file=sys.stderr)
+        print("  To enable manually: gcloud services enable pagespeedonline.googleapis.com", file=sys.stderr)
+        return
+    if enable_result.returncode == 0:
+        print("PageSpeed Insights API: enabled", file=sys.stderr)
+    else:
+        print("WARNING: Could not enable PageSpeed Insights API.", file=sys.stderr)
+        print("  PageSpeed analysis will still work with an API key.", file=sys.stderr)
+        print("  To enable manually: gcloud services enable pagespeedonline.googleapis.com", file=sys.stderr)
+
+
+def check_pagespeed_api_key():
+    """Check if a PageSpeed API key is available. Suggest creating one if not.
+    The PSI API requires an API key for reliable access (without one, requests
+    may be rejected with quota errors)."""
+    if os.environ.get("PAGESPEED_API_KEY"):
+        print("PageSpeed API key: found in environment", file=sys.stderr)
+        return
+
+    # Check .env and .env.local files in common locations
+    for env_file in [".env", ".env.local", os.path.expanduser("~/.toprank/.env")]:
+        if os.path.isfile(env_file):
+            try:
+                with open(env_file) as f:
+                    for line in f:
+                        stripped = line.strip()
+                        if stripped.startswith("PAGESPEED_API_KEY=") and not stripped.startswith("#"):
+                            val = stripped.split("=", 1)[1].strip().strip("'\"")
+                            if val:
+                                print(f"PageSpeed API key: found in {env_file}", file=sys.stderr)
+                                return
+            except OSError:
+                pass
+
+    print("", file=sys.stderr)
+    print("NOTE: No PageSpeed API key found.", file=sys.stderr)
+    print("  The PageSpeed Insights API works best with an API key.", file=sys.stderr)
+    print("  Without one, requests may hit quota limits.", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("  To create one:", file=sys.stderr)
+    print("  1. Go to https://console.cloud.google.com/apis/credentials", file=sys.stderr)
+    print("  2. Click 'Create Credentials' > 'API key'", file=sys.stderr)
+    print("  3. Set: export PAGESPEED_API_KEY='your-key-here'", file=sys.stderr)
+    print("     Or add to ~/.toprank/.env: PAGESPEED_API_KEY=your-key-here", file=sys.stderr)
+    print("", file=sys.stderr)
+
+
 def main():
     check_python_version()
     check_gcloud()
     check_gcloud_project()
     check_search_console_api()
+    check_pagespeed_api()
     check_adc_credentials()
     quota_ok = check_quota_project()
+    check_pagespeed_api_key()
     if quota_ok:
         print("OK: All dependencies ready.", file=sys.stderr)
     else:

@@ -2,21 +2,25 @@
 name: seo-analysis
 argument-hint: "<URL to audit, e.g. https://example.com>"
 description: >
-  Full SEO audit: Google Search Console data + URL Inspection API + technical
-  crawl + keyword research + metadata audit + schema markup audit + search
-  intent analysis. Feeds real GSC data into AI to surface quick wins, diagnose
-  traffic drops, find content gaps, identify metadata mismatches, detect schema
-  gaps, and produce an actionable 30-day plan. Use this skill whenever the user
-  asks about SEO, search rankings, organic traffic, Google Search Console,
-  keyword performance, traffic drops, content gaps, search visibility, technical
-  SEO, meta tags, schema markup, structured data, URL indexing, keyword research,
-  or indexing issues. Also trigger on: "why is my traffic down", "what keywords
-  am I ranking for", "improve my rankings", "check my search console", "SEO
-  audit", "analyze my SEO", "technical SEO", "meta tags", "indexing issues",
-  "crawl errors", "content strategy", "keyword cannibalization", "search intent",
-  "schema markup", "structured data", "URL inspection", or any organic search
-  question. If in doubt, trigger. This skill handles everything from quick GSC
-  checks to deep technical audits.
+  Full SEO audit: Google Search Console data + URL Inspection API + PageSpeed
+  Insights API + technical crawl + keyword research + metadata audit + schema
+  markup audit + search intent analysis + Core Web Vitals monitoring. Feeds real
+  GSC data and PageSpeed metrics into AI to surface quick wins, diagnose traffic
+  drops, find content gaps, identify metadata mismatches, detect schema gaps,
+  monitor page performance, and produce an actionable 30-day plan. Use this skill
+  whenever the user asks about SEO, search rankings, organic traffic, Google
+  Search Console, keyword performance, traffic drops, content gaps, search
+  visibility, technical SEO, meta tags, schema markup, structured data, URL
+  indexing, keyword research, indexing issues, page speed, performance, Core Web
+  Vitals, LCP, INP, CLS, or Lighthouse scores. Also trigger on: "why is my
+  traffic down", "what keywords am I ranking for", "improve my rankings", "check
+  my search console", "SEO audit", "analyze my SEO", "technical SEO", "meta
+  tags", "indexing issues", "crawl errors", "content strategy", "keyword
+  cannibalization", "search intent", "schema markup", "structured data", "URL
+  inspection", "page speed", "performance score", "core web vitals", "lighthouse",
+  or any organic search question. If in doubt, trigger. This skill handles
+  everything from quick GSC checks to deep technical audits with performance
+  monitoring.
 ---
 
 # SEO Analysis
@@ -115,7 +119,16 @@ Do NOT pause for user confirmation — just show the one-liner and continue.
 
 Read and follow `../shared/preamble.md` — it handles script discovery, gcloud auth, and GSC API setup. If credentials are already cached, this is instant.
 
-If the user has no gcloud and wants to skip GSC, jump directly to Phase 5 for a technical-only audit (crawl, meta tags, schema, indexing).
+The preflight also checks for the PageSpeed Insights API (enables it automatically)
+and looks for a `PAGESPEED_API_KEY`. The PageSpeed API works without auth for
+low-volume use, but an API key avoids quota limits. If the preflight reports no
+API key, suggest:
+
+> "For reliable PageSpeed analysis, create an API key at
+> https://console.cloud.google.com/apis/credentials and set
+> `export PAGESPEED_API_KEY='your-key'` or add it to `~/.toprank/.env`."
+
+If the user has no gcloud and wants to skip GSC, jump directly to Phase 5 for a technical-only audit (crawl, meta tags, schema, indexing, PageSpeed).
 
 > **Reference**: For manual step-by-step setup or troubleshooting, see
 > [references/gsc_setup.md](references/gsc_setup.md).
@@ -233,16 +246,17 @@ This pulls:
 
 ## ⚡ Parallel Data Collection (after Phase 3 completes)
 
-**Do not run Phase 3.5, 3.6, and 5 sequentially — run them all at once.**
+**Do not run Phase 3.5, 3.6, 5, and 5.5 sequentially — run them all at once.**
 
 As soon as Phase 3's `analyze_gsc.py` finishes and you have the top pages list,
-launch all three of these in a single turn using parallel tool calls:
+launch all four of these in a single turn using parallel tool calls:
 
 1. **Phase 3.5**: run `url_inspection.py` (Bash tool)
 2. **Phase 3.6**: detect CMS with `cms_detect.py`, then run the appropriate preflight + fetch if configured (Bash tool)
 3. **Phase 5 pre-fetch**: fetch `robots.txt`, the homepage, and up to 4 top pages via WebFetch — all in parallel
+4. **Phase 5.5**: run `pagespeed.py` for the homepage + top pages by clicks (Bash tool) — this calls the PageSpeed Insights API which is independent of GSC auth
 
-This is safe because all three only need the target URL and top pages list, which
+This is safe because all four only need the target URL and top pages list, which
 Phase 3 has already produced. Running them in parallel cuts ~3-5 minutes off the
 total audit time. Start them all in the same response before reading any results.
 
@@ -913,6 +927,75 @@ After presenting the schema audit, offer:
 
 ---
 
+## Phase 5.5 — PageSpeed Insights (Performance Monitoring)
+
+Run the PageSpeed Insights API on the homepage + top 4 pages by clicks from
+Phase 3. This provides both **lab data** (Lighthouse synthetic test) and **field
+data** (Chrome UX Report real-user metrics) for Core Web Vitals.
+
+**⚡ Speed note**: This should already be running in parallel from the Parallel
+Data Collection step. If not, run it now.
+
+```bash
+python3 "$SKILL_SCRIPTS/pagespeed.py" \
+  --urls "$TARGET_URL,https://example.com/page2,https://example.com/page3" \
+  --both-strategies
+```
+
+Replace the example URLs with the actual homepage and top pages from Phase 3.
+Use `--both-strategies` to get both mobile and desktop scores. If the user has
+set `PAGESPEED_API_KEY` in their environment, the script uses it automatically
+for higher rate limits.
+
+After `pagespeed.py` completes, run the display utility:
+
+```bash
+python3 "$SKILL_SCRIPTS/show_pagespeed.py"
+```
+
+### Analyze the Results
+
+**1. Performance Scores** — Lighthouse scores 0-100 per page:
+- **90-100 (Good)**: No action needed.
+- **50-89 (Needs Work)**: Flag the top opportunities. These pages are losing
+  rankings due to performance — Google uses Core Web Vitals as a ranking signal.
+- **0-49 (Poor)**: Critical. These pages are actively penalized in rankings.
+  Flag as a Priority Action if the page has significant organic traffic.
+
+**2. Core Web Vitals (Field Data)** — Real-user metrics from Chrome UX Report:
+- **LCP** (Largest Contentful Paint): Good < 2.5s, Poor > 4.0s
+- **INP** (Interaction to Next Paint): Good < 200ms, Poor > 500ms
+- **CLS** (Cumulative Layout Shift): Good < 0.1, Poor > 0.25
+
+Field data is more authoritative than lab data for SEO — Google uses CrUX data
+for rankings. If field data is available, lead with it. If not (low-traffic
+sites often lack CrUX data), use lab data and note it's synthetic.
+
+**3. Cross-Reference with Other Phases**:
+- **Phase 3 device split**: If mobile performance score is significantly lower
+  than desktop, and Phase 3 shows mobile traffic underperforming, the
+  performance gap is likely a contributing factor.
+- **Phase 5 technical audit**: Correlate specific opportunities (e.g.,
+  "Eliminate render-blocking resources") with the technical findings (e.g.,
+  render-blocking scripts in `<head>`). This gives concrete evidence for
+  technical fixes.
+- **Phase 3.5 URL Inspection**: Pages flagged as mobile-unfriendly that also
+  have poor mobile PageSpeed scores need urgent attention.
+
+**4. Top Opportunities** — The script extracts Lighthouse optimization
+opportunities sorted by potential time savings. For each, note:
+- What the opportunity is (e.g., "Properly size images", "Remove unused JavaScript")
+- Estimated savings in milliseconds
+- Which specific page(s) are affected
+- Whether it's a site-wide template issue or page-specific
+
+**5. Origin-Level Data** — If available, the origin (site-wide) CrUX data shows
+the overall performance health of the entire domain. Compare individual page
+scores against the origin average to identify outlier pages dragging down the
+site's overall performance profile.
+
+---
+
 ## Phase 6 — Report
 
 **The goal of this report is not comprehensiveness — it is clarity.** The user needs to know exactly what to do next, in what order, and why. Lead with the highest-impact actions. Put supporting data after. Omit anything that doesn't change what the user should do.
@@ -1015,6 +1098,17 @@ This section exists to back up the Priority Actions and surface anything else th
 | Issue | Pages Affected | Fix | Severity |
 |-------|---------------|-----|----------|
 
+### PageSpeed & Core Web Vitals
+*(From Phase 5.5. Only include if issues found. Lead with field data if available, fall back to lab data.)*
+
+**Site-wide (Origin)**: [Overall CrUX rating if available]
+
+| Page | Score | LCP | INP | CLS | Top Opportunity |
+|------|-------|-----|-----|-----|-----------------|
+| / | [score] | [value] [rating] | [value] [rating] | [value] [rating] | [top opportunity title + savings] |
+
+*(If any page scores below 50, flag it as a Priority Action candidate — poor Core Web Vitals directly hurt rankings.)*
+
 ### Traffic Drops
 *(Pages/queries with >30% decline. Only include if not already in Priority Actions.)*
 | Page / Query | Change | Hypothesis | Next Step |
@@ -1064,9 +1158,18 @@ existing.append({
         "avg_ctr_pct": <FILL>,
         "avg_position": <FILL>
     },
+    "pagespeed_snapshot": {
+        "avg_score_mobile": <FILL or null>,
+        "avg_score_desktop": <FILL or null>,
+        "homepage_score_mobile": <FILL or null>,
+        "cwv_lcp_ms": <FILL or null>,
+        "cwv_inp_ms": <FILL or null>,
+        "cwv_cls": <FILL or null>,
+        "cwv_source": "<FILL: field|lab>"  # "field" if CrUX data available, else "lab"
+    },
     "top_issues": [
         # One entry per Priority Action (max 5), in priority order
-        {"rank": 1, "title": "<FILL>", "type": "<FILL: title_tag|indexing|cannibalization|schema|content_gap>", "page": "<FILL>", "metric": "<FILL>", "expected_impact": "<FILL>", "status": "open"}
+        {"rank": 1, "title": "<FILL>", "type": "<FILL: title_tag|indexing|cannibalization|schema|content_gap|performance>", "page": "<FILL>", "metric": "<FILL>", "expected_impact": "<FILL>", "status": "open"}
     ],
     "resolved_from_previous": []  # populated on next audit from Audit History comparison
 })
