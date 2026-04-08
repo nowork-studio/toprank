@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.4] — 2026-04-07
+
+### Changed
+- **`seo-analysis` report restructured for clarity** — Phase 6 now leads with "Top Priority Actions" (3–5 items, ordered by expected click impact) instead of 12+ equal-weight sections. Each action requires a specific URL, specific metric as evidence, and a copy-paste-ready fix with estimated click impact. Supporting data (indexing issues, cannibalization, gaps, schema, technical) is condensed into reference tables shown only when findings exist.
+- **`seo-analysis` audit history tracking** — new Step 0.5 reads `~/.toprank/audit-log/<domain>.json` at startup to surface previously flagged issues and their current resolution status. New Phase 6.5 writes a concise log entry after each audit (date, traffic snapshot, top issues with metrics and expected impact). Future audits show which prior issues are resolved, improved, or still open.
+
+### Fixed
+- **`seo-analysis` Phase 3.7** — removed duplicate `$DOMAIN` extraction; now reuses the variable set in Step 0.5 instead of re-deriving it.
+
+---
+
 ## [0.9.3] — 2026-04-07
 
 ### Added
