@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.11.0] — 2026-04-09
+
+### Added
+- **Gemini cross-model review skill** — New `/toprank:gemini` skill that launches Google's Gemini CLI as an independent reviewer. Three modes: review (pass/fail gate), challenge (adversarial stress test), and consult (open Q&A). Unlike code-only review tools, handles Google Ads changes (campaign structure, bid strategies, keywords) and SEO metadata changes (title tags, meta descriptions, schema markup) alongside code diffs. Produces cross-model analysis when Claude has already reviewed the same changes, highlighting overlapping findings, unique catches, and disagreements.
+
+---
+
 ## [0.10.0.1] — 2026-04-08
 
 ### Changed
