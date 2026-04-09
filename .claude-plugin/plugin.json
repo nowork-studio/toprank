@@ -15,6 +15,7 @@
     "./seo/meta-tags-optimizer",
     "./seo/schema-markup-generator",
     "./seo/setup-cms",
-    "./toprank-upgrade-skill"
+    "./toprank-upgrade-skill",
+    "./gemini"
   ]
 }

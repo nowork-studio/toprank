@@ -144,7 +144,13 @@ Add the marketplace and enable the plugin in `~/.claude/settings.json`:
 | [`schema-markup-generator`](seo/schema-markup-generator/) | JSON-LD structured data for rich results. FAQ, HowTo, Article, Product, LocalBusiness. |
 | [`setup-cms`](seo/setup-cms/) | Connect WordPress, Strapi, Contentful, or Ghost for automated SEO field audits. |
 
-All skills are namespaced: `/toprank:ads`, `/toprank:seo-analysis`, etc.
+### Cross-Model
+
+| Skill | What it does |
+|-------|-------------|
+| [`gemini`](gemini/) | Second opinion from Google Gemini. Review (pass/fail gate), challenge (adversarial stress test), or consult (open Q&A). Especially strong on Google Ads and SEO decisions — Gemini has native Google ecosystem knowledge. |
+
+All skills are namespaced: `/toprank:ads`, `/toprank:seo-analysis`, `/toprank:gemini`, etc.
 
 ---
 
@@ -170,6 +176,7 @@ toprank/
 │   ├── schema-markup-generator/ <- JSON-LD structured data
 │   ├── seo-page/                <- single-page deep analysis
 │   └── setup-cms/               <- CMS connector
+├── gemini/                      <- cross-model review via Gemini CLI
 ├── toprank-upgrade-skill/       <- self-updater
 ├── test/                        <- unit + LLM-judge eval tests
 └── VERSION

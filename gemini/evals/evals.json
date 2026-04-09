@@ -1,0 +1,42 @@
+{
+  "skill_name": "gemini",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "gemini review my Google Ads changes — I just added 50 broad match keywords to my Search campaign targeting 'best crm software'",
+      "expected_output": "A structured review with PASS/FAIL verdict covering keyword match type risks, budget implications, and negative keyword recommendations",
+      "files": [],
+      "expectations": [
+        "Detects change type as google-ads",
+        "Runs in review mode",
+        "Checks for broad match risks and recommends negatives",
+        "Produces a PASS or FAIL verdict with reasoning"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "stress test with gemini — I'm changing my homepage title tag from 'Acme CRM | Customer Relationship Management' to 'Best CRM Software 2026 | Acme'",
+      "expected_output": "An adversarial analysis with risk level, attack vectors covering potential ranking disruption, keyword cannibalization, and CTR impact",
+      "files": [],
+      "expectations": [
+        "Detects change type as seo",
+        "Runs in challenge mode",
+        "Identifies risk of losing branded search rankings",
+        "Flags potential CTR change from title reformulation",
+        "Suggests verifying featured snippet retention"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "ask gemini — should I use Target ROAS or Maximize Conversions for a new lead gen campaign with no historical data?",
+      "expected_output": "An opinionated recommendation explaining Google Ads auction mechanics and why one strategy suits cold campaigns better",
+      "files": [],
+      "expectations": [
+        "Runs in consult mode",
+        "Provides a clear recommendation with reasoning",
+        "References Google Ads auction or Smart Bidding learning period",
+        "Explains trade-offs between the two strategies"
+      ]
+    }
+  ]
+}
