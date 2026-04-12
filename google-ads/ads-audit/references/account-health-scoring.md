@@ -1,35 +1,30 @@
-# Account Health Scoring Framework
+# Account Health — Diagnostic Reference
 
-Structured scoring methodology for Google Ads account audits. Seven health dimensions, each scored 0-5, with weighted rollup to a 0-100 overall score.
-
----
-
-## Health Dimensions Overview
-
-| # | Dimension | Weight | What It Measures |
-|---|-----------|--------|-----------------|
-| 1 | Conversion Tracking | 20% | Tracking completeness and sophistication |
-| 2 | Campaign Structure | 15% | Organization, segmentation, budget logic |
-| 3 | Keyword Health | 20% | Quality scores, match types, zombie keywords |
-| 4 | Search Term Quality | 15% | Query relevance, negative coverage, mining |
-| 5 | Ad Copy | 10% | RSA quantity, variety, and performance |
-| 6 | Impression Share | 10% | Budget and rank signal interpretation |
-| 7 | Spend Efficiency | 10% | Wasted spend, CPA, concentration risk |
+Thresholds, red flags, interpretation matrices, and benchmarks for Google Ads account audits. Use these to determine severity of findings and assign them to the right pass (Stop Wasting, Capture More, or Fix Fundamentals).
 
 ---
 
-## Dimension 1: Conversion Tracking (Weight: 20%)
+## Audit Areas Overview
 
-| Score | Level | Criteria |
-|-------|-------|----------|
-| 0 | None | No conversion tracking installed |
-| 1 | Basic | Tag fires but no values assigned; only 1 conversion action |
-| 2 | Partial | Multiple conversion actions with values, but gaps: missing phone calls OR form submissions OR key pages |
-| 3 | Solid | All key actions tracked (form, phone, purchase); values assigned; conversion window set correctly; Consent Mode v2 implemented (mandatory for EU since March 2024) |
-| 4 | Advanced | Score 3 + enhanced conversions enabled; conversion linker tag present; GCLID auto-tagging on; Consent Mode v2 verified across all regions |
-| 5 | Best-in-class | Score 4 + offline conversion import OR store visit tracking; server-side tagging implemented; data-driven attribution model |
+| Area | Layer | What to Check |
+|------|-------|---------------|
+| Signal Quality | 1: Signals | Tracking completeness, enhanced conversions, consent mode, data density for Smart Bidding |
+| Campaign Structure | 2: Relevance | Organization, segmentation, budget logic, PMax cannibalization |
+| Keyword Health | 2: Relevance | Quality scores, match types, zombie keywords, wasted spend |
+| Search Term Quality | 2: Relevance | Query relevance, negative coverage, mining opportunities |
+| Ad Copy & Creative | 2: Relevance | RSA quantity, variety, asset health, extensions, PMax completeness |
+| Impression Share | 3: Efficiency | Rank-lost (relevance) vs budget-lost (scale) — different problems, different fixes |
+| Spend Efficiency | 3: Efficiency | Wasted spend, CPA, brand vs non-brand split, concentration risk |
 
-### Conversion Tracking Red Flags
+---
+
+## Signal Quality
+
+*Layer 1 — "Can I trust the data?"*
+
+If signals are broken, every decision downstream is built on lies — and Smart Bidding can't optimize what it can't measure.
+
+### Red Flags
 
 | Signal | Severity | What It Means |
 |--------|----------|---------------|
@@ -38,19 +33,15 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 | All conversions = "Website" (no action names) | High | Default tracking, no meaningful segmentation |
 | "Include in conversions" set to YES for micro-conversions | Medium | Inflated conversion counts, misleading CPA |
 | Last-click attribution on any campaigns | High | Deprecated since 2023 — data-driven attribution (DDA) is now the only model for new conversion actions. Migrate existing conversion actions to DDA immediately |
+| Campaign using tCPA/tROAS with <15 conversions/month | High | Insufficient data density — Smart Bidding can't learn. Need 30+ for tCPA, 50+ for tROAS |
+| No Consent Mode v2 with EU traffic | High | Degraded conversion modeling in privacy-regulated markets. Bid strategies underperform |
+| Enhanced conversions not enabled | Medium | Cross-device and cross-browser attribution gaps. Smart Bidding missing signal |
 
 ---
 
-## Dimension 2: Campaign Structure (Weight: 15%)
+## Campaign Structure
 
-| Score | Level | Criteria |
-|-------|-------|----------|
-| 0 | Chaotic | 1 campaign, 1 ad group, 200+ keywords of mixed intent |
-| 1 | Minimal | Multiple campaigns but no logical organization; ad groups have 50+ keywords spanning unrelated themes |
-| 2 | Basic | Campaigns organized by service/product line; ad groups still too broad (30-50 keywords) |
-| 3 | Good | Properly themed ad groups (10-20 keywords each); logical campaign splits by service/geo; match types considered |
-| 4 | Strong | Score 3 + separate brand campaign; geo-targeted campaigns where relevant; budget allocated by priority |
-| 5 | Excellent | Score 4 + funnel-stage separation (brand/non-brand/competitor/remarketing); proper budget allocation ratios; campaign experiments running |
+*Layer 2 — "Am I in the right auctions?"*
 
 ### Structure Assessment Checklist
 
@@ -62,19 +53,13 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 | Campaign naming convention | Consistent pattern | No pattern (e.g., "Campaign 1", "test") |
 | Budget distribution | Proportional to priority | Equal across all campaigns regardless of performance |
 | Location targeting | Set per campaign need | All campaigns target same broad area |
+| PMax cannibalization | PMax excluded from brand terms or brand IS stable | PMax running alongside Search with declining brand IS |
 
 ---
 
-## Dimension 3: Keyword Health (Weight: 20%)
+## Keyword Health
 
-| Score | Level | Criteria |
-|-------|-------|----------|
-| 0 | Failing | Average QS <4; >50% zombie keywords; no match type strategy |
-| 1 | Poor | Average QS 4-5; 30-50% zombie keywords; broad match without Smart Bidding or negatives |
-| 2 | Below Average | Average QS 5-6; 20-30% zombie keywords; broad match with Smart Bidding but insufficient negatives |
-| 3 | Good | Average QS 6-7; <20% zombie keywords; intentional match type strategy; negatives in place |
-| 4 | Strong | Average QS 7-8; <10% zombie keywords; intentional match type strategy aligned with Smart Bidding |
-| 5 | Excellent | Average QS 8+; <5% zombie keywords; tightly themed ad groups aligned to Smart Bidding signals; comprehensive negative coverage |
+*Layer 2 — "Am I in the right auctions?"*
 
 ### Keyword Sub-Metric Thresholds
 
@@ -96,16 +81,9 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 
 ---
 
-## Dimension 4: Search Term Quality (Weight: 15%)
+## Search Term Quality
 
-| Score | Level | Criteria |
-|-------|-------|----------|
-| 0 | Unmonitored | Never reviewed; no negative keywords; broad match with no controls |
-| 1 | Neglected | Reviewed once; <10 negative keywords; relevance <60% |
-| 2 | Basic | Quarterly review; 10-30 negatives; relevance 60-75% |
-| 3 | Managed | Monthly review; 30-100 negatives; relevance 75-85%; obvious irrelevants blocked |
-| 4 | Active | Bi-weekly review; 100+ negatives organized in lists; relevance 85-90%; mining opportunities captured |
-| 5 | Optimized | Weekly review; comprehensive negative lists by theme; relevance >90%; all converting terms added as exact keywords; shared negative lists across campaigns |
+*Layer 2 — "Am I in the right auctions?"*
 
 ### Search Term Relevance Thresholds
 
@@ -128,18 +106,13 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 
 ---
 
-## Dimension 5: Ad Copy (Weight: 10%)
+## Ad Copy & Creative
 
-| Score | Level | Criteria |
-|-------|-------|----------|
-| 0 | Missing | Ad groups with 0 or 1 active ad; no RSAs |
-| 1 | Minimal | 1 RSA per ad group; only 3-5 headlines; ad strength "Poor" |
-| 2 | Basic | 1 RSA per ad group; 6-8 headlines; ad strength "Average" |
-| 3 | Good | 1-2 RSAs per ad group; 8-11 headlines from 3+ angles; ad strength "Good" |
-| 4 | Strong | 2 RSAs per ad group for testing; 11-15 headlines; 5+ angles; ad strength "Good" to "Excellent" |
-| 5 | Excellent | Score 4 + active A/B tests running; performance data-driven pinning; CTR above position-adjusted benchmark |
+*Layer 2 — "Am I fit to compete in the auctions I'm entering?"*
 
-### Ad Copy Sub-Metrics
+In the RSA + Smart Bidding era, creative variety is how Google's ML finds the right audience segments. Missing assets reduce Ad Rank and limit the algorithm's ability to optimize.
+
+### Ad Copy & Creative Sub-Metrics
 
 | Sub-Metric | Poor | Average | Good | Excellent |
 |------------|------|---------|------|-----------| 
@@ -149,21 +122,20 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 | Ad strength distribution | >50% Poor | >50% Average | >50% Good | >50% Excellent |
 | CTR vs. position benchmark | >30% below | 10-30% below | At benchmark | Above benchmark |
 | Descriptions with CTA | 0% | 25-50% | 50-75% | 75%+ |
+| Extension coverage | None | 1-2 types | 3-4 types | Full suite |
+| PMax asset completeness | Missing asset types | Partial | Most types | All types with variety |
 
 ---
 
-## Dimension 6: Impression Share (Weight: 10%)
+## Impression Share
 
-| Score | Level | Criteria |
-|-------|-------|----------|
-| 0 | Invisible | Search IS <20%; losing >80% of eligible impressions |
-| 1 | Struggling | Search IS 20-40%; high losses on both budget and rank |
-| 2 | Below Average | Search IS 40-60%; one major loss driver (budget OR rank) |
-| 3 | Competitive | Search IS 60-75%; budget-lost IS <20% and rank-lost IS <30% |
-| 4 | Strong | Search IS 75-90%; budget-lost IS <10% and rank-lost IS <15% |
-| 5 | Dominant | Search IS >90%; minimal losses on both dimensions |
+*Diagnosed across two layers:*
+- **Lost IS (Rank)** = Layer 2 relevance problem. The auction is telling you your Ad Rank is low. Fix with better ads, tighter themes, better landing pages — not more money.
+- **Lost IS (Budget)** = Layer 4 scaling opportunity. You're winning auctions but running out of gas. Fix with more budget or narrower targeting.
 
-### Budget-Lost IS Interpretation
+This split is the most important insight in the audit. Treating both as a single "impression share problem" gives bad advice — telling someone with a relevance problem to spend more money just burns money faster.
+
+### Budget-Lost IS Interpretation (Layer 4 — Scale)
 
 | Budget-Lost IS | Severity | Meaning |
 |---------------|----------|---------|
@@ -172,12 +144,12 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 | 10-20% | Acceptable | Minor constraint; may be intentional budget cap |
 | <10% | Good | Budget is not a limiting factor |
 
-### Rank-Lost IS Interpretation
+### Rank-Lost IS Interpretation (Layer 2 — Relevance)
 
 | Rank-Lost IS | Severity | Meaning |
 |-------------|----------|---------|
-| >50% | Crisis | Ads rarely showing in competitive positions; QS or bid fundamentally broken |
-| 30-50% | Needs Work | Consistently outranked; improve QS, bids, or ad relevance |
+| >50% | Crisis | Ads rarely showing in competitive positions; QS or bid fundamentally broken. Do NOT spend more — fix relevance first |
+| 30-50% | Needs Work | Consistently outranked; improve QS, ad relevance, or landing page experience |
 | 15-30% | Competitive | Normal competitive loss; optimize incrementally |
 | <15% | Strong | Winning most eligible auctions |
 
@@ -185,27 +157,28 @@ Structured scoring methodology for Google Ads account audits. Seven health dimen
 
 | | Rank-Lost IS LOW (<20%) | Rank-Lost IS HIGH (>20%) |
 |---|------------------------|--------------------------|
-| **Budget-Lost IS LOW (<15%)** | **Healthy** -- Optimizing at the margins. Focus on bid strategy and new keyword expansion. | **QS / Bid Problem** -- Ads not competitive. Improve ad relevance, landing pages, or increase bids. Check QS components. |
-| **Budget-Lost IS HIGH (>15%)** | **Pure Budget Problem** -- Ads are competitive when shown. Increase budget, narrow geo targeting, or daypart to stretch budget. | **Structural Problem** -- Wrong keywords entirely. Audience too broad, poor campaign structure. Rebuild targeting from scratch. |
+| **Budget-Lost IS LOW (<15%)** | **Healthy** -- Optimizing at the margins. Focus on bid strategy and new keyword expansion. | **Relevance Problem (Layer 2 fix)** -- Ads not competitive. Improve ad relevance, landing pages, or check QS components. Do not increase budget. |
+| **Budget-Lost IS HIGH (>15%)** | **Capital Problem (Layer 4 fix)** -- Ads are competitive when shown. Increase budget, narrow geo targeting, or daypart to stretch budget. | **Structural Problem (Layer 2 fix)** -- Wrong keywords entirely. Audience too broad, poor campaign structure. Rebuild targeting from scratch. |
 
 ---
 
-## Dimension 7: Spend Efficiency (Weight: 10%)
+## Spend Efficiency
 
-| Score | Level | Criteria |
-|-------|-------|----------|
-| 0 | Burning | >30% wasted spend; CPA >3x industry benchmark; no conversion data |
-| 1 | Poor | 20-30% wasted spend; CPA 2-3x benchmark; top spenders not converting |
-| 2 | Below Average | 15-20% wasted spend; CPA 1.5-2x benchmark |
-| 3 | Average | 10-15% wasted spend; CPA within 1-1.5x benchmark; top 20% keywords drive 50%+ conversions |
-| 4 | Good | 5-10% wasted spend; CPA at or below benchmark; strong conversion concentration |
-| 5 | Excellent | <5% wasted spend; CPA well below benchmark; top 20% keywords drive 60%+ conversions; no keyword spending >2x account CPA with 0 conversions |
+*Layer 3 — "Am I spending wisely?"*
 
 ### Wasted Spend Calculation
 
+Wasted spend is the sum of three components:
+
 ```
-Wasted Spend % = (Spend on keywords with 0 conversions AND >10 clicks) / Total Spend x 100
+Keyword waste    = Spend on keywords with 0 conversions AND spend > 2x account avg CPA
+Search term waste = Spend on search terms with 10+ clicks AND 0 conversions (data-only filter — no subjective scoring)
+Structural waste  = Spend on Display Network clicks in Search campaigns where display clicks > 20 AND 0 display conversions
+
+Wasted Spend % = (keyword waste + search term waste + structural waste) / Total Spend x 100
 ```
+
+**De-duplication:** Search term waste and keyword waste can overlap (a wasted keyword triggers wasted search terms). To avoid double-counting, calculate keyword waste first, then only count search term waste from search terms that don't map to already-counted wasted keywords.
 
 | Wasted Spend % | Severity | Monthly Waste at $10k Spend |
 |---------------|----------|-----------------------------|
@@ -214,6 +187,19 @@ Wasted Spend % = (Spend on keywords with 0 conversions AND >10 clicks) / Total S
 | 10-20% | Medium | $1,000-$2,000/month |
 | 5-10% | Low | $500-$1,000/month |
 | <5% | Healthy | <$500/month |
+
+### Brand vs. Non-Brand Segmentation
+
+Many accounts show great overall ROAS, but the majority comes from brand traffic — you're paying Google a tax on existing customers, not acquiring new ones. This analysis is critical for understanding true acquisition efficiency.
+
+| Brand % of Conversions | Interpretation |
+|------------------------|---------------|
+| >80% | Over-dependent on brand. Account ROAS is misleading — non-brand performance is likely poor. Growth requires making non-brand work |
+| 60-80% | Brand-heavy. Report non-brand CPA separately — this is the true acquisition cost |
+| 40-60% | Healthy mix. Both channels contributing meaningfully |
+| <40% | Non-brand dominant. Verify brand isn't being cannibalized by PMax or competitors |
+
+Always report: "Overall CPA is $X, but brand CPA is $Y and non-brand CPA is $Z." If brand and non-brand aren't in separate campaigns, flag as a structural issue (→ Pass 3).
 
 ### Spend Concentration Analysis
 
@@ -226,58 +212,15 @@ Wasted Spend % = (Spend on keywords with 0 conversions AND >10 clicks) / Total S
 
 ---
 
-## Overall Health Score Calculation
+## Pulse Metrics — What to Track
 
-### Formula
+Instead of a composite score, the audit tracks 3 objective metrics:
 
-```
-Overall Score = (D1 x 0.20 + D2 x 0.15 + D3 x 0.20 + D4 x 0.15 + D5 x 0.10 + D6 x 0.10 + D7 x 0.10) / 5 x 100
-```
-
-Where D1-D7 are the dimension scores (0-5).
-
-### Example Calculation
-
-| Dimension | Score | Weight | Weighted |
-|-----------|-------|--------|----------|
-| Conversion Tracking | 3 | 0.20 | 0.60 |
-| Campaign Structure | 2 | 0.15 | 0.30 |
-| Keyword Health | 4 | 0.20 | 0.80 |
-| Search Term Quality | 3 | 0.15 | 0.45 |
-| Ad Copy | 2 | 0.10 | 0.20 |
-| Impression Share | 3 | 0.10 | 0.30 |
-| Spend Efficiency | 3 | 0.10 | 0.30 |
-| **Total** | | | **2.95** |
-
-Overall Score = 2.95 / 5 x 100 = **59 / 100** (Needs Work)
-
----
-
-## Severity Classification
-
-| Score Range | Classification | Typical Account Profile | Urgency |
-|-------------|---------------|------------------------|---------|
-| 0-30 | Critical | No tracking, chaotic structure, massive waste. Money is actively burning. | Fix this week. Every day costs money. |
-| 31-50 | Needs Significant Work | Basic tracking but major structural gaps. Likely 30-50% of spend is wasted. | Fix within 2 weeks. Prioritize highest-waste areas. |
-| 51-70 | Needs Work | Tracking works, structure is OK, but optimization gaps. Common for unmanaged or self-managed accounts. | Fix within 30 days. Methodical improvement plan. |
-| 71-85 | Good | Well-managed account with room for optimization. Typical of accounts with active management. | Ongoing optimization. Quarterly deep reviews. |
-| 86-100 | Strong | Well-optimized account. Marginal gains from here. | Maintain. Focus on scaling and expansion. |
-
----
-
-## Priority Action Matrix
-
-For each dimension scored below 3, the single highest-impact fix:
-
-| Dimension | Score 0 Fix | Score 1 Fix | Score 2 Fix |
-|-----------|------------|------------|------------|
-| Conversion Tracking | Install Google Tag + at least 1 conversion action | Add conversion values; track all key actions (form, phone, purchase) | Fill coverage gaps; enable enhanced conversions |
-| Campaign Structure | Split into service-based campaigns with 10-20 keyword ad groups | Reorganize ad groups by theme; separate brand from non-brand | Tighten ad groups to 10-20 keywords; add geo targeting |
-| Keyword Health | Pause all QS <3 keywords; add negative keywords; reduce to 10-20 per ad group | Focus on QS 4-5 keywords: improve ad relevance and landing pages | Add exact match for top converters; pause zombie keywords |
-| Search Term Quality | Run first-ever search term review; add 20+ obvious negatives | Build negative keyword lists by theme; block top wasters | Set up bi-weekly review cadence; mine converting terms |
-| Ad Copy | Create RSA with 8+ headlines for every ad group | Add headlines to reach 8+; ensure 3+ distinct angles | Add second RSA for A/B testing; improve headline variety |
-| Impression Share | Check if budget is depleting before noon; adjust bids down or narrow targeting | Identify top budget-loss campaign; increase budget or narrow geo/schedule | Improve QS on rank-lost keywords; test bid strategies |
-| Spend Efficiency | Pause all keywords with spend >1x account CPA and 0 conversions immediately | Set max CPC caps; pause keywords with >20 clicks and 0 conversions | Reallocate budget from low-efficiency to high-efficiency keywords |
+| Metric | What it measures | Better = | Severity thresholds |
+|--------|-----------------|----------|---------------------|
+| **Waste rate** | % of spend on zero-conversion entities | Lower | >20% critical, 10-20% needs work, 5-10% OK, <5% healthy |
+| **Demand captured** | Weighted avg IS on profitable campaigns | Higher | <30% critical, 30-50% needs work, 50-70% OK, >70% strong |
+| **CPA** | Cost per conversion | Lower/stable | Compare to industry benchmarks below |
 
 ---
 
@@ -286,26 +229,41 @@ For each dimension scored below 3, the single highest-impact fix:
 ```
 START
 |
-1. Check Conversion Tracking (Dimension 1)
-   +-- Score 0-1? --> STOP. Fix tracking before anything else.
-   |                   No point optimizing what you cannot measure.
-   +-- Score 2+? --> Continue
+LAYER 1: SIGNALS
 |
-2. Assess Campaign Structure (Dimension 2)
-   +-- Score 0-1? --> Restructure before optimizing keywords/ads.
-   +-- Score 2+? --> Continue
+1. Gate check: Is tracking working?
+   +-- Hard stop? --> STOP. Fix tracking before anything else.
+   +-- Flags? --> Note them, continue
 |
-3. Evaluate Keyword Health (Dimension 3) + Search Terms (Dimension 4)
-   +-- Run in parallel. These inform each other.
+LAYER 2: RELEVANCE
 |
-4. Review Ad Copy (Dimension 5)
-   +-- Only after keywords are stable. No point writing ads for bad keywords.
+2. Pre-checks (location intent, search partners, display network) --> Pass 1
+3. Campaign structure, keyword health, search terms, ad copy
+   +-- Waste findings --> Pass 1 (stop the bleeding)
+   +-- Structural fixes --> Pass 3 (fix fundamentals)
+   +-- PMax running? --> Check cannibalization, asset completeness
+   +-- Rank-lost IS > 30%? --> Pass 3, do NOT recommend more budget
 |
-5. Analyze Impression Share (Dimension 6) + Spend Efficiency (Dimension 7)
-   +-- These are outcome metrics. Fix inputs (1-5) before worrying about outputs.
+LAYER 3: EFFICIENCY
 |
-6. Calculate Overall Score
-7. Generate Priority Action Plan (top fix per dimension scoring <3)
+4. Impression share interpretation + spend efficiency
+   +-- Brand vs non-brand segmentation
+   +-- Bid strategy fitness
+   +-- Conversion value sanity check
+|
+LAYER 4: SCALE
+|
+5. Budget-constrained winners (budget-lost IS on profitable campaigns) --> Pass 2
+   +-- Coverage gaps (geo, dayparting, device) --> Pass 2
+   +-- High-CTR low-conversion ad groups --> Pass 2
+|
+LAYER 5: GROWTH
+|
+6. Incrementality + expansion opportunities --> Pass 2 / forward-looking
+|
+7. Compute pulse metrics (waste rate, demand captured, CPA)
+8. Persist to audit-history.json
+9. Generate 3-pass report (max 3 items per pass)
 |
 END
 ```
@@ -314,7 +272,7 @@ END
 
 ## Industry CPA Benchmarks
 
-Reference benchmarks for evaluating Dimension 7 (Spend Efficiency):
+Reference benchmarks for evaluating spend efficiency:
 
 | Industry | Avg CPA (Search) | Good CPA | Excellent CPA |
 |----------|-----------------|----------|---------------|
