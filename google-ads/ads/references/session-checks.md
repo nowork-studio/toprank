@@ -1,12 +1,21 @@
 # Session Start Checks
 
-Run these checks only when the user's request is analysis-oriented (performance reviews, optimization, "how are my ads", "show me", audits). Skip them for direct action commands like "pause keyword X", "rename campaign Y", "add negative keyword Z".
+Run these checks when the user's request is analysis-oriented (performance reviews, optimization, "how are my ads", "show me", audits) OR when the user explicitly asks to review their changes ("check my changes", "did my changes work"). Skip them for direct action commands like "pause keyword X", "rename campaign Y", "add negative keyword Z".
 
 ## Check for pending change reviews
 
-Read `{data_dir}/change-log.json`. Find entries where `reviewed` is `false` and `reviewAfter` date has passed.
+Read `{data_dir}/change-log.json`. Find entries where `reviewed` is `false`.
 
-If pending reviews exist:
+**If unreviewed changes exist but `reviewAfter` has NOT passed yet:**
+
+> **Changes still maturing:**
+>
+> _[Date]: [summary]_
+> Google Ads needs time to accumulate enough data for a reliable before/after comparison. Ready for review on [reviewAfter date] ([reviewWindow] review window per `change-tracking.md`).
+
+Do NOT pull metrics or attempt to assess impact early — small sample sizes lead to misleading conclusions.
+
+**If unreviewed changes exist AND `reviewAfter` has passed:**
 
 1. Pull current metrics for affected campaigns using `listCampaigns` and `getCampaignPerformance` (7-day window). Use the `beforeSnapshot` from the change log as baseline — only fall back to `getCampaignPerformance` for the pre-change period if `beforeSnapshot.metrics` is null. Do this in parallel with the user's actual request. Save the `listCampaigns` result for reuse in anomaly detection.
 

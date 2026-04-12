@@ -34,6 +34,6 @@ Append to the `changes` array:
 
 - **Capture before-metrics** from data already in context. If none available: `"beforeSnapshot": { "metrics": null, "note": "No pre-change metrics" }`.
 - **Review windows:** Bid/keyword/negative/budget changes: 7 days. Campaign creates/pauses/restructures/ad copy: 14 days.
-- **Tell the user:** "Change logged. I'll check the impact when you next open a session after [reviewAfter date]. You can also ask 'review my changes' anytime."
+- **Tell the user:** "Change logged. Google Ads changes typically take **7 days minimum** to show reliable results (14 days for structural changes like new campaigns or ad copy). I'll check the impact after [reviewAfter date] — you can also ask 'check my changes' anytime."
 - **Max 200 entries** (remove oldest reviewed first).
 - **Group related writes** in one session as a single entry.

@@ -22,6 +22,11 @@ triggers:
   - rename campaign
   - rename ad group
   - bulk keywords
+  - check my changes
+  - did my changes work
+  - review my changes
+  - how are my changes doing
+  - change impact
 ---
 
 ## Setup
@@ -37,6 +42,13 @@ This skill handles two very different request types. Recognizing which one you'r
 > 1. Confirm: "I'll pause 'dog grooming' in Pet Daycare - Seattle. Go ahead?"
 > 2. On approval: call `pauseKeyword`, log per `references/change-tracking.md`
 > 3. Done. No session checks, no performance analysis.
+
+**Change impact review:**
+> User: "check my changes" / "did my changes work?" / "review my changes"
+> 1. Read `references/session-checks.md` and run the change review checks
+> 2. If no pending changes: tell the user no recent changes are logged
+> 3. If changes exist but review window hasn't passed: show maturation message (see `references/session-checks.md`)
+> 4. If ready for review: pull before/after metrics, compute deltas, show results
 
 **Analysis request:**
 > User: "how are my ads doing?"
