@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.11.1] — 2026-04-11
+
+### Changed
+- **Ads audit restructured around 5 analysis layers and 3 actionable passes** — Replaced the 7-dimension scoring model (0-5 per dimension, 0-100 composite) with a layered analysis approach: Signals → Relevance → Efficiency → Scale → Growth. Findings now map to 3 action-oriented passes: Stop Wasting, Capture More, Fix Fundamentals. Tracks 3 objective pulse metrics (waste rate, demand captured, CPA) with trend comparison on re-audits
+- **Added PMax campaign support** — Asset group completeness checks, PMax cannibalization detection for brand Search traffic, and PMax-specific bid strategy guidance
+- **Added audience signals check** — Flags Search campaigns missing audience segments and PMax asset groups without audience signals, both of which limit Smart Bidding performance
+- **Smarter waste calculation** — Keyword waste threshold changed from "clicks > 10" to "spend > 2x account average CPA", which respects Smart Bidding's learning curve. Added de-duplication rules to prevent double-counting between keyword and search term waste
+- **On-demand reference loading** — Quality score, search term analysis, industry benchmarks, and campaign structure references now load only when relevant issues are detected, saving ~1,000 lines of context per audit
+- **Extracted reference docs** — Persona discovery template and business context crawl procedure moved to dedicated reference files for reuse across skills
+
+---
+
 ## [0.11.0] — 2026-04-09
 
 ### Added
