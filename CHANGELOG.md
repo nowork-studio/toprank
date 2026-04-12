@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.11.3] — 2026-04-12
+
+### Added
+- **Change impact review mode** — Users can now say "check my changes" or "did my changes work" to review the impact of recent Google Ads changes. The ads skill routes these requests through session-checks with proper before/after metric comparison
+- **Maturation guidance** — When changes haven't had enough time to accumulate data (7 days for bid/keyword changes, 14 days for structural changes), the skill explains why and tells the user when to check back instead of showing misleading early metrics
+
+### Changed
+- **Deduped headline/description formulas** — Removed 50-line inline formula table from ads-copy SKILL.md; now references `rsa-best-practices.md` as single source of truth
+- **Deduped business context intake** — Removed 75-line duplicate intake procedure from ads-copy SKILL.md; now references `ads-audit/references/business-context.md` as canonical source
+- **Fixed session-checks query logic** — Changed from filtering only matured entries to finding all unreviewed entries, then branching on maturation status. Previously the "still maturing" message could never fire
+- **Removed overly generic triggers** — Dropped "did it improve" and "what happened after" which could false-positive on non-ads queries
+
+---
+
 ## [0.11.2] — 2026-04-11
 
 ### Changed
