@@ -217,7 +217,9 @@ ORDER BY segments.date DESC
 
 ## Specialized queries
 
-### Zero-conversion high-spend keywords (waste detection)
+### Zero-conversion keywords by spend (waste detection)
+
+Use this query to surface waste candidates. The `/ads-audit` skill's waste formula uses a stricter threshold: `spend > 2x account avg CPA` (not clicks > 10). Calculate account avg CPA from `listCampaigns` data first, then filter these results accordingly.
 
 ```
 SELECT campaign.name, ad_group.name,
@@ -228,7 +230,6 @@ FROM keyword_view
 WHERE segments.date DURING LAST_30_DAYS
   AND campaign.status = 'ENABLED'
   AND metrics.conversions = 0
-  AND metrics.clicks > 10
 ORDER BY metrics.cost_micros DESC
 LIMIT 50
 ```
