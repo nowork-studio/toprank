@@ -159,7 +159,7 @@ If `runGaqlQuery` errors or is unavailable, fall back to per-campaign helper too
 **Small/new account gate:** If total spend < $500 or total conversions < 10 in the date range, the account doesn't have enough data for meaningful waste rate, demand captured, or CPA metrics. Run a **simplified audit**:
 1. Layer 1 (tracking check) — still critical, catch setup problems early
 2. Layer 2 (structure check only) — campaign organization, keyword themes, ad copy completeness
-3. Skip Layers 3-5 and pulse metrics — they'd be statistically meaningless
+3. Skip Layers 3-5 — they'd be statistically meaningless. Still compute and persist pulse metrics (with a "low data" caveat) so re-audits have a baseline
 4. Report format: use the same 3-pass template but note "Limited data — metrics will be meaningful after 30+ days with $500+ spend." Focus recommendations on structural setup, not optimization
 5. Still run Phase 2.5 (personas) and Phase 3 (business context) — these are valuable regardless of data volume
 

@@ -13,7 +13,7 @@ Thresholds, red flags, interpretation matrices, and benchmarks for Google Ads ac
 | Keyword Health | 2: Relevance | Quality scores, match types, zombie keywords, wasted spend |
 | Search Term Quality | 2: Relevance | Query relevance, negative coverage, mining opportunities |
 | Ad Copy & Creative | 2: Relevance | RSA quantity, variety, asset health, extensions, PMax completeness |
-| Impression Share | 3: Efficiency | Rank-lost (relevance) vs budget-lost (scale) — different problems, different fixes |
+| Impression Share | 2/4: Relevance/Scale | Rank-lost IS = Layer 2 relevance problem; Budget-lost IS = Layer 4 scaling opportunity — different problems, different fixes |
 | Spend Efficiency | 3: Efficiency | Wasted spend, CPA, brand vs non-brand split, concentration risk |
 
 ---
@@ -129,6 +129,8 @@ In the RSA + Smart Bidding era, creative variety is how Google's ML finds the ri
 
 ## Impression Share
 
+**Data limit:** `getImpressionShare` supports max 90 days (not 365 like other tools). For GAQL impression share queries, the same 90-day practical limit applies. Do not use `LAST_365_DAYS` for impression share data.
+
 *Diagnosed across two layers:*
 - **Lost IS (Rank)** = Layer 2 relevance problem. The auction is telling you your Ad Rank is low. Fix with better ads, tighter themes, better landing pages — not more money.
 - **Lost IS (Budget)** = Layer 4 scaling opportunity. You're winning auctions but running out of gas. Fix with more budget or narrower targeting.
@@ -208,7 +210,7 @@ Always report: "Overall CPA is $X, but brand CPA is $Y and non-brand CPA is $Z."
 | Top 20% keywords' share of conversions | >50% | 30-50% | <30% |
 | Top 20% keywords' share of spend | <50% | 50-70% | >70% with low conversion share |
 | Single keyword share of total spend | <15% | 15-30% | >30% (concentration risk) |
-| Keywords spending >1x account CPA with 0 conversions | 0-2 | 3-5 | >5 |
+| Keywords spending >2x account CPA with 0 conversions | 0-2 | 3-5 | >5 |
 
 ---
 

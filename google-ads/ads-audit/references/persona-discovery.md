@@ -8,7 +8,7 @@ Discover 2-3 customer personas from the ad data. This runs in parallel with busi
 |--------|----------------|---------------|
 | Search terms | What customers actually search for — their language, pain points, urgency | `getSearchTermReport` from Phase 1 |
 | Converting keywords | What they buy — the terms that lead to conversions reveal purchase intent | `getKeywords` filtered to converting |
-| Ad group themes | How the business segments its services — each theme may serve a different persona | `listAdGroups` from Phase 1 |
+| Ad group themes | How the business segments its services — each theme may serve a different persona | Ad group data from Phase 1 |
 | Landing page URLs | Where they land — different pages suggest different customer journeys | `listAds` final URLs from Phase 1 |
 | Geographic data | Where they are — metro vs rural, specific cities | `getCampaignSettings` location targets |
 | Device split | How they search — mobile-heavy suggests on-the-go/urgent need | Infer from ad performance patterns |
