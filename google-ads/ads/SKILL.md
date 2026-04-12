@@ -153,3 +153,5 @@ After analysis, proactively offer relevant skills:
 - **Ad copy problems** (CTR issues in 2+ ad groups): suggest `/ads-copy`
 - **Missing business context** (no `business-context.json` or >90 days old): suggest `/ads-audit` first
 - **Keyword gaps** (3+ converting search terms not yet keywords): offer to add them
+- **Landing page misalignment** (CTR above industry benchmark but conversion rate below on multiple ad groups): suggest `/ads-landing`
+- **Competitive intelligence** (impression share declining or new competitor patterns): suggest `/ads-compete`
