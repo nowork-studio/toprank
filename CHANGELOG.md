@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.11.2] — 2026-04-11
+
+### Changed
+- **Ads skill SKILL.md slimmed down** — Extracted analysis heuristics, change tracking, session checks, and workflow playbooks into dedicated reference files under `google-ads/ads/references/`. Main SKILL.md went from ~770 lines to ~160 lines, loading references on demand instead of carrying everything inline
+- **New reference routing table** — SKILL.md now has a quick-lookup table mapping situations (performance analysis, QS diagnostics, bid strategy, etc.) to the right reference file
+- **Added new MCP tools** — Listed `getKeywordIdeas`, `getPmaxAssetGroups`, `getPmaxAssets`, `searchGeoTargets`, `updateCampaignBidding`, `updateCampaignGoals`, `removeAd`, `pausePmaxAssetGroup`, `enablePmaxAssetGroup` in the tool catalog
+- **Two interaction modes** — SKILL.md now distinguishes direct actions (fast path, no session checks) from analysis requests (full checks and reporting)
+- **Dev symlink detection** — `bin/toprank-update-check` and the upgrade skill now detect dev symlinks and skip update checks, preventing upgrade attempts on developer-managed installs
+
+---
+
 ## [0.11.1] — 2026-04-11
 
 ### Changed

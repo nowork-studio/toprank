@@ -25,6 +25,14 @@ VERSION_RE='^[0-9]+(\.[0-9]+)+$'
 # State dir must exist early so any writes below succeed.
 mkdir -p "$STATE_DIR"
 
+# ─── Dev symlink: skip update checks entirely ────────────────
+# When installed via a dev symlink (cache dir named "dev"), the plugin
+# is managed by the developer — no remote upgrade checks needed.
+CACHE_DIR_NAME="$(basename "$(ls -d ~/.claude/plugins/cache/nowork-studio/toprank/*/ 2>/dev/null | head -1)" 2>/dev/null || true)"
+if [ "$CACHE_DIR_NAME" = "dev" ]; then
+  exit 0
+fi
+
 # ─── Force flag (busts cache + snooze for standalone /toprank-upgrade) ──
 if [ "${1:-}" = "--force" ]; then
   rm -f "$CACHE_FILE"

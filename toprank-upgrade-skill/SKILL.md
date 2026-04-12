@@ -39,6 +39,8 @@ Log "Upgrading toprank v{old} → v{new}..." and proceed to Step 2.
 
 ### Step 2: Detect current install
 
+First check for dev symlink (see "Dev symlink detection" section). If detected, stop — do not upgrade.
+
 ```bash
 # Find the currently installed plugin path
 INSTALLED_DIR=$(ls -d ~/.claude/plugins/cache/nowork-studio/toprank/*/ 2>/dev/null | grep -v '.bak' | head -1)
@@ -111,12 +113,12 @@ print('Updated installed_plugins.json: toprank@nowork-studio -> v$NEW_VERSION')
 
 ### Step 6: Clean up old cache versions
 
-Remove old versioned cache directories (keep only the new one):
+Remove old versioned cache directories (keep only the new one). Never remove a `dev` symlink:
 
 ```bash
 for dir in ~/.claude/plugins/cache/nowork-studio/toprank/*/; do
   ver=$(basename "$dir")
-  if [ "$ver" != "$NEW_VERSION" ]; then
+  if [ "$ver" != "$NEW_VERSION" ] && [ "$ver" != "dev" ]; then
     rm -rf "$dir"
     echo "Removed old cache: $ver"
   fi
@@ -154,17 +156,34 @@ After showing What's New, continue with whatever skill the user originally invok
 
 ---
 
+## Dev symlink detection
+
+Before upgrading, check if the installed cache directory is a symlink named `dev`:
+
+```bash
+CACHE_DIR=$(ls -d ~/.claude/plugins/cache/nowork-studio/toprank/*/ 2>/dev/null | head -1)
+if [ -L "${CACHE_DIR%/}" ] && [ "$(basename "$CACHE_DIR")" = "dev" ]; then
+  echo "DEV_SYMLINK"
+fi
+```
+
+If `DEV_SYMLINK`: tell the user "toprank is installed as a dev symlink — it always points to your local source (v$(cat "$CACHE_DIR/VERSION" 2>/dev/null | tr -d '[:space:]')). No upgrade needed." and **stop**. Do not proceed with Steps 2–8.
+
+---
+
 ## Standalone usage
 
 When invoked directly as `/toprank-upgrade`:
 
-1. Force a fresh update check (bypass cache and snooze):
+1. Check for dev symlink (see "Dev symlink detection" above). If detected, stop.
+
+2. Force a fresh update check (bypass cache and snooze):
 ```bash
 _UPD_BIN=$(ls ~/.claude/plugins/cache/nowork-studio/toprank/*/bin/toprank-update-check 2>/dev/null | head -1)
 [ -n "$_UPD_BIN" ] && _UPD=$("$_UPD_BIN" --force 2>/dev/null || true) || _UPD=""
 echo "$_UPD"
 ```
 
-2. If `UPGRADE_AVAILABLE <old> <new>`: follow Steps 2–8 above.
+3. If `UPGRADE_AVAILABLE <old> <new>`: follow Steps 2–8 above.
 
-3. If no `UPGRADE_AVAILABLE` output: tell the user "You're already on the latest version (v{LOCAL})."
+4. If no `UPGRADE_AVAILABLE` output: tell the user "You're already on the latest version (v{LOCAL})."
