@@ -226,9 +226,9 @@ The audit tracks 3 objective metrics for trend tracking (unchanged across audits
 
 ---
 
-## Simple Grade (A–F) — For Communication
+## Account Verdict — One-Line State of the Account
 
-Pulse metrics tell the trend story. The grade tells the "is this account OK?" story in a single character. Compute it from the severity count of findings, not from a weighted formula — SMB owners don't need precision, they need a verdict.
+Pulse metrics tell the trend. The **verdict** tells the "is this account OK?" story in one line that an SMB owner can read in 2 seconds. It replaces an A-F grade because a letter grade can invert on dollars — a single Critical can outrank many Mediums that collectively burn more money. The verdict is a description of the account's current state, not a score.
 
 ### Severity Tags (required on every finding)
 
@@ -246,17 +246,28 @@ Severity rubric (deliberately simple):
 | **Medium** | Optimization worth $50–$200/mo, single-campaign structural issue, relevance improvement |
 | **Low** | Best-practice gap, <$50/mo impact, nice-to-have |
 
-### Grade rubric
+Severity tags are load-bearing independent of the verdict — they drive the Quick Wins section, the 3-pass ordering, and the re-audit diff. Never omit them.
 
-| Grade | Rule | Label |
+### Verdict rubric (first match wins)
+
+Evaluate the rules in order. The first one that matches is the verdict. This "trump" order prevents a quiet Critical from being hidden by a loud scaling opportunity.
+
+| # | Rule | Verdict line |
 |---|---|---|
-| **F** | Any Critical finding | Urgent — tracking or money loss |
-| **D** | 2+ High findings (no Critical) | Significant issues |
-| **C** | 1 High finding (no Critical) | Notable fix needed |
-| **B** | Only Medium/Low findings | Healthy with optimization opportunity |
-| **A** | No findings above Low | Well-managed |
+| 1 | Any `Critical` finding exists | `🚫 Urgent — {reason from the Critical}` |
+| 2 | `waste_rate > 15%` OR 2+ `High` findings | `⚠️ Leaking ~${monthly_waste_usd}/mo — {N} fixes below` |
+| 3 | Budget-lost IS > 20% on any profitable campaign AND no rules 1-2 triggered | `📈 Healthy — ~${headroom_usd}/mo in scaling room` |
+| 4 | `waste_rate < 5%` AND no High findings AND no scaling opportunity | `✅ Well-managed — optimizing at the margins` |
+| 5 | Otherwise | `🟡 Stable — {N} medium-impact fixes available` |
 
-**That's the whole rubric.** Five rules, no weights, no multipliers, no per-check IDs. The grade moves when the severity count moves — which is exactly what an SMB owner cares about.
+**Why this shape:**
+- Rule 1 is a trump: Criticals always surface. No amount of healthy pulse metrics can hide broken tracking.
+- Rule 2 is dollar-denominated — it uses the actual `waste_rate × monthly_spend` number, not a letter. An SMB reading "Leaking ~$1,200/mo" knows instantly what's at stake.
+- Rule 3 is only reached when Layers 1-3 are clean. This is where the skill explicitly says "you're doing well, here's your next lever."
+- Rule 4 is the floor for well-run accounts. Not celebratory — just honest.
+- Rule 5 is the common middle ground for accounts that aren't on fire but aren't pristine either.
+
+Compute `monthly_waste_usd` from the wasted-spend calculation already in Layer 3 (extrapolate to 30 days if the audit window is shorter). Compute `headroom_usd` from the margin-aware formula in `../../shared/ppc-math.md` when `unit_economics` is available; fall back to `budget_lost_is × current_monthly_spend` otherwise.
 
 ### Quick Wins section (auto-generated)
 
@@ -274,19 +285,26 @@ Every Quick Win must be executable via a single `/ads` command and include the c
 
 ### What goes in `audit-history.json`
 
-Extend the schema to persist the grade and severity distribution:
+Persist the verdict line verbatim, the rule number that fired (for diffing), and the severity distribution:
 
 ```json
 {
   "date": "2026-04-14",
-  "grade": "C",
-  "severity_counts": { "critical": 0, "high": 1, "medium": 3, "low": 2 },
-  "metrics": { "waste_rate": 11.3, "demand_captured": 42.7, "cpa": 19.88 },
+  "verdict": "⚠️ Leaking ~$1,240/mo — 3 fixes below",
+  "verdict_rule": 2,
+  "severity_counts": { "critical": 0, "high": 2, "medium": 3, "low": 2 },
+  "metrics": { "waste_rate": 14.8, "demand_captured": 42.7, "cpa": 19.88 },
   "top_actions": [...]
 }
 ```
 
-On re-audits, show grade delta inline: `Grade: B (was C) — 1 High issue resolved since last audit.`
+On re-audits, show movement by comparing `verdict_rule` (lower number = more urgent) and by diffing the pulse metrics inline. Examples of re-audit verdict lines:
+
+- `⚠️ Leaking ~$640/mo — 1 fix below` `_(was $1,240/mo — 2 High findings resolved since last audit)_`
+- `📈 Healthy — ~$2,100/mo in scaling room` `_(previously Urgent — tracking fixed 2 weeks ago)_`
+- `🟡 Stable — 3 medium-impact fixes available` `_(unchanged — same 3 findings carried over)_`
+
+The re-audit never shows an abstract grade jump. It shows dollar movement, finding movement, or explicit "unchanged" — which is harder to game and impossible to invert.
 
 ---
 

@@ -46,7 +46,7 @@ Match campaign names, ad group names, and keyword themes using case-insensitive 
 ## Reference Documents
 
 **Always read before Phase 2:**
-- `references/account-health-scoring.md` — Diagnostic thresholds, red flags, interpretation matrices, severity tags, and A-F grade rubric
+- `references/account-health-scoring.md` — Diagnostic thresholds, red flags, interpretation matrices, severity tags, and the one-line verdict rubric
 - `../shared/industry-templates.json` — Industry presets (margin, AOV, target CPA, red flags, quick-start negatives). Cache in memory for the session
 - `../shared/ppc-math.md` — Break-even CPA, headroom, LTV:CAC, IS opportunity, budget forecasting. Read before computing any dollar-denominated finding
 
@@ -163,7 +163,7 @@ If `runGaqlQuery` errors or is unavailable, fall back to per-campaign helper too
 1. Layer 1 (tracking check) — still critical, catch setup problems early
 2. Layer 2 (structure check only) — campaign organization, keyword themes, ad copy completeness, industry-template red-flag checks
 3. Skip Layers 3-5 — they'd be statistically meaningless. Still compute and persist pulse metrics (with `"low_data": true`) so re-audits have a baseline
-4. Report format: use the launch-mode template — no A-F grade (too little data), no dollar-impact claims. Instead surface a **Readiness checklist** scored `ready | needs fix | blocker` and a **Next milestone** trigger
+4. Report format: use the launch-mode template — no account verdict (too little data to compute dollar-denominated waste or headroom), no dollar-impact claims. Instead surface a **Readiness checklist** scored `ready | needs fix | blocker` and a **Next milestone** trigger
 5. **Set the next milestone** in `audit-history.json`:
    ```json
    "next_milestone": { "conversions": 30, "spend_usd": 1000, "check_after": "2026-05-14" }
@@ -419,7 +419,7 @@ Write to `{data_dir}/business-context.json` using the schema in `references/busi
 
 ## Phase 4: Deliver the Audit Report
 
-The report uses the **3-pass structure** — organized by what the user should do, not by what dimension was analyzed. Lead with the grade + verdict + pulse metrics, then the three passes, then Quick Wins, personas, and questions.
+The report uses the **3-pass structure** — organized by what the user should do, not by what dimension was analyzed. Lead with the one-line verdict + pulse metrics, then the three passes, then Quick Wins, personas, and questions.
 
 **The #1 rule: no duplication.** Each finding appears in exactly one place.
 
@@ -432,17 +432,23 @@ Before writing the report, tag every Pass 1/2/3 finding with two fields (rubric 
 
 Severity is determined by dollar impact — use margin-aware framing when `business-context.json.unit_economics.aov_usd` and `profit_margin` are available (see `../shared/ppc-math.md`), otherwise fall back to account-average heuristics. Never mix the two framings in one report.
 
-### Computing the grade
+### Computing the verdict
 
-Count the severity tags across all findings and apply the simple rubric from `references/account-health-scoring.md`:
+Evaluate the 5 verdict rules from `references/account-health-scoring.md` **in order** — first match wins. The verdict is a one-line description of the account's state, not a letter grade:
 
-- **F** = any Critical finding
-- **D** = 2+ High findings (no Critical)
-- **C** = 1 High finding (no Critical)
-- **B** = only Medium/Low findings
-- **A** = no findings above Low
+1. Any `Critical` → `🚫 Urgent — {reason}`
+2. `waste_rate > 15%` OR 2+ `High` → `⚠️ Leaking ~${monthly_waste}/mo — {N} fixes below`
+3. Budget-lost IS > 20% on a profitable campaign → `📈 Healthy — ~${headroom}/mo in scaling room`
+4. `waste_rate < 5%` AND no High findings AND no scaling opportunity → `✅ Well-managed — optimizing at the margins`
+5. Otherwise → `🟡 Stable — {N} medium-impact fixes available`
 
-On re-audits, compute grade delta from the previous `audit-history.json` entry and surface it inline: `Grade: B (was C) — 1 High issue resolved since last audit.`
+Dollar figures come from Layer 3 waste calculation and the margin-aware headroom formula in `../shared/ppc-math.md`. When `unit_economics.source == "inferred_from_template"`, the verdict line stays the same — just append the disclaimer line beneath it.
+
+**On re-audits**, compare to the previous `audit-history.json` entry:
+- If `verdict_rule` dropped (numerically lower = more urgent), something got worse — show `_(was: {previous verdict})_` on the next line and flag in red
+- If `verdict_rule` rose (numerically higher = less urgent), something got fixed — show `_(was: {previous verdict})_` and call out which findings resolved
+- If `verdict_rule` unchanged but pulse metrics moved >5%, append `_(waste: X% → Y%)_` to make the improvement visible even when the verdict bucket didn't flip
+- If nothing meaningful moved, just say `_(unchanged since last audit)_`
 
 ### Pulse Metrics
 
@@ -470,7 +476,8 @@ After each audit, append a snapshot to `{data_dir}/audit-history.json`:
       "mode": "full",
       "total_spend": 1431.48,
       "total_conversions": 72,
-      "grade": "C",
+      "verdict": "⚠️ Leaking ~$162/mo — 1 fix below",
+      "verdict_rule": 2,
       "severity_counts": { "critical": 0, "high": 1, "medium": 3, "low": 2 },
       "metrics": {
         "waste_rate": 11.3,
@@ -487,7 +494,7 @@ After each audit, append a snapshot to `{data_dir}/audit-history.json`:
 }
 ```
 
-For launch-mode audits, set `"mode": "launch"`, omit `grade`/`severity_counts`, mark `metrics` with `"low_data": true`, and populate `next_milestone` with the conversion/spend/date thresholds that graduate the next audit to full mode.
+For launch-mode audits, set `"mode": "launch"`, omit `verdict`/`verdict_rule`/`severity_counts`, mark `metrics` with `"low_data": true`, and populate `next_milestone` with the conversion/spend/date thresholds that graduate the next audit to full mode.
 
 **On first audit:** Create the file. Show raw values with no comparison.
 
@@ -500,17 +507,19 @@ For launch-mode audits, set `"mode": "launch"`, omit `grade`/`severity_counts`, 
 
 ```
 # [Business Name] — Ads Audit
-**Grade: [A-F]** [if re-audit: (was [prev]) — [delta label]]
+**[Verdict line with emoji, e.g. "⚠️ Leaking ~$1,240/mo — 3 fixes below"]**
+[if re-audit and verdict changed] _(was: [previous verdict line])_
+[if re-audit, verdict unchanged, but metrics moved >5%] _(waste X% → Y%, CPA $A → $B)_
 **[Date range] · $X,XXX spent · XX conversions · $XX CPA**
 Waste: X% · Demand captured: X% · CPA: $X
-[If previous audit exists: show (was Y%) for each metric]
+[If previous audit exists: show (was Y%) for each metric that moved >5%]
 [If scoped] Scoped to: [description]
 [If unit_economics.source == "inferred_from_template"]
 _Profitability estimates use industry defaults — confirm your actual AOV and margin for sharper recommendations._
 
-[2-3 sentence verdict. What's working, what's broken, and the single biggest
-opportunity in dollar terms. This paragraph should be enough for someone who
-won't read further.]
+[1-2 sentence narrative elaborating the verdict: what's driving the dollar
+number and what the biggest single lever is. The verdict line answers "what";
+this paragraph answers "why" and "what next."]
 
 ## Stop Wasting (Pass 1)
 1. **[Action]** — saves $X/month · `Critical` · `<15min`
@@ -554,8 +563,8 @@ Max 2-3 questions. Don't ask what you can infer from the data.]
 
 ```
 # [Business Name] — Ads Launch Check
-**Launch mode** · [Date range] · $XXX spent · X conversions
-_Too little data for a full grade — come back after the milestone below._
+**🌱 Launch mode** · [Date range] · $XXX spent · X conversions
+_Too little data for a dollar-denominated verdict — come back after the milestone below._
 [If scoped] Scoped to: [description]
 
 [2-3 sentence verdict focused on setup quality and readiness, not optimization.]
