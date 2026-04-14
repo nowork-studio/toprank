@@ -216,13 +216,77 @@ Always report: "Overall CPA is $X, but brand CPA is $Y and non-brand CPA is $Z."
 
 ## Pulse Metrics — What to Track
 
-Instead of a composite score, the audit tracks 3 objective metrics:
+The audit tracks 3 objective metrics for trend tracking (unchanged across audits):
 
 | Metric | What it measures | Better = | Severity thresholds |
 |--------|-----------------|----------|---------------------|
 | **Waste rate** | % of spend on zero-conversion entities | Lower | >20% critical, 10-20% needs work, 5-10% OK, <5% healthy |
 | **Demand captured** | Weighted avg IS on profitable campaigns | Higher | <30% critical, 30-50% needs work, 50-70% OK, >70% strong |
 | **CPA** | Cost per conversion | Lower/stable | Compare to industry benchmarks below |
+
+---
+
+## Simple Grade (A–F) — For Communication
+
+Pulse metrics tell the trend story. The grade tells the "is this account OK?" story in a single character. Compute it from the severity count of findings, not from a weighted formula — SMB owners don't need precision, they need a verdict.
+
+### Severity Tags (required on every finding)
+
+Every finding surfaced in Pass 1/2/3 must carry two tags:
+
+- **`severity`**: `Critical` | `High` | `Medium` | `Low`
+- **`time_to_fix`**: `<5min` | `<15min` | `<30min` | `<2h` | `>2h`
+
+Severity rubric (deliberately simple):
+
+| Severity | When to use |
+|---|---|
+| **Critical** | Tracking broken, money actively burning >$500/mo, policy violation risk, or account-wide signal failure |
+| **High** | Fixable waste or capture opportunity worth $200–$500/mo, structural issue affecting multiple campaigns |
+| **Medium** | Optimization worth $50–$200/mo, single-campaign structural issue, relevance improvement |
+| **Low** | Best-practice gap, <$50/mo impact, nice-to-have |
+
+### Grade rubric
+
+| Grade | Rule | Label |
+|---|---|---|
+| **F** | Any Critical finding | Urgent — tracking or money loss |
+| **D** | 2+ High findings (no Critical) | Significant issues |
+| **C** | 1 High finding (no Critical) | Notable fix needed |
+| **B** | Only Medium/Low findings | Healthy with optimization opportunity |
+| **A** | No findings above Low | Well-managed |
+
+**That's the whole rubric.** Five rules, no weights, no multipliers, no per-check IDs. The grade moves when the severity count moves — which is exactly what an SMB owner cares about.
+
+### Quick Wins section (auto-generated)
+
+After the 3-pass report, emit a `## Quick Wins` section containing every finding where:
+
+```
+severity IN ('Critical', 'High') AND time_to_fix IN ('<5min', '<15min')
+```
+
+Sort by dollar impact descending. Max 5 items. If none qualify, omit the section entirely — don't fabricate.
+
+Every Quick Win must be executable via a single `/ads` command and include the command text. Examples:
+- `Add 7 negatives to Tukwila Search — saves ~$340/mo (<5 min) · /ads add negatives to Tukwila Search: jobs, careers, salary, diy, free, reddit, training`
+- `Enable Enhanced Conversions — unlocks 10-15% more attribution (<15 min) · Configure in Google Ads UI (not /ads)`
+
+### What goes in `audit-history.json`
+
+Extend the schema to persist the grade and severity distribution:
+
+```json
+{
+  "date": "2026-04-14",
+  "grade": "C",
+  "severity_counts": { "critical": 0, "high": 1, "medium": 3, "low": 2 },
+  "metrics": { "waste_rate": 11.3, "demand_captured": 42.7, "cpa": 19.88 },
+  "top_actions": [...]
+}
+```
+
+On re-audits, show grade delta inline: `Grade: B (was C) — 1 High issue resolved since last audit.`
 
 ---
 

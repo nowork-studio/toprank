@@ -58,6 +58,7 @@ Write the complete business context to `{data_dir}/business-context.json`:
 {
   "business_name": "",
   "industry": "",
+  "industry_template_key": "",
   "website": "",
   "services": [],
   "locations": [],
@@ -79,6 +80,14 @@ Write the complete business context to `{data_dir}/business-context.json`:
     "competitive_terms": [],
     "long_tail_opportunities": []
   },
+  "unit_economics": {
+    "aov_usd": null,
+    "profit_margin": null,
+    "ltv_usd": null,
+    "avg_customer_lifespan_months": null,
+    "source": "user_provided | inferred_from_template | unknown",
+    "last_confirmed": ""
+  },
   "social_proof": [],
   "offers_or_promotions": [],
   "landing_pages": {},
@@ -89,3 +98,19 @@ Write the complete business context to `{data_dir}/business-context.json`:
 ```
 
 Include `audit_date` (today's date) and `account_id` so future skills know when this was last refreshed.
+
+## Unit Economics — How to Populate
+
+Unit economics drive margin-aware profitability framing (see `../../shared/ppc-math.md`). Three ways to populate, in priority order:
+
+1. **User-provided (strongest):** During Phase 3 intake, ask: "What's your average order value and rough profit margin?" Set `source: "user_provided"` and stamp `last_confirmed` with today's date.
+
+2. **Inferred from industry template (fallback):** If the user doesn't know, read `../../shared/industry-templates.json` and copy `typical_margin` + the midpoint of `aov_range_usd`. Set `source: "inferred_from_template"`. Flag prominently in the audit: "_Profitability estimates use industry defaults — confirm your actual AOV and margin for sharper recommendations._"
+
+3. **Leave null (last resort):** If no industry template match and user declines to provide, leave all fields `null`. The audit falls back to account-average heuristics and skips break-even / headroom framing.
+
+**Never compute break-even CPA when `source == "inferred_from_template"` without surfacing the assumption.** A template-inferred margin that's off by 15% changes every Pass 1 dollar impact. Transparency is non-negotiable.
+
+### Industry template matching
+
+During Phase 3, after resolving `industry`, also set `industry_template_key` by matching against `templates.*.aliases` in `industry-templates.json` (case-insensitive substring). If no match, use `"generic"`. This key is the stable handle downstream skills use — industry names drift across audits, the key doesn't.

@@ -37,3 +37,25 @@ Append to the `changes` array:
 - **Tell the user:** "Change logged. Google Ads changes typically take **7 days minimum** to show reliable results (14 days for structural changes like new campaigns or ad copy). I'll check the impact after [reviewAfter date] — you can also ask 'check my changes' anytime."
 - **Max 200 entries** (remove oldest reviewed first).
 - **Group related writes** in one session as a single entry.
+
+## Proactive reminders (SessionStart hook + calendar)
+
+Users shouldn't have to remember to come back. Two complementary mechanisms:
+
+1. **SessionStart hook** — `bin/toprank-change-watch` scans every account's `change-log.json` and prints any entry whose `reviewAfter` has passed and `reviewed == false`. Wire it in `~/.claude/settings.json`:
+   ```json
+   {
+     "hooks": {
+       "SessionStart": [
+         { "hooks": [ { "type": "command", "command": "/home/user/toprank/bin/toprank-change-watch" } ] }
+       ]
+     }
+   }
+   ```
+   When the user opens a new Claude session, any pending reviews appear as session context — the assistant can proactively offer to run a scoped `/ads-audit`.
+
+2. **Calendar (.ics) reminder** — after logging a change, offer to generate a calendar invite the user can drop into any calendar app:
+   ```
+   toprank-change-watch ics <account_id> <change_id> > ~/review-<change_id>.ics
+   ```
+   The .ics file includes a 9-hour-before alarm so the user gets notified on review day. Cross-platform, no cloud dependency, works offline.

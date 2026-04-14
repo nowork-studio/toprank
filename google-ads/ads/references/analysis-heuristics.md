@@ -2,6 +2,23 @@
 
 Quick-decision thresholds for Google Ads analysis. Use these for fast triage, then read the linked deep-dive reference when you need full diagnostic workflows.
 
+## Framing Priority: Margin-Aware First, Account-Average Second
+
+Before running any heuristic below, check `{data_dir}/business-context.json.unit_economics`. Two branches:
+
+**Branch A — Margin-aware (preferred).** If `aov_usd` and `profit_margin` exist (regardless of source), read `../../shared/ppc-math.md` and use break-even-based thresholds:
+- Waste = spend on keywords/terms with `CPA > Break-Even CPA` (where Break-Even CPA = AOV × margin)
+- Scaling = campaigns with positive Headroom $ AND Budget-Lost IS > 20%
+- Every finding expresses dollar impact as "saves $X/mo" or "captures $X/mo headroom" — not "CPA above average"
+
+If `unit_economics.source == "inferred_from_template"`, append this disclaimer to the verdict line: `_Profitability estimates use industry defaults — confirm your actual AOV and margin for sharper recommendations._`
+
+**Branch B — Account-average (fallback).** If `unit_economics` is null or `aov_usd` is missing, use the account-average heuristics in the tables below. Never mix the two branches in one report — pick one framing and stay consistent.
+
+## Industry Template Calibration
+
+Read `../../shared/industry-templates.json` once per audit (cache in memory). Use `business-context.json.industry_template_key` to select the template. Every threshold marked `[template]` below reads from the template first; the listed value is the fallback if no template match.
+
 ## Keyword Classification (mandatory first step)
 
 Before evaluating any keyword's performance, classify it by business relevance. This prevents pausing a core business keyword during a short run of poor metrics.

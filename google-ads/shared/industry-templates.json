@@ -1,0 +1,196 @@
+{
+  "_schema_version": "1.0",
+  "_description": "Industry presets for Google Ads calibration. Every threshold in analysis-heuristics.md reads from here first, falls back to account-average second. Margins come from commonly cited industry reports and are directional — always override with values from business-context.json when available.",
+  "_usage": "Auto-select by matching business-context.json.industry (case-insensitive, substring). If no match, fall back to 'generic'. Prompt the user to confirm the match in Phase 3 intake.",
+
+  "templates": {
+    "legal": {
+      "aliases": ["law firm", "attorney", "lawyer", "legal services", "personal injury"],
+      "typical_margin": 0.7,
+      "margin_range": [0.55, 0.85],
+      "aov_range_usd": [2500, 15000],
+      "target_cpa_range_usd": [70, 150],
+      "typical_cvr": 0.075,
+      "smart_bidding_min_conv_month": 15,
+      "brand_split_expected": { "brand_pct": [15, 35], "nonbrand_pct": [65, 85] },
+      "pmax_advisability": "caution",
+      "pmax_note": "Lead gen verticals with long qualification cycles often see PMax cannibalize brand and waste on low-quality leads. Prefer Search with Smart Bidding.",
+      "recommended_conversion_actions": ["form submit", "phone call (60s+)", "consultation booked"],
+      "seasonality_notes": "Personal injury peaks in summer (driving season). Family law peaks in Q1. Business law is steady.",
+      "red_flags": ["CPA > $200 with <20 conv/mo", "cost per phone call < 60s", "any 'jobs'/'salary' search terms"],
+      "quick_start_negatives": ["jobs", "salary", "free consultation reddit", "pro bono", "legal aid", "how to sue", "do it yourself", "forms download"]
+    },
+
+    "home_services": {
+      "aliases": ["plumber", "plumbing", "hvac", "electrician", "roofing", "landscaping", "pest control", "cleaning", "handyman", "local service"],
+      "typical_margin": 0.4,
+      "margin_range": [0.25, 0.55],
+      "aov_range_usd": [250, 2500],
+      "target_cpa_range_usd": [25, 65],
+      "typical_cvr": 0.08,
+      "smart_bidding_min_conv_month": 15,
+      "brand_split_expected": { "brand_pct": [5, 25], "nonbrand_pct": [75, 95] },
+      "pmax_advisability": "not_recommended",
+      "pmax_note": "Local service businesses rarely benefit from PMax. Google LSA (Local Services Ads) is usually a better automated option.",
+      "recommended_conversion_actions": ["phone call (60s+)", "form submit", "booking scheduled"],
+      "seasonality_notes": "HVAC heating Nov-Feb, cooling Jun-Aug. Landscaping Mar-Oct. Roofing Apr-Oct. Most home services spike after storms.",
+      "red_flags": ["PRESENCE_OR_INTEREST location targeting", "Search Partners driving 30%+ clicks with 0 conv", "any national search terms"],
+      "quick_start_negatives": ["jobs", "salary", "diy", "how to", "youtube", "reddit", "home depot", "lowes", "school", "training", "certification", "license"]
+    },
+
+    "healthcare": {
+      "aliases": ["dental", "dentist", "dermatology", "medical", "clinic", "urgent care", "physical therapy", "chiropractor", "veterinary"],
+      "typical_margin": 0.35,
+      "margin_range": [0.25, 0.5],
+      "aov_range_usd": [150, 2000],
+      "target_cpa_range_usd": [35, 85],
+      "typical_cvr": 0.055,
+      "smart_bidding_min_conv_month": 20,
+      "brand_split_expected": { "brand_pct": [20, 40], "nonbrand_pct": [60, 80] },
+      "pmax_advisability": "caution",
+      "pmax_note": "HIPAA-sensitive verticals should avoid PMax's broad targeting. Healthcare is a Limited Ads Personalization category — ensure compliance before running any audience targeting.",
+      "recommended_conversion_actions": ["appointment booked", "phone call (60s+)", "form submit"],
+      "seasonality_notes": "Back-to-school pediatric in Aug-Sep. Dental cleanings Q4 (FSA/HSA spend). Cosmetic procedures spike pre-summer and pre-holiday.",
+      "red_flags": ["Limited Ads Personalization not declared", "competitor brand bidding on medical terms (policy risk)", "any health claims in ad copy"],
+      "quick_start_negatives": ["jobs", "school", "training", "salary", "free", "reddit", "symptoms checker", "wikipedia", "insurance only"]
+    },
+
+    "saas_b2b": {
+      "aliases": ["saas", "software", "b2b software", "cloud", "platform", "api", "devtools"],
+      "typical_margin": 0.75,
+      "margin_range": [0.6, 0.9],
+      "aov_range_usd": [500, 50000],
+      "target_cpa_range_usd": [60, 250],
+      "typical_cvr": 0.035,
+      "smart_bidding_min_conv_month": 30,
+      "brand_split_expected": { "brand_pct": [25, 50], "nonbrand_pct": [50, 75] },
+      "pmax_advisability": "not_recommended",
+      "pmax_note": "B2B SaaS rarely benefits from PMax due to long sales cycles and poor display/YouTube quality for B2B intent. Stick with Search + LinkedIn.",
+      "recommended_conversion_actions": ["demo request", "trial signup", "qualified lead (MQL)", "pricing page view"],
+      "seasonality_notes": "B2B buying cycles slow in Jul-Aug (summer) and Dec-Jan (holidays/budget freeze). Q4 decision spike for annual contracts.",
+      "red_flags": ["CPA < $50 (likely trial-only tracking, no qualification)", "optimizing for raw signups vs MQLs", "no LTV signal in conversion values"],
+      "quick_start_negatives": ["jobs", "careers", "salary", "training", "certification", "tutorial", "course", "free forever", "open source", "github", "reddit"]
+    },
+
+    "ecommerce": {
+      "aliases": ["ecommerce", "e-commerce", "shop", "store", "retail", "d2c", "dtc", "shopify"],
+      "typical_margin": 0.45,
+      "margin_range": [0.25, 0.65],
+      "aov_range_usd": [30, 300],
+      "target_cpa_range_usd": [10, 50],
+      "target_roas": 3.5,
+      "typical_cvr": 0.025,
+      "smart_bidding_min_conv_month": 30,
+      "brand_split_expected": { "brand_pct": [20, 50], "nonbrand_pct": [50, 80] },
+      "pmax_advisability": "recommended",
+      "pmax_note": "PMax is well-suited to ecommerce with product feeds. Always exclude brand search via brand exclusions to prevent cannibalization.",
+      "recommended_conversion_actions": ["purchase (with revenue)", "add to cart", "initiate checkout"],
+      "seasonality_notes": "Q4 holiday peak (Nov-Dec). Back to school Aug. Summer dip Jul-Aug for non-seasonal products. BFCM is critical — plan budget 30 days ahead.",
+      "red_flags": ["no revenue tracking (tCPA instead of tROAS)", "Shopping feed <80% approved", "missing GTIN/MPN attributes", "PMax without brand exclusion"],
+      "quick_start_negatives": ["free", "cheap", "wholesale", "bulk", "reviews only", "manual pdf", "how to return", "cancel order"]
+    },
+
+    "finance_insurance": {
+      "aliases": ["finance", "insurance", "banking", "loans", "mortgage", "credit", "wealth management", "financial planning"],
+      "typical_margin": 0.55,
+      "margin_range": [0.35, 0.75],
+      "aov_range_usd": [500, 10000],
+      "target_cpa_range_usd": [60, 150],
+      "typical_cvr": 0.06,
+      "smart_bidding_min_conv_month": 20,
+      "brand_split_expected": { "brand_pct": [20, 45], "nonbrand_pct": [55, 80] },
+      "pmax_advisability": "caution",
+      "pmax_note": "Finance is a Special Ad Category (credit/housing/employment). Must declare to Google. Audience targeting is restricted — PMax audience signals are limited.",
+      "recommended_conversion_actions": ["application submitted", "quote requested", "phone call (90s+)"],
+      "seasonality_notes": "Tax season Jan-Apr drives loan/refi demand. Open enrollment Oct-Dec for health/Medicare. New Year resolutions drive budgeting tools in Jan.",
+      "red_flags": ["Special Ad Category not declared", "any superlative claims ('best rate', '#1')", "unqualified leads driving down CVR"],
+      "quick_start_negatives": ["jobs", "salary", "free", "scam", "reddit", "calculator only", "definition", "what is"]
+    },
+
+    "real_estate": {
+      "aliases": ["real estate", "realtor", "broker", "property", "homes for sale", "rentals", "property management"],
+      "typical_margin": 0.6,
+      "margin_range": [0.4, 0.8],
+      "aov_range_usd": [5000, 30000],
+      "target_cpa_range_usd": [40, 120],
+      "typical_cvr": 0.035,
+      "smart_bidding_min_conv_month": 15,
+      "brand_split_expected": { "brand_pct": [10, 30], "nonbrand_pct": [70, 90] },
+      "pmax_advisability": "caution",
+      "pmax_note": "Housing is a Special Ad Category — audience targeting restricted (age, gender, ZIP, parental status excluded). PMax signals must comply.",
+      "recommended_conversion_actions": ["property inquiry", "showing scheduled", "phone call (60s+)"],
+      "seasonality_notes": "Spring buying season Mar-Jun is peak. Summer steady. Q4 slowdown. Rentals peak in summer for student/family moves.",
+      "red_flags": ["Special Ad Category not declared", "non-compliant audience targeting", "wide geo-targeting (should be neighborhood-level)"],
+      "quick_start_negatives": ["zillow", "redfin", "trulia", "free", "rent to own", "foreclosure list", "jobs", "license", "school"]
+    },
+
+    "education": {
+      "aliases": ["education", "school", "university", "online course", "tutoring", "training", "certification", "bootcamp"],
+      "typical_margin": 0.65,
+      "margin_range": [0.45, 0.85],
+      "aov_range_usd": [200, 15000],
+      "target_cpa_range_usd": [30, 120],
+      "typical_cvr": 0.055,
+      "smart_bidding_min_conv_month": 20,
+      "brand_split_expected": { "brand_pct": [15, 35], "nonbrand_pct": [65, 85] },
+      "pmax_advisability": "caution",
+      "pmax_note": "Employment is a Special Ad Category if the program leads to a career — must declare. Otherwise PMax is viable with strong audience signals.",
+      "recommended_conversion_actions": ["application submitted", "info request", "trial lesson booked", "enrollment"],
+      "seasonality_notes": "Back-to-school Jul-Sep is peak. New Year resolution spike Jan. Summer programs Apr-Jun. Avoid scaling in Dec (holiday lull).",
+      "red_flags": ["employment category not declared for career programs", "no differentiation between inquiry and enrollment"],
+      "quick_start_negatives": ["free", "reddit", "scholarship", "fafsa", "jobs", "salary", "syllabus download"]
+    },
+
+    "travel_hospitality": {
+      "aliases": ["travel", "hotel", "airline", "tourism", "booking", "vacation", "hospitality", "restaurant"],
+      "typical_margin": 0.3,
+      "margin_range": [0.15, 0.5],
+      "aov_range_usd": [100, 3000],
+      "target_cpa_range_usd": [15, 60],
+      "target_roas": 5.0,
+      "typical_cvr": 0.045,
+      "smart_bidding_min_conv_month": 30,
+      "brand_split_expected": { "brand_pct": [25, 55], "nonbrand_pct": [45, 75] },
+      "pmax_advisability": "recommended",
+      "pmax_note": "Travel benefits from PMax's multi-format approach. Use feeds where possible (hotel, flight). Always exclude brand.",
+      "recommended_conversion_actions": ["booking completed (with revenue)", "search initiated", "contact form"],
+      "seasonality_notes": "Highly seasonal by destination. Summer travel books in Mar-May. Holiday travel Oct-Nov. Weather-dependent spikes.",
+      "red_flags": ["no revenue tracking", "OTA competitors outbidding direct bookings", "wide date-targeting without seasonality adjustments"],
+      "quick_start_negatives": ["free", "jobs", "salary", "photos", "wiki", "weather", "map", "reviews only"]
+    },
+
+    "automotive": {
+      "aliases": ["automotive", "auto", "car dealer", "dealership", "auto repair", "auto parts"],
+      "typical_margin": 0.35,
+      "margin_range": [0.2, 0.55],
+      "aov_range_usd": [200, 3000],
+      "target_cpa_range_usd": [30, 70],
+      "typical_cvr": 0.065,
+      "smart_bidding_min_conv_month": 20,
+      "brand_split_expected": { "brand_pct": [15, 35], "nonbrand_pct": [65, 85] },
+      "pmax_advisability": "caution",
+      "pmax_note": "Dealers see mixed results with PMax. Vehicle ads (new format) preferred for inventory feeds. Service ads work better in Search.",
+      "recommended_conversion_actions": ["phone call (60s+)", "form submit", "test drive booked", "service appointment"],
+      "seasonality_notes": "Spring/summer peak for purchases. Fall for service (winterization). Year-end clearance Dec. Tax season for repairs.",
+      "red_flags": ["inventory not synced to vehicle ads", "wide geo (should be 25mi radius)", "unused service extensions"],
+      "quick_start_negatives": ["jobs", "reviews only", "blue book", "kbb", "carfax", "recall", "free", "pictures"]
+    },
+
+    "generic": {
+      "aliases": [],
+      "typical_margin": 0.4,
+      "margin_range": [0.25, 0.6],
+      "aov_range_usd": [100, 1000],
+      "target_cpa_range_usd": [30, 80],
+      "typical_cvr": 0.04,
+      "smart_bidding_min_conv_month": 20,
+      "brand_split_expected": { "brand_pct": [15, 40], "nonbrand_pct": [60, 85] },
+      "pmax_advisability": "caution",
+      "pmax_note": "Without industry-specific context, PMax should be tested in isolation before scaling. Always exclude brand.",
+      "recommended_conversion_actions": ["form submit", "phone call", "purchase"],
+      "seasonality_notes": "Unknown — ask the user or infer from historical month-over-month patterns.",
+      "red_flags": ["no industry-specific conversion action", "missing business-context.json"],
+      "quick_start_negatives": ["jobs", "salary", "free", "reddit", "wikipedia", "definition"]
+    }
+  }
+}

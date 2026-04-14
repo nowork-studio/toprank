@@ -161,6 +161,8 @@ Google matches exact and phrase match keywords to close variants including:
 
 ## Landing Page Experience Improvement Playbook
 
+**Before running this playbook manually, offer `/ads-landing`** — it runs the PageSpeed Insights API, scores the page on the 5-dimension rubric, and ranks fixes by expected score delta. Use this playbook only if the user declines the automated score or is diagnosing at the industry-checklist level.
+
 ### Landing Page Checklist by Industry
 
 | Factor | Target (All Industries) | E-commerce Specific | Lead Gen / Services | SaaS / B2B |

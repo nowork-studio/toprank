@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# toprank-change-watch — surface pending Google Ads change-impact reviews
+#
+# Designed to be wired as a Claude Code SessionStart hook:
+#   {
+#     "hooks": {
+#       "SessionStart": [
+#         { "hooks": [ { "type": "command", "command": "toprank-change-watch" } ] }
+#       ]
+#     }
+#   }
+#
+# Reads every `{data_dir}/change-log.json` under ~/.toprank/ads/<account>/ and prints
+# any change whose `review_after` date has passed and `reviewed: false`. Output is
+# piped straight into the Claude session as additional context, so the assistant can
+# proactively offer to run the impact review.
+#
+# Also supports generating an .ics calendar file for a specific change so the user
+# gets a cross-platform reminder in their own calendar app:
+#
+#   toprank-change-watch ics <account> <change_id> > reminder.ics
+#
+# Change log schema (written by /ads when it executes a mutation):
+#   {
+#   (see google-ads/ads/references/change-tracking.md for the authoritative schema)
+#     "changes": [
+#       {
+#         "id": "chg_1729872000000",
+#         "timestamp": "2026-04-14T12:00:00Z",
+#         "summary": "Paused 3 zombie keywords in Tukwila Search",
+#         "reviewAfter": "2026-04-21",   # 7d for bid/keyword, 14d for structural
+#         "reviewWindow": "7d",
+#         "reviewed": false,
+#         "details": { "campaignName": "Tukwila Search" }
+#       }
+#     ]
+#   }
+set -euo pipefail
+
+STATE_DIR="${TOPRANK_STATE_DIR:-$HOME/.toprank}"
+ADS_DIR="$STATE_DIR/ads"
+TODAY="$(date -u +%Y-%m-%d)"
+
+# Subcommand: ics <account> <change_id>
+if [ "${1:-}" = "ics" ]; then
+  ACCOUNT="${2:?Usage: toprank-change-watch ics <account> <change_id>}"
+  CHANGE_ID="${3:?Usage: toprank-change-watch ics <account> <change_id>}"
+  LOG="$ADS_DIR/$ACCOUNT/change-log.json"
+  [ -f "$LOG" ] || { echo "No change log for account $ACCOUNT" >&2; exit 1; }
+
+  # Extract review_after + summary for the change using python (always available)
+  python3 - "$LOG" "$CHANGE_ID" <<'PY'
+import json, sys, datetime, uuid
+log_path, change_id = sys.argv[1], sys.argv[2]
+with open(log_path) as f:
+    data = json.load(f)
+change = next((c for c in data.get("changes", []) if c.get("id") == change_id), None)
+if not change:
+    sys.exit(f"change {change_id} not found")
+d = change["reviewAfter"].replace("-", "")
+summary = change["summary"].replace("\n", " ")
+uid = f"{change_id}-{uuid.uuid4().hex[:8]}@toprank"
+now = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+ics = f"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//toprank//change-watch//EN
+BEGIN:VEVENT
+UID:{uid}
+DTSTAMP:{now}
+DTSTART;VALUE=DATE:{d}
+DTEND;VALUE=DATE:{d}
+SUMMARY:Review Google Ads change: {summary}
+DESCRIPTION:Run /ads-audit to measure impact against baseline.\\nChange ID: {change_id}
+BEGIN:VALARM
+TRIGGER:-PT9H
+ACTION:DISPLAY
+DESCRIPTION:Review ads change today
+END:VALARM
+END:VEVENT
+END:VCALENDAR
+"""
+print(ics)
+PY
+  exit 0
+fi
+
+# Default: scan all accounts and print pending reviews
+[ -d "$ADS_DIR" ] || exit 0
+
+pending=0
+for log in "$ADS_DIR"/*/change-log.json; do
+  [ -f "$log" ] || continue
+  account="$(basename "$(dirname "$log")")"
+  # Print pending reviews for this account; stream to stdout so SessionStart captures it
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    if [ $pending -eq 0 ]; then
+      echo ""
+      echo "## Pending Google Ads change-impact reviews"
+      echo ""
+      echo "The following changes have reached their review window. Offer to run"
+      echo "a scoped /ads-audit to measure impact against the baseline captured"
+      echo "when each change was made:"
+      echo ""
+    fi
+    pending=1
+    echo "- **$account**: $line"
+  done < <(python3 - "$log" "$TODAY" <<'PY'
+import json, sys
+log_path, today = sys.argv[1], sys.argv[2]
+try:
+    with open(log_path) as f:
+        data = json.load(f)
+except Exception:
+    sys.exit(0)
+for c in data.get("changes", []):
+    if c.get("reviewed"):
+        continue
+    review_after = c.get("reviewAfter", "") or c.get("review_after", "")
+    if review_after and review_after[:10] <= today:
+        cid = c.get("id", "?")
+        summary = c.get("summary", "(no summary)")
+        camp = (c.get("details") or {}).get("campaignName") or "account-wide"
+        print(f"`{cid}` ({camp}) — {summary} — review due {review_after[:10]}")
+PY
+)
+done
+
+exit 0
