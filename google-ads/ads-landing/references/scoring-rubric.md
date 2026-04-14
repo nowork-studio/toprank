@@ -1,16 +1,18 @@
-# Landing Page Scoring Rubric
+# Landing Page Measurement Rubric
 
-Five dimensions, weighted. Each is scored 0-100 with evidence. Grade = weighted sum mapped to A-F (see SKILL.md).
+Five dimensions, each measured against real evidence. The dimension scores are observations (real PageSpeed Insights numbers, word-for-word ad-to-page comparison, form field counts) — not artificial ratings.
+
+There is no letter grade. The report surfaces each dimension's measurement and the top finding, plus a dollar-denominated lift estimate. Internally, the skill computes a weighted composite only to feed the lift formula:
 
 ```
-Total = 0.25 × Message Match
-      + 0.25 × Page Speed
-      + 0.20 × Mobile Experience
-      + 0.15 × Trust Signals
-      + 0.15 × Form & CTA
+internal_composite = 0.25 × Message Match
+                   + 0.25 × Page Speed
+                   + 0.20 × Mobile Experience
+                   + 0.15 × Trust Signals
+                   + 0.15 × Form & CTA
 ```
 
-The two 25% dimensions (Message Match, Page Speed) are deliberately weighted equally — Google's Landing Page Experience QS component considers both, and real-world CVR correlates strongly with both. Everything else is secondary.
+The two 25% dimensions (Message Match, Page Speed) are deliberately weighted equally — Google's Landing Page Experience QS component considers both, and real-world CVR correlates strongly with both. Everything else is secondary. The 0-100 scores per dimension are kept as internal numbers for history tracking and the lift formula; the user-facing report cites the underlying measurement (LCP seconds, field count, H1 word match) rather than the score.
 
 ---
 

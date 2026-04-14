@@ -46,7 +46,7 @@ Match campaign names, ad group names, and keyword themes using case-insensitive 
 ## Reference Documents
 
 **Always read before Phase 2:**
-- `references/account-health-scoring.md` — Diagnostic thresholds, red flags, interpretation matrices, severity tags, and the one-line verdict rubric
+- `references/account-health-scoring.md` — Diagnostic thresholds, red flags, interpretation matrices, pulse metric annotation rules, and the dollar-driven Quick Wins filter
 - `../shared/industry-templates.json` — Industry presets (margin, AOV, target CPA, red flags, quick-start negatives). Cache in memory for the session
 - `../shared/ppc-math.md` — Break-even CPA, headroom, LTV:CAC, IS opportunity, budget forecasting. Read before computing any dollar-denominated finding
 
@@ -163,7 +163,7 @@ If `runGaqlQuery` errors or is unavailable, fall back to per-campaign helper too
 1. Layer 1 (tracking check) — still critical, catch setup problems early
 2. Layer 2 (structure check only) — campaign organization, keyword themes, ad copy completeness, industry-template red-flag checks
 3. Skip Layers 3-5 — they'd be statistically meaningless. Still compute and persist pulse metrics (with `"low_data": true`) so re-audits have a baseline
-4. Report format: use the launch-mode template — no account verdict (too little data to compute dollar-denominated waste or headroom), no dollar-impact claims. Instead surface a **Readiness checklist** scored `ready | needs fix | blocker` and a **Next milestone** trigger
+4. Report format: use the launch-mode template — no pulse metrics (too little data to compute waste or headroom in dollars), no dollar-impact claims. Instead surface a **Readiness checklist** scored `ready | needs fix | blocker` and a **Next milestone** trigger
 5. **Set the next milestone** in `audit-history.json`:
    ```json
    "next_milestone": { "conversions": 30, "spend_usd": 1000, "check_after": "2026-05-14" }
@@ -193,7 +193,7 @@ Report passes (organized by action type):
 
 **Scope-aware analysis:** When the audit is scoped, analyze campaign-level data using only in-scope campaigns. Account-level checks (tracking, settings) run account-wide but note how issues affect the scoped campaigns.
 
-Read `references/account-health-scoring.md` for diagnostic thresholds, red flags, and interpretation matrices. Use it as a reference for severity — the thresholds tell you what's "bad enough to flag" vs. "acceptable."
+Read `references/account-health-scoring.md` for diagnostic thresholds, red flags, and interpretation matrices. The threshold bands tell you what's "bad enough to flag" vs. "acceptable" — use them to decide whether a finding makes it into the report at all.
 
 ---
 
@@ -419,36 +419,33 @@ Write to `{data_dir}/business-context.json` using the schema in `references/busi
 
 ## Phase 4: Deliver the Audit Report
 
-The report uses the **3-pass structure** — organized by what the user should do, not by what dimension was analyzed. Lead with the one-line verdict + pulse metrics, then the three passes, then Quick Wins, personas, and questions.
+The report uses the **3-pass structure** — organized by what the user should do, not by what dimension was analyzed. Lead with the three pulse metrics (each self-narrating), then the three passes, then Quick Wins, personas, and questions.
 
 **The #1 rule: no duplication.** Each finding appears in exactly one place.
+**The #2 rule: no artificial ratings.** No letter grades. No emoji verdict labels. No severity buckets. Every finding carries its dollar impact and `time_to_fix`; the pulse metrics carry their top contributor and a pass pointer. That's all the prioritization signal the user needs — and it can't invert on dollars.
 
-### Tagging every finding
+### Annotating every finding
 
-Before writing the report, tag every Pass 1/2/3 finding with two fields (rubric in `references/account-health-scoring.md`):
+Each Pass 1/2/3 finding must carry two fields (and only two):
 
-- `severity`: `Critical` | `High` | `Medium` | `Low`
-- `time_to_fix`: `<5min` | `<15min` | `<30min` | `<2h` | `>2h`
+- `dollar_impact_usd`: the monthly dollar value of the waste / opportunity. Use margin-aware framing when `business-context.json.unit_economics.aov_usd` and `profit_margin` are available (see `../shared/ppc-math.md`); fall back to account-average heuristics otherwise. Never mix framings in one report.
+- `time_to_fix`: descriptive only — `<5min` | `<15min` | `<30min` | `<2h` | `>2h`. How long the fix takes, not how important it is.
 
-Severity is determined by dollar impact — use margin-aware framing when `business-context.json.unit_economics.aov_usd` and `profit_margin` are available (see `../shared/ppc-math.md`), otherwise fall back to account-average heuristics. Never mix the two framings in one report.
+Findings that can't be dollar-denominated (tracking broken, policy risk, missing consent mode) use `dollar_impact_usd: "blocker"` instead of a number. Blockers always float to the top of their pass and always qualify for Quick Wins regardless of fix time.
 
-### Computing the verdict
+Sort findings within each pass by `dollar_impact_usd` descending. Blockers first. No severity label, no priority label — the dollar number IS the priority.
 
-Evaluate the 5 verdict rules from `references/account-health-scoring.md` **in order** — first match wins. The verdict is a one-line description of the account's state, not a letter grade:
+### Annotating the pulse metrics
 
-1. Any `Critical` → `🚫 Urgent — {reason}`
-2. `waste_rate > 15%` OR 2+ `High` → `⚠️ Leaking ~${monthly_waste}/mo — {N} fixes below`
-3. Budget-lost IS > 20% on a profitable campaign → `📈 Healthy — ~${headroom}/mo in scaling room`
-4. `waste_rate < 5%` AND no High findings AND no scaling opportunity → `✅ Well-managed — optimizing at the margins`
-5. Otherwise → `🟡 Stable — {N} medium-impact fixes available`
+Each pulse metric line is a self-contained finding. It states the raw number, names the single biggest contributor, and points to the pass that fixes it. Rules in `references/account-health-scoring.md` → "Pulse Metrics — The Only Scoreboard":
 
-Dollar figures come from Layer 3 waste calculation and the margin-aware headroom formula in `../shared/ppc-math.md`. When `unit_economics.source == "inferred_from_template"`, the verdict line stays the same — just append the disclaimer line beneath it.
+1. **Waste** — `$X/mo (Y% of spend) · top: "[keyword/term/campaign]" $Z/mo · → Pass 1`
+   Signal override: if conversion tracking is broken, replace `$X/mo (Y%)` with `⚠️ Cannot compute — conversion tracking broken` and point to the tracking fix.
+2. **Demand captured** — `X% · top opportunity: "[campaign]" ~$Y/mo headroom · → Pass 2`
+   Relevance override: if rank-lost IS > 30% on a campaign, point to Pass 3 and explicitly say "fix relevance first — more budget won't help."
+3. **CPA** — `$X · vs [industry $Y–$Z OR break-even $Y] · [trend or top structural driver] · → Pass 3 or "healthy — no action"`
 
-**On re-audits**, compare to the previous `audit-history.json` entry:
-- If `verdict_rule` dropped (numerically lower = more urgent), something got worse — show `_(was: {previous verdict})_` on the next line and flag in red
-- If `verdict_rule` rose (numerically higher = less urgent), something got fixed — show `_(was: {previous verdict})_` and call out which findings resolved
-- If `verdict_rule` unchanged but pulse metrics moved >5%, append `_(waste: X% → Y%)_` to make the improvement visible even when the verdict bucket didn't flip
-- If nothing meaningful moved, just say `_(unchanged since last audit)_`
+**On re-audits**, diff each metric line against the previous `audit-history.json` entry and append `_(was $Y/mo — [what changed])_` when the delta is >5%. When the delta is <5%, say `_(unchanged)_`. No bucket-flipping, no emoji verdict swaps — just three numbers moving (or not).
 
 ### Pulse Metrics
 
@@ -474,15 +471,27 @@ After each audit, append a snapshot to `{data_dir}/audit-history.json`:
       "date_range": "2026-03-12 to 2026-04-11",
       "account_id": "7521406707",
       "mode": "full",
-      "total_spend": 1431.48,
+      "total_spend": 14320.00,
       "total_conversions": 72,
-      "verdict": "⚠️ Leaking ~$162/mo — 1 fix below",
-      "verdict_rule": 2,
-      "severity_counts": { "critical": 0, "high": 1, "medium": 3, "low": 2 },
       "metrics": {
-        "waste_rate": 11.3,
-        "demand_captured": 42.7,
-        "cpa": 19.88
+        "waste": {
+          "usd_per_month": 1240,
+          "pct_of_spend": 8.7,
+          "top_contributor": "keyword 'free dog food' — $340/mo",
+          "tracking_blocker": false
+        },
+        "demand_captured": {
+          "pct": 42.7,
+          "top_opportunity": "Tukwila Search — ~$2,100/mo headroom at 35% budget-lost IS",
+          "rank_lost_blocker": false
+        },
+        "cpa": {
+          "usd": 19.88,
+          "benchmark_low": 25,
+          "benchmark_high": 65,
+          "break_even": 72,
+          "trend_vs_last": -2.14
+        }
       },
       "top_actions": [
         "Paused 'free dog food' keyword ($120 waste)",
@@ -494,7 +503,7 @@ After each audit, append a snapshot to `{data_dir}/audit-history.json`:
 }
 ```
 
-For launch-mode audits, set `"mode": "launch"`, omit `verdict`/`verdict_rule`/`severity_counts`, mark `metrics` with `"low_data": true`, and populate `next_milestone` with the conversion/spend/date thresholds that graduate the next audit to full mode.
+For launch-mode audits, set `"mode": "launch"`, mark each metric with `"low_data": true`, and populate `next_milestone` with the conversion/spend/date thresholds that graduate the next audit to full mode.
 
 **On first audit:** Create the file. Show raw values with no comparison.
 
@@ -507,40 +516,49 @@ For launch-mode audits, set `"mode": "launch"`, omit `verdict`/`verdict_rule`/`s
 
 ```
 # [Business Name] — Ads Audit
-**[Verdict line with emoji, e.g. "⚠️ Leaking ~$1,240/mo — 3 fixes below"]**
-[if re-audit and verdict changed] _(was: [previous verdict line])_
-[if re-audit, verdict unchanged, but metrics moved >5%] _(waste X% → Y%, CPA $A → $B)_
-**[Date range] · $X,XXX spent · XX conversions · $XX CPA**
-Waste: X% · Demand captured: X% · CPA: $X
-[If previous audit exists: show (was Y%) for each metric that moved >5%]
+[Date range] · $X,XXX spent · XX conversions · Last 30 days
 [If scoped] Scoped to: [description]
 [If unit_economics.source == "inferred_from_template"]
 _Profitability estimates use industry defaults — confirm your actual AOV and margin for sharper recommendations._
 
-[1-2 sentence narrative elaborating the verdict: what's driving the dollar
-number and what the biggest single lever is. The verdict line answers "what";
-this paragraph answers "why" and "what next."]
+**Waste: $X/mo (Y% of spend)** — top: "[keyword/term/campaign]" $Z/mo · → Pass 1
+[if re-audit] _(was $A/mo — [what changed])_ or _(unchanged)_
+
+**Demand captured: X%** — top opportunity: "[campaign]" ~$Y/mo headroom · → Pass 2
+[if rank-lost IS > 30% on a campaign: "Rank-lost IS X% on [campaign] — fix relevance first, more budget won't help · → Pass 3"]
+[if re-audit] _(was Y% — [what changed])_ or _(unchanged)_
+
+**CPA: $X** — vs [industry $Y–$Z OR break-even $Y] · [trend or top driver] · → Pass 3 or "healthy — no action"
+[if re-audit] _(was $Y — [what changed])_ or _(unchanged)_
+
+[If conversion tracking is broken, the Waste line is replaced with:]
+**Waste: ⚠️ Cannot compute — conversion tracking broken** · → Pass 1 (fix tracking first)
 
 ## Stop Wasting (Pass 1)
-1. **[Action]** — saves $X/month · `Critical` · `<15min`
-2. **[Action]** — saves $X/month · `High` · `<30min`
-3. **[Action]** — saves $X/month · `High` · `<2h`
+1. **[Action]** — saves $X/mo · `<15min`
+2. **[Action]** — saves $X/mo · `<30min`
+3. **[Action]** — saves $X/mo · `<2h`
 
 ## Capture More (Pass 2)
-1. **[Action]** — est. +X conversions/month at $Y CPA · `High` · `<30min`
-2. **[Action]** — est. +X conversions/month · `Medium` · `<2h`
-3. **[Action]** — est. +X conversions/month · `Medium` · `<2h`
+1. **[Action]** — est. +$X/mo revenue (+Y conv at $Z CPA) · `<30min`
+2. **[Action]** — est. +$X/mo · `<2h`
+3. **[Action]** — est. +$X/mo · `<2h`
 
 ## Fix Fundamentals (Pass 3)
-1. **[Action]** — est. X% CPC reduction on $Y/month spend · `High` · `>2h`
-2. **[Action]** — [impact] · `Medium` · `<2h`
-3. **[Action]** — [impact] · `Low` · `<30min`
+1. **[Action]** — est. $X/mo CPC savings on $Y/mo spend · `>2h`
+2. **[Action]** — [impact in $/mo] · `<2h`
+3. **[Action]** — [impact in $/mo] · `<30min`
+
+Findings are sorted by dollar impact within each pass. Blockers (tracking,
+policy, consent) appear at the top of their pass regardless of dollar value
+because they unblock measurement.
 
 ## Quick Wins
-[Auto-generated: findings where severity IN ('Critical','High') AND
+[Auto-generated: findings where dollar_impact_usd >= 200 AND
 time_to_fix IN ('<5min','<15min'), sorted by $ impact desc, max 5.
-Each item must include the exact /ads command where applicable.
-If none qualify, omit this section entirely — don't fabricate.]
+Blockers (tracking/policy fixes) are pinned at the top regardless of
+dollar figure. Each item must include the exact /ads command where
+applicable. If none qualify, omit this section entirely — don't fabricate.]
 
 1. [Action] — saves ~$X/mo (`<5min`) · `/ads [command]`
 2. [Action] — saves ~$X/mo (`<15min`) · `/ads [command]`
@@ -563,11 +581,13 @@ Max 2-3 questions. Don't ask what you can infer from the data.]
 
 ```
 # [Business Name] — Ads Launch Check
-**🌱 Launch mode** · [Date range] · $XXX spent · X conversions
-_Too little data for a dollar-denominated verdict — come back after the milestone below._
+**Launch mode** · [Date range] · $XXX spent · X conversions
+_Too little data to compute waste or headroom in dollars — come back after the milestone below._
 [If scoped] Scoped to: [description]
 
-[2-3 sentence verdict focused on setup quality and readiness, not optimization.]
+[2-3 sentences describing setup quality and readiness — what's configured,
+what's missing, what should happen before the next milestone. No optimization
+claims, no dollar impact, no score.]
 
 ## Readiness Checklist
 - ✅ / ⚠️ / 🚫 Conversion tracking — [what's set up or missing]

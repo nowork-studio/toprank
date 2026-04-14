@@ -11,7 +11,7 @@ Before running any heuristic below, check `{data_dir}/business-context.json.unit
 - Scaling = campaigns with positive Headroom $ AND Budget-Lost IS > 20%
 - Every finding expresses dollar impact as "saves $X/mo" or "captures $X/mo headroom" — not "CPA above average"
 
-If `unit_economics.source == "inferred_from_template"`, append this disclaimer to the verdict line: `_Profitability estimates use industry defaults — confirm your actual AOV and margin for sharper recommendations._`
+If `unit_economics.source == "inferred_from_template"`, append this disclaimer beneath the report header: `_Profitability estimates use industry defaults — confirm your actual AOV and margin for sharper recommendations._`
 
 **Branch B — Account-average (fallback).** If `unit_economics` is null or `aov_usd` is missing, use the account-average heuristics in the tables below. Never mix the two branches in one report — pick one framing and stay consistent.
 

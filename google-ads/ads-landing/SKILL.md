@@ -54,66 +54,64 @@ If any single call fails, continue — note the gap in the report rather than bl
 
 ## Phase 3: Score the page
 
-Read `references/scoring-rubric.md` and score each dimension 0-100 with evidence. Weight and sum:
+Read `references/scoring-rubric.md` and score each dimension 0-100 with evidence. The dimension scores are real measurements (PageSpeed Insights numbers, word-for-word copy comparison, form field counts, etc.) — they're not artificial ratings, they're observations.
+
+Compute the weighted composite only as an **internal reference number** for the dollar-lift formula below. Do not surface it as a letter grade. The user sees the dimension-level measurements and the estimated dollar lift — the composite is plumbing.
 
 ```
-Landing Page Score = 0.25 * Message Match
+internal_composite = 0.25 * Message Match
                    + 0.25 * Page Speed
                    + 0.20 * Mobile Experience
                    + 0.15 * Trust Signals
                    + 0.15 * Form & CTA
 ```
 
-Map the score to a grade:
-- **A** (90-100): Page is an asset — scale traffic
-- **B** (75-89): Solid — minor optimization
-- **C** (60-74): Leaking conversions — fix top 2 dimensions
-- **D** (45-59): Actively burning budget — do not scale
-- **F** (<45): Diverting traffic away is cheaper than fixing it
-
-**Margin-aware impact:** If `business-context.json.unit_economics` has `aov_usd` + `profit_margin`, compute the estimated monthly lift from reaching grade B (see `../shared/ppc-math.md`):
+**Dollar lift is the headline.** If `business-context.json.unit_economics` has `aov_usd` + `profit_margin`, compute the estimated monthly lift from raising the composite by 15 points (see `../shared/ppc-math.md`):
 
 ```
-Assumed CVR lift      = (target_score - current_score) / 100 * 0.5   # cap at 50% relative lift
+Target lift           = min(+15, 90 - internal_composite)    # cap at 90 internal
+Assumed CVR lift      = target_lift / 100 * 0.5              # cap at 50% relative lift
 Current conversions   = ad group conversions from last 30d
 Additional conversions = current_conversions * assumed_CVR_lift
 Additional revenue    = additional_conversions * AOV
 Additional profit     = additional_conversions * AOV * profit_margin
 ```
 
-Present the lift as "fixing this page is worth ~$X/mo" — never as a guarantee. The 50% cap keeps us out of fantasy territory.
+Present the lift as `fixing this page is worth ~$X/mo in profit` — never as a guarantee. The 50% cap on CVR lift and the 15-point cap on score improvement keep estimates out of fantasy territory. If `unit_economics` isn't available, skip the dollar line entirely rather than making up a number — the dimension measurements still stand on their own.
 
 ## Phase 4: Deliver the report
 
-Max 60 lines. Lead with the grade and the single biggest fix.
+Max 60 lines. Lead with the dollar lift (when available) and the single biggest fix. No letter grade.
 
 ```
-# Landing Page Score — [URL]
-**Grade: [A-F] · Score: XX/100**
+# Landing Page — [URL]
 Ads sending traffic here: [N ad groups] · [X clicks/mo] · [$Y spent/mo] · CVR [Z%]
-[If unit_economics available] Estimated lift to B: ~$X/mo profit
+[If unit_economics available] **Estimated lift from top 3 fixes: ~$X/mo in profit**
+[If unit_economics is missing] _(Dollar lift unavailable — no verified AOV/margin. Confirm unit economics in business-context.json for sharper estimates.)_
 
-**The single biggest problem:** [one sentence, naming the dimension]
+**Biggest leak:** [one sentence naming the dimension and the specific observation, e.g. "LCP is 5.8s on mobile — 2.8s slower than the 3s threshold that kills conversion rate."]
 
-## Score Breakdown
-| Dimension | Weight | Score | Grade | Top Finding |
-|-----------|--------|-------|-------|-------------|
-| Message Match | 25% | XX | [A-F] | [one line] |
-| Page Speed | 25% | XX | [A-F] | LCP Xs / INP Xms / CLS X |
-| Mobile Experience | 20% | XX | [A-F] | [one line] |
-| Trust Signals | 15% | XX | [A-F] | [one line] |
-| Form & CTA | 15% | XX | [A-F] | [one line] |
+## Measurements
+| Dimension | Measurement | Top Finding |
+|-----------|-------------|-------------|
+| Message Match | [word-for-word verdict: Match / Drift / Broken] | [one line citing ad H1 vs page H1] |
+| Page Speed | LCP Xs · INP Xms · CLS X · PSI perf score X | [top blocking audit from Lighthouse] |
+| Mobile Experience | PSI accessibility X · [mobile-specific issue count] | [one line: e.g. "No click-to-call, form below fold"] |
+| Trust Signals | [review count, years in business, cert count] | [one line: e.g. "Zero named testimonials, copyright 2023"] |
+| Form & CTA | [field count] fields · CTA text: "[button]" · [above/below fold] | [one line: e.g. "11 fields for a free quote"] |
 
-## Fix First (top 3, ranked by score delta x weight)
-1. **[Action]** — expected +X points · `severity` · `time_to_fix`
-   Evidence: [the actual text/number/screenshot-description from the page]
-2. **[Action]** — expected +X points · `severity` · `time_to_fix`
-3. **[Action]** — expected +X points · `severity` · `time_to_fix`
+## Fix First (top 3, ranked by estimated $ lift)
+1. **[Action]** — est. +$X/mo · `<time_to_fix>`
+   Evidence: [the actual text/number from the page or PSI audit]
+2. **[Action]** — est. +$X/mo · `<time_to_fix>`
+   Evidence: [...]
+3. **[Action]** — est. +$X/mo · `<time_to_fix>`
+   Evidence: [...]
 
-## Message Match Analysis
+## Message Match Detail
 Ad headline: "[actual headline from top-spending ad]"
 Page H1:    "[actual H1 from landing page]"
-Verdict:    [Match | Drift | Broken] — [one-line rationale]
+Observation: [Match / Drift / Broken] — [one-line rationale citing the specific words that match or don't]
 
 ## Handoff
 [Pick one:]
@@ -133,8 +131,7 @@ Append the score to `{data_dir}/landing-page-history.json` so re-audits can show
       "history": [
         {
           "date": "2026-04-14",
-          "grade": "C",
-          "score": 67,
+          "internal_composite": 67,
           "dimensions": {
             "message_match": 72,
             "page_speed": 45,
@@ -145,9 +142,11 @@ Append the score to `{data_dir}/landing-page-history.json` so re-audits can show
           "psi_mobile_lcp_s": 4.2,
           "psi_mobile_cls": 0.15,
           "psi_mobile_inp_ms": 320,
+          "estimated_lift_usd_per_month": 380,
           "ad_groups": ["Tukwila Search - Roofing"],
           "monthly_spend": 1240.50,
-          "monthly_cvr": 2.1
+          "monthly_cvr": 2.1,
+          "biggest_leak": "Page Speed — LCP 4.2s on mobile"
         }
       ]
     }
@@ -155,7 +154,7 @@ Append the score to `{data_dir}/landing-page-history.json` so re-audits can show
 }
 ```
 
-On subsequent runs against the same URL, show `Score: 78 (was 67)` and call out which dimensions moved.
+`internal_composite` is stored for trend tracking only — it's the internal reference number used by the dollar-lift formula, never shown to the user as a letter grade. On subsequent runs against the same URL, diff the raw dimension measurements and the dollar lift: `LCP 4.2s → 2.1s · Page Speed 45 → 78 · estimated lift $380/mo → $120/mo remaining`. Three measurements moved, no artificial grade flip.
 
 ## Rules
 

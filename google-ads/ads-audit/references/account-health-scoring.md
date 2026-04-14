@@ -214,97 +214,110 @@ Always report: "Overall CPA is $X, but brand CPA is $Y and non-brand CPA is $Z."
 
 ---
 
-## Pulse Metrics — What to Track
+## Pulse Metrics — The Only Scoreboard
 
-The audit tracks 3 objective metrics for trend tracking (unchanged across audits):
+No letter grades. No emoji verdicts. No rating buckets. The audit surfaces **3 pulse metrics**, each annotated with its biggest contributor and a pointer to the pass that fixes it. The metric IS the verdict — read it as dollars and act on it directly.
 
-| Metric | What it measures | Better = | Severity thresholds |
-|--------|-----------------|----------|---------------------|
-| **Waste rate** | % of spend on zero-conversion entities | Lower | >20% critical, 10-20% needs work, 5-10% OK, <5% healthy |
-| **Demand captured** | Weighted avg IS on profitable campaigns | Higher | <30% critical, 30-50% needs work, 50-70% OK, >70% strong |
-| **CPA** | Cost per conversion | Lower/stable | Compare to industry benchmarks below |
+Every pulse metric must answer three questions inline:
+1. **What's the number?** (raw value)
+2. **What's driving it?** (the single biggest contributor, named)
+3. **Where do I fix it?** (pointer to Pass 1/2/3)
 
----
+### The three metrics
 
-## Account Verdict — One-Line State of the Account
+| Metric | What it measures | Better = | How to compute |
+|---|---|---|---|
+| **Waste** | $/mo burning on zero-conversion spend | Lower | `Wasted Spend Calculation` section below, extrapolated to 30 days |
+| **Demand captured** | % of eligible impressions won on profitable campaigns | Higher | Weighted avg `search_impression_share` across campaigns with ≥1 conversion, weighted by spend. If `unit_economics` exists, use `CPA ≤ Break-Even CPA` as the profitability filter instead |
+| **CPA** | Cost per conversion | Lower or stable | `total spend / total conversions` — compare to industry benchmarks below or to `unit_economics.break_even_cpa` if available |
 
-Pulse metrics tell the trend. The **verdict** tells the "is this account OK?" story in one line that an SMB owner can read in 2 seconds. It replaces an A-F grade because a letter grade can invert on dollars — a single Critical can outrank many Mediums that collectively burn more money. The verdict is a description of the account's current state, not a score.
+### Annotation rules (what each metric line must include)
 
-### Severity Tags (required on every finding)
+**Waste line:**
+- Dollar value extrapolated to 30 days: `$X/mo (Y% of spend)`
+- Top single contributor: keyword / search term / campaign name + its dollar impact
+- Pointer: `→ Pass 1`
+- **Signal failure override:** If conversion tracking is broken (no conversion actions, or 0 conversions with 50+ clicks), replace the dollar figure with `⚠️ Cannot compute — conversion tracking broken` and point to the tracking fix. Waste is meaningless when you can't measure conversions.
 
-Every finding surfaced in Pass 1/2/3 must carry two tags:
+**Demand captured line:**
+- Percentage: `X%`
+- Top single opportunity: campaign name + headroom in $/mo (margin-aware where possible)
+- Pointer: `→ Pass 2`
+- **Relevance override:** If rank-lost IS > 30% on any campaign, name that campaign and flag that more budget won't help — "fix relevance first" — and point to Pass 3 instead.
 
-- **`severity`**: `Critical` | `High` | `Medium` | `Low`
-- **`time_to_fix`**: `<5min` | `<15min` | `<30min` | `<2h` | `>2h`
+**CPA line:**
+- Dollar value: `$X`
+- Context: either "vs industry $Y–$Z" (from `industry-templates.json`) or "vs break-even $Y" (from `unit_economics`)
+- Top single structural driver (if CPA is unhealthy): which campaign is pulling it up, or which QS component is below average
+- Pointer: `→ Pass 3` (structural fixes) or "healthy — no action" if CPA is stable and within benchmark
 
-Severity rubric (deliberately simple):
-
-| Severity | When to use |
-|---|---|
-| **Critical** | Tracking broken, money actively burning >$500/mo, policy violation risk, or account-wide signal failure |
-| **High** | Fixable waste or capture opportunity worth $200–$500/mo, structural issue affecting multiple campaigns |
-| **Medium** | Optimization worth $50–$200/mo, single-campaign structural issue, relevance improvement |
-| **Low** | Best-practice gap, <$50/mo impact, nice-to-have |
-
-Severity tags are load-bearing independent of the verdict — they drive the Quick Wins section, the 3-pass ordering, and the re-audit diff. Never omit them.
-
-### Verdict rubric (first match wins)
-
-Evaluate the rules in order. The first one that matches is the verdict. This "trump" order prevents a quiet Critical from being hidden by a loud scaling opportunity.
-
-| # | Rule | Verdict line |
-|---|---|---|
-| 1 | Any `Critical` finding exists | `🚫 Urgent — {reason from the Critical}` |
-| 2 | `waste_rate > 15%` OR 2+ `High` findings | `⚠️ Leaking ~${monthly_waste_usd}/mo — {N} fixes below` |
-| 3 | Budget-lost IS > 20% on any profitable campaign AND no rules 1-2 triggered | `📈 Healthy — ~${headroom_usd}/mo in scaling room` |
-| 4 | `waste_rate < 5%` AND no High findings AND no scaling opportunity | `✅ Well-managed — optimizing at the margins` |
-| 5 | Otherwise | `🟡 Stable — {N} medium-impact fixes available` |
-
-**Why this shape:**
-- Rule 1 is a trump: Criticals always surface. No amount of healthy pulse metrics can hide broken tracking.
-- Rule 2 is dollar-denominated — it uses the actual `waste_rate × monthly_spend` number, not a letter. An SMB reading "Leaking ~$1,200/mo" knows instantly what's at stake.
-- Rule 3 is only reached when Layers 1-3 are clean. This is where the skill explicitly says "you're doing well, here's your next lever."
-- Rule 4 is the floor for well-run accounts. Not celebratory — just honest.
-- Rule 5 is the common middle ground for accounts that aren't on fire but aren't pristine either.
-
-Compute `monthly_waste_usd` from the wasted-spend calculation already in Layer 3 (extrapolate to 30 days if the audit window is shorter). Compute `headroom_usd` from the margin-aware formula in `../../shared/ppc-math.md` when `unit_economics` is available; fall back to `budget_lost_is × current_monthly_spend` otherwise.
-
-### Quick Wins section (auto-generated)
+### Quick Wins section (auto-generated, dollar-driven)
 
 After the 3-pass report, emit a `## Quick Wins` section containing every finding where:
 
 ```
-severity IN ('Critical', 'High') AND time_to_fix IN ('<5min', '<15min')
+dollar_impact_usd >= 200 AND time_to_fix IN ('<5min', '<15min')
 ```
 
-Sort by dollar impact descending. Max 5 items. If none qualify, omit the section entirely — don't fabricate.
+Plus any **signal/tracking/policy fix** regardless of dollar value — these qualify unconditionally because they unblock measurement.
 
-Every Quick Win must be executable via a single `/ads` command and include the command text. Examples:
+Sort by dollar impact descending (signal fixes pinned to the top). Max 5 items. If none qualify, omit the section entirely — don't fabricate.
+
+Every Quick Win must be executable via a single `/ads` command where applicable and include the command text. Examples:
 - `Add 7 negatives to Tukwila Search — saves ~$340/mo (<5 min) · /ads add negatives to Tukwila Search: jobs, careers, salary, diy, free, reddit, training`
-- `Enable Enhanced Conversions — unlocks 10-15% more attribution (<15 min) · Configure in Google Ads UI (not /ads)`
+- `Enable Enhanced Conversions — unblocks measurement (<15 min) · Configure in Google Ads UI (not /ads)`
+
+### `time_to_fix` field (kept — descriptive, not a rating)
+
+Every finding carries one descriptive field: `time_to_fix` ∈ `<5min | <15min | <30min | <2h | >2h`. This is how long the fix takes, not how important it is. It's used only as a filter input for Quick Wins. There is no severity tag, no priority label, no letter — the dollar figure on each finding carries all the priority information the user needs. Sort and filter on dollars.
 
 ### What goes in `audit-history.json`
 
-Persist the verdict line verbatim, the rule number that fired (for diffing), and the severity distribution:
+Persist the pulse metrics with their top contributors. No verdict, no grade, no severity counts.
 
 ```json
 {
   "date": "2026-04-14",
-  "verdict": "⚠️ Leaking ~$1,240/mo — 3 fixes below",
-  "verdict_rule": 2,
-  "severity_counts": { "critical": 0, "high": 2, "medium": 3, "low": 2 },
-  "metrics": { "waste_rate": 14.8, "demand_captured": 42.7, "cpa": 19.88 },
-  "top_actions": [...]
+  "date_range": "2026-03-15 to 2026-04-14",
+  "account_id": "7521406707",
+  "mode": "full",
+  "total_spend": 14320.00,
+  "total_conversions": 72,
+  "metrics": {
+    "waste": {
+      "usd_per_month": 1240,
+      "pct_of_spend": 8.7,
+      "top_contributor": "keyword 'free dog food' — $340/mo",
+      "tracking_blocker": false
+    },
+    "demand_captured": {
+      "pct": 42.7,
+      "top_opportunity": "Tukwila Search — ~$2,100/mo headroom at 35% budget-lost IS",
+      "rank_lost_blocker": false
+    },
+    "cpa": {
+      "usd": 19.88,
+      "benchmark_low": 25,
+      "benchmark_high": 65,
+      "break_even": 72,
+      "trend_vs_last": -2.14
+    }
+  },
+  "top_actions": [
+    "Paused 'free dog food' keyword ($120 waste)",
+    "Budget-lost IS 40% on Tukwila Search at $14 CPA"
+  ],
+  "next_milestone": null
 }
 ```
 
-On re-audits, show movement by comparing `verdict_rule` (lower number = more urgent) and by diffing the pulse metrics inline. Examples of re-audit verdict lines:
+On re-audits, diff the three metric lines directly — no abstract bucket movement:
 
-- `⚠️ Leaking ~$640/mo — 1 fix below` `_(was $1,240/mo — 2 High findings resolved since last audit)_`
-- `📈 Healthy — ~$2,100/mo in scaling room` `_(previously Urgent — tracking fixed 2 weeks ago)_`
-- `🟡 Stable — 3 medium-impact fixes available` `_(unchanged — same 3 findings carried over)_`
+- `Waste: $640/mo (4.1%) _(was $1,240/mo — 3 fixes applied)_`
+- `Demand captured: 58% _(was 42% — Tukwila budget increased)_`
+- `CPA: $18.40 _(was $19.88 — stable)_`
 
-The re-audit never shows an abstract grade jump. It shows dollar movement, finding movement, or explicit "unchanged" — which is harder to game and impossible to invert.
+Three numbers, three deltas, zero artificial ratings. If a number didn't move, say "unchanged." If it moved the wrong way, show the delta without sugar-coating.
 
 ---
 
