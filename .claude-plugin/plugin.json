@@ -1,6 +1,6 @@
 {
   "name": "toprank",
-  "version": "0.10.0",
+  "version": "0.11.5",
   "description": "SEO analysis, Google Ads management, keyword research, content optimization, and schema markup tools powered by Google Search Console and Google Ads APIs.",
   "author": {
     "name": "nowork-studio"
@@ -9,6 +9,7 @@
     "./google-ads/ads",
     "./google-ads/ads-audit",
     "./google-ads/ads-copy",
+    "./google-ads/ads-landing",
     "./seo/seo-analysis",
     "./seo/content-writer",
     "./seo/keyword-research",
