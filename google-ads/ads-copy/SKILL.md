@@ -134,7 +134,7 @@ Based on the competitive landscape, choose the strongest angle:
 Detect or ask:
 - What product/service is this ad for?
 - Target audience or segment?
-- Which campaign/ad group? (pull with `mcp__adsagent__listCampaigns` → `mcp__adsagent__listAdGroups`)
+- Which campaign/ad group? (pull with `listCampaigns` → `listAdGroups`)
 - Landing page URL?
 - Any geographic targeting?
 
@@ -225,11 +225,13 @@ Always show character counts. Always show pin positions. Always name the target 
 
 After user approves a variant, push it live:
 
-- **New ad:** `mcp__adsagent__createAd` — create the RSA in the target ad group (created paused)
-- **Update existing:** `mcp__adsagent__updateAdAssets` — replace headlines/descriptions on a live ad
-- **Enable when ready:** `mcp__adsagent__enableAd`
+- **New ad:** `createAd` — create the RSA in the target ad group (created paused)
+- **Update existing:** `updateAdAssets` — replace headlines/descriptions on a live ad
+- **Enable when ready:** `enableAd`
 
-Always confirm before any write operation. Note the `changeId` returned — user can undo within 7 days (if the entity hasn't been modified since) via `mcp__adsagent__undoChange`.
+Always confirm before any write operation. Note the `changeId` returned — user can undo within 7 days (if the entity hasn't been modified since) via `undoChange`.
+
+(Call tools under the MCP prefix detected by the shared preamble — do not hardcode `mcp__adsagent__`.)
 
 ### 6. A/B test (if running one)
 
@@ -249,7 +251,7 @@ Always confirm before any write operation. Note the `changeId` returned — user
 After the test period, pull results:
 
 ```
-mcp__adsagent__listAds → compare metrics for each variant
+listAds → compare metrics for each variant
 ```
 
 | Variant | Impressions | Clicks | CTR | Conversions | Conv Rate | CPA | Winner? |
@@ -266,7 +268,7 @@ mcp__adsagent__listAds → compare metrics for each variant
 | Similar | Similar | No meaningful difference | Need a bolder test — the variants were too similar. Change the core messaging angle, not just word choice |
 | Both low | Both low | Neither variant works | The problem isn't A vs B — it's the overall approach. Check: keyword intent match, landing page quality, offer strength. May need `/ads-audit` to diagnose |
 
-After deciding a winner: pause the loser with `mcp__adsagent__pauseAd`, keep the winner running. Then create a new variant to test against the winner — continuous improvement, never stop testing.
+After deciding a winner: pause the loser with `pauseAd`, keep the winner running. Then create a new variant to test against the winner — continuous improvement, never stop testing.
 
 ## Rules
 

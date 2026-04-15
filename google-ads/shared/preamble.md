@@ -77,9 +77,14 @@ Continue to Step 3 (MCP detection always runs).
 
 Always verify that a Google Ads MCP server is available — the MCP server could be down or misconfigured even with a valid API key and saved accountId.
 
-1. Check for AdsAgent tools: try calling `mcp__adsagent__listConnectedAccounts` — save the result for reuse in Step 4
-2. If not found, check for Google's official MCP: look for tools matching `mcp__google_ads_mcp__*` in the available tools
-3. If neither exists, guide the user:
+1. Check for AdsAgent tools. The AdsAgent MCP server may be exposed under several different tool-name prefixes depending on the host:
+   - `mcp__adsagent__*` — Claude Code CLI (toprank plugin default)
+   - `mcp__claude_ai_AdsAgent__*` — Claude Desktop / claude.ai plugin connector
+   - any other prefix matching `mcp__.*[Aa]ds[Aa]gent__` (future hosts)
+
+   **How to detect:** scan your available tool list for any tool whose name ends in `listConnectedAccounts`. Take everything before `listConnectedAccounts` as the detected prefix. If multiple candidates exist, prefer them in this order: `mcp__adsagent__` > `mcp__claude_ai_AdsAgent__` > any other AdsAgent match. Call `listConnectedAccounts` using that detected prefix, and save both the result and the prefix itself for reuse in Steps 4 and 5.
+2. If no AdsAgent variant exists, check for Google's official MCP: look for tools matching `mcp__google_ads_mcp__*`.
+3. If none exists, guide the user:
 
 > No Google Ads MCP server detected.
 >
@@ -110,12 +115,13 @@ If the user explicitly asks to switch accounts, run `listConnectedAccounts`, let
 
 ## Step 5: Calling tools
 
-Use whichever MCP server prefix was detected:
+Use whichever MCP server prefix was detected in Step 3:
 
-- **AdsAgent MCP (default):** `mcp__adsagent__<toolName>` with `accountId` parameter
+- **AdsAgent MCP via Claude Code CLI:** `mcp__adsagent__<toolName>`
+- **AdsAgent MCP via Claude Desktop / claude.ai plugin:** `mcp__claude_ai_AdsAgent__<toolName>`
 - **Google's official MCP:** `mcp__google_ads_mcp__<toolName>`
 
-Always pass `accountId` from the resolved config (Step 2) to every tool call (except `listConnectedAccounts`).
+Always call tools under the exact prefix detected in Step 3 — do not hardcode `mcp__adsagent__`. Pass `accountId` from the resolved config (Step 2) to every tool call (except `listConnectedAccounts`).
 
 ### Prefer GAQL for multi-campaign reads
 
