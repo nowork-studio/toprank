@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.11.4] — 2026-04-15
+
+### Fixed
+- **Google Ads MCP detection on Claude Desktop plugin** — When connected through the claude.ai plugin connector, the AdsAgent MCP server is exposed as `mcp__claude_ai_AdsAgent__*` instead of `mcp__adsagent__*`. The shared preamble only recognized the Claude Code CLI prefix, so ads-audit and other google-ads skills incorrectly reported "MCP not connected" and refused to run. Detection now scans the available tool list for any `*listConnectedAccounts` tool, extracts the prefix, and uses that prefix for all subsequent tool calls. Supports Claude Code CLI, Claude Desktop, and any future host using an AdsAgent variant.
+
+### Changed
+- **Consistent tool references across google-ads skills** — `ads-copy/SKILL.md` had hardcoded `mcp__adsagent__` prefixes on tool references (`createAd`, `updateAdAssets`, `enableAd`, `undoChange`, `listAds`, `pauseAd`, `listCampaigns`, `listAdGroups`). Stripped to bare tool names to match `ads`, `ads-audit`, and `ads-landing`, which already used bare names. Skills now uniformly defer to the preamble for prefix resolution.
+
+---
+
 ## [0.11.3] — 2026-04-12
 
 ### Added
