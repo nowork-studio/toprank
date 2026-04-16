@@ -25,17 +25,17 @@ The user may pass arguments that narrow the audit to specific campaigns, service
 
 | User says | Scope | Behavior |
 |-----------|-------|----------|
-| No arguments / "audit my ads" | **Full account** | Audit all campaigns, all passes |
-| "focus on grooming" / "grooming campaigns" | **Service-scoped** | Filter to campaigns matching the service keyword. Still pull account-level data for context (conversion tracking, account settings), but deep-dive analysis and recommendations focus on the matched campaigns only |
+| No arguments / "audit my ads" | **Full account** | Audit all campaigns, all dimensions |
+| "focus on grooming" / "grooming campaigns" | **Service-scoped** | Filter to campaigns matching the service keyword. Still pull account-level data for context (conversion tracking, account settings), but deep-dive analysis, scoring, and recommendations focus on the matched campaigns only |
 | "campaign X" / specific campaign name | **Campaign-scoped** | Same as service-scoped but matched to exact campaign(s) |
-| "just check wasted spend" / "impression share" | **Focus-scoped** | Full data pull but report only the requested area in depth. All 3 passes still run for context, but detailed findings and actions focus on the requested area |
+| "just check wasted spend" / "impression share" | **Dimension-scoped** | Full data pull but report only the requested dimension(s) in depth. Scorecard still shows all 7 dimensions for context, but detailed findings and actions focus on the requested area |
 
 ### Scope threading rules
 
-1. **Always pull `listCampaigns` unfiltered first** — you need the full picture to identify which campaigns match the scope and to calculate account-wide metrics like total spend (needed for waste percentages)
-2. **Filter deep-dive data to scoped campaigns** — In Phase 1B, only pull per-campaign data (`getCampaignSettings`, `getKeywords`, `getSearchTermReport`, `listAds`) for campaigns matching the scope. This saves API calls and keeps the analysis focused
-3. **Analyze relative to scope** — If scoped to grooming campaigns, waste calculations and keyword analysis reflect grooming keywords only, not the whole account. Make this explicit in the report header: "Scoped to: [Grooming campaigns]"
-4. **Account-wide checks still run** — Signal quality, tracking, and account settings are account-level regardless of scope. Check them normally but note when issues affect the scoped campaigns specifically
+1. **The `audit` call returns all campaigns** — you need the full picture anyway to calculate account-wide metrics like total spend (the denominator for waste percentages)
+2. **Filter findings to scoped campaigns in memory** — after the audit returns, filter `campaigns[]` and per-item `findings.*` arrays by the scope-matched campaign names/IDs before scoring. No extra API calls required.
+3. **Score dimensions relative to scope** — If scoped to grooming campaigns, keyword health score reflects grooming keywords only, not the whole account. Make this explicit in the report header: "Scoped to: [Grooming campaigns]"
+4. **Account-wide dimensions still get scored** — Conversion tracking and account settings are account-level regardless of scope. Score them normally but note when issues affect the scoped campaigns specifically
 5. **Persona discovery uses scoped data** — Build personas from search terms within the scoped campaigns only
 6. **Business context is always full-account** — `business-context.json` captures the whole business, not just the scoped segment. Don't narrow business context to the scope
 
@@ -45,24 +45,19 @@ Match campaign names, ad group names, and keyword themes using case-insensitive 
 
 ## Reference Documents
 
-**Always read before Phase 2:**
-- `references/account-health-scoring.md` — Diagnostic thresholds, red flags, interpretation matrices, pulse metric annotation rules, and the dollar-driven Quick Wins filter
-- `../shared/industry-templates.json` — Industry presets (margin, AOV, target CPA, red flags, quick-start negatives). Cache in memory for the session
-- `../shared/ppc-math.md` — Break-even CPA, headroom, LTV:CAC, IS opportunity, budget forecasting. Read before computing any dollar-denominated finding
+Read these reference documents during analysis for expert-level context:
 
-**Read during Phase 2.5 / Phase 3:**
-- `references/persona-discovery.md` — Persona template, derivation rules, and JSON schema (read during Phase 2.5)
-- `references/business-context.md` — Website crawl procedure, business-context.json schema, and unit economics population rules (read during Phase 3)
+- `references/account-health-scoring.md` — Detailed scoring rubrics for each dimension (0-5 scale with specific criteria)
+- Read from ads skill: `../ads/references/industry-benchmarks.md` — Compare account metrics to industry averages
+- Read from ads skill: `../ads/references/quality-score-framework.md` — QS diagnostics and component-level analysis
+- Read from ads skill: `../ads/references/search-term-analysis-guide.md` — Search term relevance scoring methodology
+- Read from ads skill: `../ads/references/campaign-structure-guide.md` — Account structure best practices
 
-**Read on demand** — only load these when the analysis surfaces a relevant issue. Loading all of them upfront wastes ~1,000 lines of context:
-- `../ads/references/quality-score-framework.md` — Read only if avg QS < 6 or high-spend keywords have QS < 5
-- `../ads/references/search-term-analysis-guide.md` — Read only during Layer 2 search term quality analysis
-- `../ads/references/industry-benchmarks.md` — Read only during Layer 3 efficiency analysis for CPA comparison
-- `../ads/references/campaign-structure-guide.md` — Read only if structural issues detected (>30 keywords per ad group, brand/non-brand mixed, poor naming)
+Read these before starting Phase 2 analysis. They contain the numeric thresholds that separate a generic audit from an expert one.
 
-## Step 0: Policy Freshness Check (runs in parallel with Phase 1A)
+## Step 0: Policy Freshness Check
 
-Verify policy assumptions are current — but don't block data collection on it. Run this check in parallel with Phase 1A since they're independent.
+Before auditing, verify that the policy assumptions underpinning this audit are current.
 
 1. Read `../shared/policy-registry.json` and check each entry: if `last_verified` + `stale_after_days` < today's date, the entry is stale.
 2. **High-volatility stale entries:** Use WebSearch to check for recent Google Ads changes related to each stale entry's `area` (e.g., "Google Ads broad match behavior changes 2026"). Compare findings against the `assumption` field. If discrepancies are found:
@@ -71,308 +66,309 @@ Verify policy assumptions are current — but don't block data collection on it.
 3. **Moderate-volatility stale entries:** Note them in the audit output as an informational line (e.g., "ℹ️ [area] last verified [date] — may warrant a check") but do not block the audit.
 4. **Stable stale entries:** Skip — these rarely change.
 
+If no high-volatility entries are stale, proceed directly to Phase 1 with no output from this step.
+
 ## Phase 1: Pull Account Data
 
-Gather everything in parallel before asking the user a single question. The goal is to show up informed.
+One call does it all. `audit` runs ~17 queries in parallel server-side and returns pre-computed findings.
 
-**Date range:** Default to `LAST_30_DAYS` for a full audit — 30 days gives enough signal for meaningful waste calculations, impression share trends, and bid strategy assessment. Use `LAST_7_DAYS` only for daily campaign performance queries on accounts with 3+ campaigns (to stay within GAQL's 50-row limit).
+### Single-call data pull
 
-**Use the adaptive data fetching algorithm from `../shared/gaql-cookbook.md`.** The approach varies by account size — read the cookbook's "Adaptive data fetching algorithm" section. Here's the summary:
-
-### Phase 1A: Account basics + sizing probe (parallel)
-
-Pull these simultaneously — they don't require campaign IDs and they tell you the account size:
-
-- `getAccountInfo` — business name, currency, timezone
-- `getAccountSettings` — auto-tagging, tracking template, conversion setup
-- `listCampaigns` — all campaigns with spend, clicks, conversions **(also serves as the sizing probe — default limit is 100)**
-- `getConversionActions` — what conversions are set up
-- `getRecommendations` — Google's optimization suggestions
-
-**After Phase 1A, apply scope filtering:** If the user specified a scope (see Scope Detection above), identify which campaigns match. Log the matched campaigns and their IDs. If no campaigns match, stop and ask the user to clarify. For the rest of the audit, "active campaigns" means scope-matched campaigns (or all campaigns if no scope was specified).
-
-**After Phase 1B: kick off the website crawl.** Once `listAds` data is available (pulled in Phase 1B), resolve the website URL and start the website crawl (see `references/business-context.md`) immediately. The crawl results aren't needed until Phase 3's user questions, so it runs in the background while you finish analysis.
-
-### Phase 1B: Adaptive data pull (depends on account size)
-
-Count the **in-scope** enabled campaigns with spend from Phase 1A, then follow the cookbook's adaptive algorithm. When scoped, only pull per-campaign data for in-scope campaigns — but still run account-wide GAQL queries (they're cheap and provide context).
-
-**In addition to the cookbook's strategy**, always pull `getCampaignSettings(campaignId)` and `listAds(campaignId)` for each in-scope campaign (needed for Display Network detection, bidding strategy assessment, and ad copy analysis).
-
-### PMax data pull
-
-For each in-scope PMax campaign (identified from `listCampaigns` by campaign type), pull in parallel:
-- `getPmaxAssetGroups(campaignId)` — asset group status and performance
-- `getPmaxAssets(assetGroupId)` for each asset group — completeness check (headlines, images, video)
-
-### Audience segment pull
-
-Pull audience data for Search campaigns via GAQL — needed for the Layer 2 audience signals check. PMax audience signals come from `getPmaxAssetGroups` (already pulled above).
-
-Search campaign audiences are typically set at the **ad group level** (observation mode), not at campaign level. Query both levels — finding audiences at either level means the check passes:
+Call `audit(accountId, days=30)` (max 90 days, capped by impression-share data limit). The response shape:
 
 ```
-SELECT campaign.id, campaign.name,
-       ad_group.id, ad_group.name,
-       ad_group_criterion.type,
-       ad_group_criterion.user_list.user_list
-FROM ad_group_criterion
-WHERE campaign.id IN (<in-scope campaign IDs>)
-  AND ad_group_criterion.type IN ('USER_LIST', 'CUSTOM_AUDIENCE', 'COMBINED_AUDIENCE')
-  AND campaign.status = 'ENABLED'
+{
+  account: { name, currency, timezone, autoTagging, trackingTemplate },
+  dateRange: { start, end, days },
+  summary: { totalSpend, totalConversions, totalConversionValue, totalClicks,
+             totalImpressions, cpa, ctr, conversionRate, roas, activeCampaigns },
+  pulse: { wasteRate, wasteUsd, demandCaptured, cpa },  // pre-computed metrics
+  campaigns: [{                                          // per-campaign detail
+    id, name, type, status, spend, conversions, cpa, ctr,
+    impressionShare, budgetLostIS, rankLostIS, isMatrix,  // "healthy" | "capital_problem" | "relevance_problem" | "structural_problem"
+    biddingStrategy, targetCpa, searchPartners, displayNetwork,
+    weightedQS, lowQSSpendPct, negativeKeywordCount,
+    adGroups: [...], topAds: [...], topKeywords: [...],
+    deviceBreakdown: { MOBILE, DESKTOP, TABLET, ... }
+  }],
+  findings: {
+    wastedKeywords: [...],       // top 10 by spend, 0 conversions, >10 clicks
+    wastedSearchTerms: [...],    // top 10 by spend, 0 conversions
+    brandLeakage: { detected, variants, totalSpend, terms },
+    miningOpportunities: [...],  // top 10 converting search terms (≥2 conv)
+    budgetConstrainedWinners: [...],  // good CPA + high budget-lost-IS
+    negativeConflicts: [...],    // negatives blocking converters
+    hasAudienceSegments, conversionActions, matchTypeDistribution,
+    assetCoverage, landingPages
+  },
+  errors?: [...]                 // individual sub-query failures, non-fatal
+}
 ```
 
-If this returns zero rows, also check campaign-level criteria (less common but possible):
+If the call errors out, surface the error to the user and stop. Don't retry with helper tools — the audit tool is the source of truth for this skill.
 
-```
-SELECT campaign.id, campaign.name,
-       campaign_criterion.type,
-       campaign_criterion.user_list.user_list
-FROM campaign_criterion
-WHERE campaign.id IN (<in-scope campaign IDs>)
-  AND campaign_criterion.type IN ('USER_LIST', 'CUSTOM_AUDIENCE', 'COMBINED_AUDIENCE')
-```
+### After the audit call
 
-If both queries return zero rows for all Search campaigns, flag "no audience segments" in Layer 2.
+1. **Apply scope filtering.** If the user specified a scope, identify matching campaigns from `campaigns[]`. Log the matched names+IDs. If no campaigns match, stop and ask the user to clarify. "In-scope campaigns" = scope-matched subset (or all campaigns if no scope).
 
-### Geo-targeting verification
+2. **Scope + account-wide totals.** `summary.*` and `pulse.*` are account-wide and are NOT re-aggregated for scoped audits. The scorecard header already notes "Scoped to: X" — reuse those totals and make the scope explicit, don't recompute. Per-campaign scores (keyword health, ad copy, IS, spend efficiency) DO filter to in-scope campaigns only.
 
-`getCampaignSettings` has a known blind spot: it often returns empty `locationTargeting` and `null` `proximityTargeting` even when campaigns have active geo-targeting. Always verify geo-targeting via GAQL for each in-scope campaign:
+3. **Kick off two parallel background calls.** Both run in parallel with the rest of Phase 2 scoring — don't block on them:
 
-```
-SELECT campaign.id, campaign.name,
-       campaign_criterion.type, campaign_criterion.negative,
-       campaign_criterion.location.geo_target_constant,
-       campaign_criterion.proximity.radius,
-       campaign_criterion.proximity.radius_units
-FROM campaign_criterion
-WHERE campaign.id IN (<in-scope campaign IDs>)
-  AND campaign_criterion.type IN ('LOCATION', 'PROXIMITY')
-```
+   - **Website crawl** — pull ad final URLs from `campaigns[].topAds[].finalUrl` and start the crawl (Phase 3, Step 2).
+   - **Geo GAQL** — the audit returns `geoTargetType` (enum) but not the actual location criteria list. Always run this via `runGaqlQuery` for in-scope campaigns; the Campaign Structure scoring rubric checks for multi-location geo structure and can't score without it:
 
-`radius_units` enum: `UNSPECIFIED` = 0, `UNKNOWN` = 1, `MILES` = 2, `KILOMETERS` = 3. There is no "meters" value — Google Ads only supports miles and kilometers for proximity targeting. Do NOT claim "no geo-targeting" based solely on `getCampaignSettings` — the GAQL query is authoritative.
-
-### Fallback
-
-If `runGaqlQuery` errors or is unavailable, fall back to per-campaign helper tools for each active campaign, run in parallel.
-
-**Minimum data for a meaningful audit:** Campaign list, keyword data, impression share, and conversion actions must return data. If the account has zero campaigns or zero spend, skip to Phase 3 (business context).
-
-**Launch mode (small/new account gate):** If total spend < $500 or total conversions < 10 in the date range, the account doesn't have enough data for meaningful waste rate, demand captured, or CPA metrics. Switch to **Launch mode**:
-
-1. Layer 1 (tracking check) — still critical, catch setup problems early
-2. Layer 2 (structure check only) — campaign organization, keyword themes, ad copy completeness, industry-template red-flag checks
-3. Skip Layers 3-5 — they'd be statistically meaningless. Still compute and persist pulse metrics (with `"low_data": true`) so re-audits have a baseline
-4. Report format: use the launch-mode template — no pulse metrics (too little data to compute waste or headroom in dollars), no dollar-impact claims. Instead surface a **Readiness checklist** scored `ready | needs fix | blocker` and a **Next milestone** trigger
-5. **Set the next milestone** in `audit-history.json`:
-   ```json
-   "next_milestone": { "conversions": 30, "spend_usd": 1000, "check_after": "2026-05-14" }
    ```
-   The thresholds are `max(30, industry_template.smart_bidding_min_conv_month)` for conversions, `$1,000` for spend, and 30 days out for the date. Whichever hits first triggers the next full audit.
-6. Still run Phase 2.5 (personas) and Phase 3 (business context) — these are valuable regardless of data volume. Use `industry_template.recommended_conversion_actions` to recommend missing conversion actions.
-
-**Milestone check on subsequent runs:** If `audit-history.json.next_milestone` exists and any threshold has been crossed, graduate to a full audit and clear the milestone. Otherwise repeat launch-mode with a brief "tracking toward milestone" update.
-
-## Phase 2: Analyze
-
-The audit analyzes the account in **5 layers** (each depends on the one below), then presents findings as **3 actionable passes** (organized by what the user should do). The layers determine analysis order — the passes determine report order.
-
-```
-Analysis layers (work through in order):
-  Layer 1: Signals    → "Can I trust the data?"
-  Layer 2: Relevance  → "Am I in the right auctions?"
-  Layer 3: Efficiency → "Am I spending wisely?"
-  Layer 4: Scale      → "How do I get more?"
-  Layer 5: Growth     → "What's next?"
-
-Report passes (organized by action type):
-  Pass 1: Stop Wasting    → findings that represent money being burned
-  Pass 2: Capture More    → missed opportunities to get more conversions
-  Pass 3: Fix Fundamentals → structural issues that compound over time
-```
-
-**Scope-aware analysis:** When the audit is scoped, analyze campaign-level data using only in-scope campaigns. Account-level checks (tracking, settings) run account-wide but note how issues affect the scoped campaigns.
-
-Read `references/account-health-scoring.md` for diagnostic thresholds, red flags, and interpretation matrices. The threshold bands tell you what's "bad enough to flag" vs. "acceptable" — use them to decide whether a finding makes it into the report at all.
-
----
-
-### Layer 1: Signals — "Can I trust the data?"
-
-If signals are broken, every insight downstream is built on lies — and Smart Bidding can't optimize what it can't measure.
-
-**Hard stop conditions** (→ Pass 1, top priority):
-- Zero conversion actions set up → "Stop spending. Set up conversion tracking first."
-- Conversion actions exist but 0 conversions recorded despite 50+ clicks → "Tracking is broken. Fix it before spending another dollar."
-- Only micro-conversions (page views, button clicks) as primary actions → "You're optimizing for the wrong thing. Set up a real conversion action (form submit, phone call, purchase)."
-
-If any hard stop triggers, skip to Phase 4 with the tracking fix as the only recommendation. No point analyzing what you can't measure.
-
-**Checks** (flag issues, assign to appropriate pass):
-- Auto-tagging: is it enabled? If not, Google Analytics integration breaks (→ Pass 3)
-- Counting method: "Every" vs "One"? Lead gen should use "One", e-commerce should use "Every" (→ Pass 1 if inflating conversion count)
-- **Enhanced Conversions:** Is hashed first-party data being sent? Without it, cross-device and cross-browser journeys are invisible to Smart Bidding (→ Pass 3)
-- **Consent Mode v2:** Mandatory for EU since March 2024. Without it, bid strategies are flying blind in privacy-regulated markets (→ Pass 3)
-- **Data density:** Smart Bidding needs 30+ conversions/month per campaign for tCPA, 50+ for tROAS. If a campaign uses automated bidding but has <15 conversions/month, the algorithm doesn't have enough signal to learn (→ Pass 3)
-- **Attribution model:** Last-click attribution is deprecated — data-driven attribution (DDA) is the only model for new conversion actions. Flag any existing actions still on last-click (→ Pass 3)
-
----
-
-### Layer 2: Relevance — "Am I in the right auctions?"
-
-Before asking "am I getting enough impressions?", ask "are these the right impressions?" and "am I competitive in the auctions I'm entering?"
-
-#### Pre-checks (settings that silently burn money) → Pass 1
-
-These are checked first because they affect every dollar spent:
-
-**Location targeting intent:** Check `getCampaignSettings` for each active campaign. The field is `campaign.geo_target_type_setting.positive_geo_target_type`. Verify it's set to **`PRESENCE`** — NOT `PRESENCE_OR_INTEREST` (Google's default, which shows ads to anyone *searching about* your location from anywhere in the world). For a local business, this can waste 20-30% of budget.
-
-**Search Partners:** Check if Search Partners is enabled. If search partner clicks are high but conversions are zero → recommend turning it off.
-
-**Display Network leakage:** Check `networkDisplayEnabled` on Search campaigns. If any Search campaign has Display Network on with display clicks > 20 and 0 display conversions → turn off Display Network.
-
-#### Campaign structure analysis
-
-- Are brand and non-brand keywords in separate campaigns? Mixing them inflates brand CTR and hides non-brand problems (→ Pass 3)
-- For multi-location businesses, is there geo-specific structure? (→ Pass 3)
-- One ad group with 200 keywords = poor relevance, QS will suffer (→ Pass 3)
-- **PMax cannibalization:** If PMax campaigns exist alongside Search campaigns, check whether PMax is eating high-intent brand search traffic. Compare brand Search campaign IS — if it's below 90% with PMax running, PMax may be cannibalizing. Recommend adding brand terms as negative keywords in PMax (→ Pass 1 if significant spend, Pass 3 if structural)
-- Reference `../ads/references/campaign-structure-guide.md`
-
-#### Keyword health analysis
-
-- Calculate keyword waste: spend on keywords where `conversions = 0 AND spend > 2x account average CPA`. The 2x CPA threshold respects Smart Bidding's learning curve — a keyword that's spent double your typical conversion cost with nothing to show has had a fair shot (→ Pass 1)
-- Before killing any keyword with $50+ spend, check assisted conversions. If it has assists, investigate before pausing
-- Average QS weighted by spend (not by keyword count) — a QS-3 keyword spending $2,000/month matters more than a QS-3 keyword spending $5/month (→ Pass 3 if QS < 5 on high-spend keywords)
-- Zombie keywords: 0 impressions for 30+ days → pause (→ Pass 1)
-- Reference `../ads/references/quality-score-framework.md`
-
-#### Search term quality analysis
-
-- Score search term relevance using `../ads/references/search-term-analysis-guide.md`
-- Flag irrelevant search terms by category: wrong service, wrong location, wrong intent, competitor names, brand terms in non-brand campaigns (→ Pass 1)
-- **Negative conflict cross-check:** Before recommending new negatives, cross-reference them against converting keywords and converting search terms. If a proposed negative would block a converting term, don't add it
-- Flag converting search terms (2+ conversions) not yet added as keywords (→ Pass 2)
-- Flag obvious negative keyword gaps: "free" variants, "jobs"/"careers" variants, wrong service types (→ Pass 1)
-
-#### Ad copy & creative health
-
-- RSA count per ad group: <2 means no testing is possible (→ Pass 3)
-- Headline diversity: are the 15 headlines actually different? Check if keywords appear in headlines
-- Ad extensions/assets: sitelinks, callouts, structured snippets, image extensions. Missing assets reduce Ad Rank (→ Pass 3)
-- **PMax asset groups:** For each PMax campaign, check asset group completeness via `getPmaxAssets`:
-  - Headlines: at least 5 (max 15)
-  - Long headlines: at least 1
-  - Descriptions: at least 2
-  - Marketing images: at least 1 landscape + 1 square
-  - Logo: at least 1
-  - Video: at least 1. If missing, Google auto-generates low-quality video — flag it (→ Pass 3)
-
-#### Audience signals check
-
-Google's algorithms lean heavily on audience signals — campaigns without them are competing with less data than competitors.
-
-- **PMax asset groups:** Check if audience signals are configured (custom segments, your data segments, interests). PMax without audience signals forces Google to start cold — it'll spend more during the learning phase finding the right audience (→ Pass 3)
-- **Search campaigns:** Check for audience segments (observation or targeting mode). If no audiences are attached, the account is missing bid signal data that could improve Smart Bidding performance (→ Pass 3)
-- **Remarketing/customer match:** If no remarketing lists or customer match audiences exist in the account, flag as a coverage gap — these are the highest-ROAS audiences available (→ Pass 2)
-
-#### Auction fitness (Lost IS — Rank) → Pass 3
-
-Lost IS (Rank) is a *relevance* signal, not a scale signal. High rank-lost IS means your Ad Rank is insufficient.
-
-- Isolate Lost IS (Rank) from impression share data. If rank-lost IS > 30%, diagnose via QS components:
-  - Expected CTR below average → ad copy needs rewriting
-  - Ad relevance below average → ad group themes too broad
-  - Landing page experience below average → page speed, mobile UX, content mismatch
-- **Do not recommend "spend more" for rank-lost IS.** The fix is improving relevance, not more budget
-
----
-
-### Layer 3: Efficiency — "Am I spending wisely?"
-
-#### Impression share interpretation
-
-Use the **Impression Share 2x2 Interpretation Matrix** from `references/account-health-scoring.md` to classify each campaign as healthy, relevance problem, capital problem, or structural problem. The matrix determines whether the fix is "improve ads/QS" vs. "increase budget" — getting this wrong gives exactly the wrong advice.
-
-#### Spend efficiency
-
-- Calculate: per-campaign CPA and compare to account average. Flag any campaign with CPA > 150% of account avg (→ Pass 1)
-- Calculate: budget allocation efficiency — does each campaign's % of total budget match its % of total conversions? If one campaign gets 60% of budget but delivers only 30% of conversions, that's a reallocation opportunity (→ Pass 1)
-- **PMax efficiency:** If PMax CPA is dramatically worse than Search CPA (>2x) for the same services, PMax may be spending on low-intent display/video traffic (→ Pass 1)
-
-#### Brand vs. Non-Brand segmentation
-
-Many accounts show great ROAS, but 80% comes from brand traffic — paying Google a tax on existing customers.
-
-- Calculate brand vs. non-brand split: what % of conversions and spend comes from brand terms?
-- If brand represents >60% of conversions: "Account ROAS is inflated by brand traffic. Non-brand CPA is $X vs. brand CPA of $Y — this is the true acquisition cost"
-- If brand and non-brand are mixed in the same campaigns, flag as a structural issue (→ Pass 3)
-
-#### Bid strategy fitness → Pass 3
-
-- Does the bid strategy match the campaign goal and data volume?
-- Learning phase stability: are campaigns stuck in "Learning" or "Learning (limited)"?
-- For tCPA/tROAS: is the target realistic given historical data? (>50% gap = choking volume or burning money)
-- Manual bid adjustments (device, location, schedule) fighting Smart Bidding → remove conflicting adjustments
-- **PMax bid strategy:** PMax only supports MAXIMIZE_CONVERSIONS (with optional tCPA) and MAXIMIZE_CONVERSION_VALUE (with optional tROAS). If PMax is on MAXIMIZE_CONVERSIONS with no tCPA cap and CPA is climbing, recommend adding a cap based on historical data
-
-#### Conversion value sanity check → Pass 1
-
-For accounts with mixed-value services, check whether CPA exceeds the likely service value. A $50 CPA on a Board & Train lead (worth $2,000+) is excellent. A $50 CPA on a nail trim (worth $25) is negative ROI — even though it "converted." Read `{data_dir}/business-context.json` if it exists for service value context.
-
-#### Wasted spend calculation
-
-Use the **Wasted Spend Calculation** formula from `references/account-health-scoring.md` — it covers all three waste components (keyword, search term, structural) and includes de-duplication rules to avoid double-counting.
-
----
-
-### Layer 4: Scale — "How do I get more?" → Pass 2
-
-Only reach this layer after Layers 1-3 are addressed. Scaling broken foundations amplifies waste.
-
-**Budget-constrained winners (Lost IS — Budget):**
-
-Lost IS (Budget) is a capital problem, not a relevance problem: "You're winning auctions but running out of gas."
-
-- For each campaign with budget-lost IS > 20% AND CPA at/below account average → this is the #1 scaling lever. The auction already validates your ads
-- **Do not recommend increasing budget on campaigns with rank-lost IS > 30%.** Fix relevance first
-- Quantify: "Campaign X has 35% budget-lost IS at $45 CPA. Increasing daily budget by $X could capture ~Y additional conversions/month"
-
-**Coverage gaps:**
-- Geographic: locations the business serves but isn't targeting?
-- Dayparting: ads dark during hours customers convert? Only flag if >2x conversion rate difference between best and worst periods
-- Device: segments accidentally excluded or severely underperforming?
-- Audiences: no remarketing lists or customer match segments? These are typically the highest-ROAS audiences — missing them means leaving the easiest conversions on the table
-
-**High-CTR, low-conversion ad groups:**
-
-If an ad group has CTR above campaign average but conversion rate below average, the problem is likely the landing page. Check: does the landing page match intent? Is there a clear CTA?
-
----
-
-### Layer 5: Growth — "What's next?" → Pass 2 / forward-looking
-
-**Incrementality:**
-- If brand campaigns represent >70% of conversions and non-brand CPA is 3x+ brand CPA, the account is over-dependent on brand traffic. Growth requires making non-brand work, not scaling brand
-- Flag if the account has never tested pausing brand campaigns to measure organic lift
-
-**Channel expansion:**
-- New campaign types: PMax (if not already running), Demand Gen, video
-- New keyword territories / adjacent service areas
-- Competitor conquesting opportunities
-
-Note these as forward-looking recommendations — they give the user a roadmap after fixing the urgent issues
+   SELECT campaign.id, campaign.name,
+          campaign_criterion.type, campaign_criterion.negative,
+          campaign_criterion.location.geo_target_constant,
+          campaign_criterion.proximity.radius,
+          campaign_criterion.proximity.radius_units
+   FROM campaign_criterion
+   WHERE campaign.id IN (<in-scope campaign IDs>)
+     AND campaign_criterion.type IN ('LOCATION', 'PROXIMITY')
+   ```
+
+   `radius_units`: 0 = meters, 1 = kilometers, 2 = miles.
+
+**Minimum data for a meaningful audit:** `summary.activeCampaigns > 0` and `summary.totalSpend > 0`. Otherwise skip to Phase 3 (business context) — there's nothing to score.
+
+## Phase 2: Analyze and Score
+
+Work through each dimension. For each one, assign a numeric score (0-5) and a status label.
+
+**Scope-aware scoring:** When the audit is scoped, score campaign-level dimensions (structure, keyword health, search terms, ad copy, impression share, spend efficiency) using only in-scope data. Account-level dimensions (conversion tracking) are scored account-wide but with notes about how issues affect the scoped campaigns. The overall health score reflects scoped performance — this gives the user a focused view of the area they care about.
+
+### Audit field → scoring dimension map
+
+Most evidence for scoring is pre-computed in the audit response. Use this map before re-deriving anything by hand:
+
+| Dimension | Primary audit fields |
+|-----------|---------------------|
+| Conversion tracking | `account.autoTagging`, `findings.conversionActions`, `summary.totalConversions` |
+| Campaign structure | `campaigns[].name` (brand/non-brand split), `campaigns[].adGroups[]`, `findings.matchTypeDistribution`, `campaigns[].negativeKeywordCount` |
+| Keyword health | `campaigns[].weightedQS`, `campaigns[].lowQSSpendPct`, `findings.wastedKeywords`, `pulse.wasteRate` |
+| Search term quality | `findings.wastedSearchTerms`, `findings.miningOpportunities`, `findings.brandLeakage`, `findings.negativeConflicts` |
+| Ad copy | `campaigns[].topAds[]` (headlineCount, descriptionCount, adStrength), `findings.assetCoverage` |
+| Impression share | `campaigns[].impressionShare`, `campaigns[].budgetLostIS`, `campaigns[].rankLostIS`, `campaigns[].isMatrix` (already classified) |
+| Spend efficiency | `pulse.wasteRate`, `pulse.wasteUsd`, `summary.cpa`, `campaigns[].cpa`, `findings.budgetConstrainedWinners` |
+
+The `isMatrix` enum on each campaign already classifies the IS root cause — `"healthy" | "relevance_problem" | "capital_problem" | "structural_problem"`. Use it directly instead of re-deriving the Impression Share Interpretation Matrix cell.
+
+The `pulse.wasteRate` and `pulse.wasteUsd` values use the same formula the report references (keyword waste + search term waste). Don't recompute — report them directly.
+
+### Scoring Framework
+
+Read `references/account-health-scoring.md` for the detailed rubric per dimension. Use this summary for quick reference:
+
+**Score definitions:**
+
+| Score | Label | Meaning |
+|-------|-------|---------|
+| 0 | Critical | Broken or missing entirely — actively losing money |
+| 1 | Poor | Major problems — significant waste or missed opportunity |
+| 2 | Needs Work | Below acceptable — several clear issues to fix |
+| 3 | Acceptable | Functional but room for meaningful improvement |
+| 4 | Good | Well-managed with minor optimization opportunities |
+| 5 | Excellent | Best-practice level — maintain and scale |
+
+**Overall Health Score:** Sum all 7 dimension scores, multiply by (100/35), round to nearest integer. This gives a 0-100 score.
+
+| Overall Score | Label | Summary |
+|---------------|-------|---------|
+| 0-25 | Critical | Account has fundamental problems. Stop spending until fixed |
+| 26-50 | Needs Work | Significant waste. Focus on top 3 issues before scaling |
+| 51-75 | OK | Functional but leaving money on the table |
+| 76-90 | Strong | Well-managed. Focus on scaling and marginal gains |
+| 91-100 | Excellent | Top-tier account. Maintain and test incrementally |
+
+### Account Health Dimensions
+
+**1. Conversion tracking** (Score 0-5)
+
+| Score | Criteria |
+|-------|----------|
+| 0 | No conversion actions set up. Spending blind |
+| 1 | Conversion actions exist but aren't firing (0 conversions recorded despite clicks) |
+| 2 | Conversions tracked but auto-tagging disabled, or using only micro-conversions (page views, not leads/sales) |
+| 3 | Primary conversion action firing, auto-tagging on, but multiple conversion actions counting duplicates or no value assigned |
+| 4 | Clean conversion setup: primary action firing, auto-tagging on, values assigned, no duplicate counting |
+| 5 | Full setup: primary + secondary actions, proper attribution window, enhanced conversions or offline conversion import |
+
+- Red flag: spending money with no conversion tracking = flying blind. Score 0-1 is a STOP condition — recommend pausing spend until tracking is fixed
+- Check: is auto-tagging enabled? If not, Google Analytics integration breaks
+- Check: are conversion actions using "Every" or "One" counting? Lead gen should use "One", e-commerce should use "Every"
+
+**2. Campaign structure** (Score 0-5)
+
+| Score | Criteria |
+|-------|----------|
+| 0 | Single campaign with one ad group containing 50+ unrelated keywords |
+| 1 | Some structure but ad groups have 30+ keywords with mixed intent (e.g., "plumber" and "plumbing school" in same group) |
+| 2 | Campaigns exist per service/product but ad groups are too broad (15-30 keywords of mixed theme) |
+| 3 | Campaigns per service, ad groups by theme (5-20 keywords), but missing brand campaign separation or geo structure |
+| 4 | Clean structure: brand separated, services split, tight ad groups, appropriate geo targeting |
+| 5 | Optimal: brand/non-brand split, service campaigns, geo-specific where relevant, ad groups of 5-15 tightly themed keywords, negative keyword lists at appropriate levels |
+
+- Red flag: one ad group with 200 keywords = poor relevance, QS will suffer
+- Check: are brand and non-brand keywords in separate campaigns? Mixing them inflates brand CTR and hides non-brand problems
+- Check: for multi-location businesses, is there geo-specific structure?
+- Reference `../ads/references/campaign-structure-guide.md` for the ideal structure patterns
+
+**3. Keyword health** (Score 0-5)
+
+| Score | Criteria |
+|-------|----------|
+| 0 | No keywords with conversions. Average QS < 3. >50% of keywords are zombies (0 impressions 30+ days) |
+| 1 | Average QS 3-4. >30% of spend on non-converting keywords. Heavy use of broad match without negatives |
+| 2 | Average QS 4-5. 20-30% of spend on non-converting keywords. Some match type issues |
+| 3 | Average QS 5-6. 10-20% wasted spend. Reasonable match type mix but gaps in negative coverage |
+| 4 | Average QS 6-7. <10% wasted spend. Good match type strategy. Solid negative keyword lists |
+| 5 | Average QS 7+. <5% wasted spend. Tight match types. Comprehensive negatives. Regular search term mining |
+
+- Calculate: what % of total keyword spend goes to keywords with 0 conversions and >10 clicks? This is your keyword waste rate
+- Calculate: average QS weighted by spend (not by keyword count — a QS-3 keyword spending $2,000/month matters more than a QS-3 keyword spending $5/month)
+- Check for zombie keywords: 0 impressions for 30+ days. These clutter the account and should be paused
+
+**4. Search term quality** (Score 0-5)
+
+| Score | Criteria |
+|-------|----------|
+| 0 | >40% of search terms are irrelevant. No negative keywords in place |
+| 1 | 30-40% irrelevant terms. Minimal negative keyword coverage |
+| 2 | 20-30% irrelevant terms. Some negatives but obvious gaps |
+| 3 | 10-20% irrelevant terms. Decent negative coverage. Some converting terms not yet added as keywords |
+| 4 | <10% irrelevant terms. Good negative lists. Most high-converting terms already added as keywords |
+| 5 | <5% irrelevant terms. Comprehensive negative lists at account and campaign level. Active search term mining program |
+
+- Score search term relevance using the methodology in `../ads/references/search-term-analysis-guide.md`
+- Calculate: spend on irrelevant search terms (relevance score < 2) as % of total spend
+- Flag converting search terms (2+ conversions) not yet added as keywords — these are free money
+- Flag obvious negative keyword gaps: competitor names, "free" variants, "jobs"/"careers" variants, wrong service types
+
+**5. Ad copy** (Score 0-5)
+
+| Score | Criteria |
+|-------|----------|
+| 0 | No active ads, or only legacy expanded text ads (no RSAs) |
+| 1 | RSAs exist but only 1 per ad group. Headline/description variety is poor (repetitive messaging) |
+| 2 | 1-2 RSAs per ad group. Some variety but headlines don't include keywords or location |
+| 3 | 2+ RSAs per major ad group. Headlines include keywords. Pinning used on H1. Some CTR variation suggests testing is happening |
+| 4 | 2-3 RSAs per ad group with distinct messaging angles. Good headline variety (service, value prop, trust, CTA). CTR above industry average |
+| 5 | Active A/B testing program. Multiple RSAs with measurably different angles. Regular losers paused, winners iterated. CTR consistently above benchmark |
+
+- Count RSAs per ad group: <2 means no testing is possible
+- Check headline diversity: are the 15 headlines actually different, or are they minor variations of the same message?
+- Check if keywords appear in headlines (direct QS and relevance impact)
+- Check pin strategy: H1 should typically be pinned to the most relevant service+location headline
+- Identify ad groups with CTR below industry benchmark — these need copy refresh
+
+**6. Impression share** (Score 0-5) — **Data limit:** the `audit` tool caps lookback at 90 days because Google's impression share metrics only support 90 days (not 365).
+
+| Score | Criteria |
+|-------|----------|
+| 0 | Search IS < 20%. Missing >80% of potential traffic |
+| 1 | Search IS 20-35%. Budget-lost IS > 40% OR rank-lost IS > 60% |
+| 2 | Search IS 35-50%. Significant losses from both budget and rank |
+| 3 | Search IS 50-65%. Moderate losses — budget-lost IS < 25% and rank-lost IS < 40% |
+| 4 | Search IS 65-80%. Losses primarily from rank (fixable with QS improvements) |
+| 5 | Search IS > 80%. Brand campaign IS > 95%. Losses are marginal and strategic (intentionally not competing on some queries) |
+
+Use the Impression Share Interpretation Matrix to diagnose the root cause:
+
+| | Rank-Lost IS < 30% | Rank-Lost IS 30-50% | Rank-Lost IS > 50% |
+|---|---|---|---|
+| **Budget-Lost IS < 20%** | Healthy — optimize at margins | QS/Bid Problem — improve ads, landing pages, or raise bids on high-QS keywords | Quality Crisis — QS is the bottleneck. Fix ad relevance and landing page experience before spending more |
+| **Budget-Lost IS 20-40%** | Budget Problem — increase budget or narrow targeting. Check if the campaign is profitable enough to justify more spend | Mixed Problem — fix quality first (cheaper than adding budget), then reassess | Structural Problem — bidding on too-competitive keywords. Shift to long-tail and exact match |
+| **Budget-Lost IS > 40%** | Severe Budget Gap — if CPA is good, this is the highest-ROI fix in the account. Double budget or cut keyword count by 50% | Priority: fix rank issues to get more from existing budget, then add budget | Fundamental Misalignment — pause, restructure, then restart. Current approach is burning money |
+
+**7. Spend efficiency** (Score 0-5)
+
+| Score | Criteria |
+|-------|----------|
+| 0 | No conversion data available. Flying blind on efficiency |
+| 1 | CPA > 200% of industry average. >40% of spend on non-converting entities |
+| 2 | CPA 150-200% of industry avg. 25-40% wasted spend. Major budget misallocation between campaigns |
+| 3 | CPA 100-150% of industry avg. 15-25% wasted spend. Some misallocation |
+| 4 | CPA within industry norms. <15% wasted spend. Budget roughly proportional to conversion share per campaign |
+| 5 | CPA below industry avg. <5% wasted spend. Budget allocation optimized — each campaign's budget share matches its conversion share |
+
+- Calculate: % of spend going to converting keywords vs non-converting
+- Calculate: per-campaign CPA and compare to account average. Flag any campaign with CPA > 150% of account avg
+- Calculate: budget allocation efficiency — does each campaign's % of total budget match its % of total conversions?
+- If one campaign gets 60% of budget but delivers only 30% of conversions, that's a $X reallocation opportunity
+
+### Wasted Spend Deep Dive
+
+Waste is pre-computed in `pulse.wasteUsd` and `pulse.wasteRate`. The formula matches `/ads`:
+
+- **Keyword waste** — spend on keywords with `conversions = 0 AND clicks > 10` (top 10 in `findings.wastedKeywords`)
+- **Search term waste** — spend on search terms with `conversions = 0 AND clicks ≥ 10` (top 10 in `findings.wastedSearchTerms`)
+- **Structural waste** — spend on campaigns with Display Network enabled (`campaigns[].displayNetwork === true`) and poor performance. The audit flags `displayNetwork` per campaign; cross-check against low conversion rate to call this out.
+
+Report `pulse.wasteUsd` in the verdict paragraph. Individual wasteful keywords/terms from `findings.wastedKeywords` and `findings.wastedSearchTerms` appear as evidence under the relevant dimension (keyword health or search term quality) — max 3 examples per category, not exhaustive lists.
 
 ## Phase 2.5: Persona Discovery
 
-Discover 2-3 customer personas from the ad data. This runs in parallel with Phase 3 — it uses only the data already pulled in Phase 1. Read `references/persona-discovery.md` for the full template, derivation rules, and JSON schema.
+Discover 2-3 customer personas from the ad data. This runs in parallel with Phase 3 (business context questions) — it uses only the data already pulled in Phase 1.
 
-Key rules:
-- Each persona must be grounded in 5+ actual search terms from the data — no speculative personas
-- Name by behavior ("The Emergency Caller"), not demographics
-- If all search terms look the same, 1-2 personas max. Don't force 3
-- Save to `{data_dir}/personas/{accountId}.json` for downstream skills
+### Data Sources for Persona Construction
+
+All signals come from the audit response already in memory — no extra calls needed.
+
+| Source | What it reveals | Audit field |
+|--------|----------------|-------------|
+| Wasted + mining search terms | Customer language and intent — the terms they use and which convert | `findings.wastedSearchTerms`, `findings.miningOpportunities` |
+| Per-campaign top keywords | What the business bids on and what actually gets clicks | `campaigns[].topKeywords` |
+| Ad group names | How the business segments its services — each theme may serve a different persona | `campaigns[].adGroups[].name` |
+| Landing page URLs | Where they land — different pages suggest different customer journeys | `findings.landingPages`, `campaigns[].topAds[].finalUrl` |
+| Geographic signal | Where they are — metro vs rural | `campaigns[].geoTargetType` + the supplemental geo GAQL if you ran it |
+| Device split | How they search — mobile-heavy suggests on-the-go/urgent need | `campaigns[].deviceBreakdown` |
+
+### Persona Template
+
+Use this full template for the persisted JSON file. In the **report output**, personas appear as a compact 3-column table (name, example searches, value) — see Phase 4. The JSON file has the full detail for downstream skills like `/ads-copy`:
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| **Name** | Descriptive label capturing their defining trait | "The Emergency Caller" |
+| **Demographics** | Role, context, location type | Homeowner, suburban, dual-income household |
+| **Primary goal** | What they're trying to accomplish RIGHT NOW | Fix a burst pipe before it damages the floor |
+| **Pain points** | What's driving them to search | Can't wait for regular business hours. Worried about cost. Doesn't know who to trust |
+| **Search language** | Actual search terms from the data that this persona uses | "emergency plumber near me", "plumber open now", "burst pipe repair cost" |
+| **Decision trigger** | What makes them click the ad and convert | Seeing "24/7" and "Same Day" in the headline. Phone number in the ad. Reviews mentioned |
+| **Value to business** | Estimated revenue or conversion value | High urgency = willing to pay premium. Avg ticket $350-800 |
+
+### Derivation Rules
+
+- Each persona MUST be grounded in actual search term clusters from the data. If you can't point to 5+ search terms that this persona would use, the persona is speculative — drop it
+- If all search terms look the same (single-intent account), identify 1-2 personas max. Don't force 3
+- Name personas by their dominant behavior, not demographics: "The Comparison Shopper" is more useful than "Female 35-44"
+- Include the actual search terms from the data that map to each persona — this directly informs ad copy decisions
+
+### Persist Personas
+
+Save to `{data_dir}/personas/{accountId}.json`:
+
+```json
+{
+  "account_id": "1234567890",
+  "saved_at": "2024-01-15T10:30:00Z",
+  "personas": [
+    {
+      "name": "The Emergency Caller",
+      "demographics": "Homeowner, suburban, any age",
+      "primary_goal": "Fix an urgent problem right now",
+      "pain_points": ["Can't wait", "Worried about cost", "Doesn't know who's reliable"],
+      "search_terms": ["emergency plumber near me", "plumber open now", "burst pipe repair"],
+      "decision_trigger": "24/7 availability, phone number visible, reviews",
+      "value": "High — willing to pay premium for urgency"
+    }
+  ]
+}
+```
+
+These personas feed directly into `/ads-copy` for headline generation and `/ads` for keyword strategy.
 
 ## Phase 3: Build Business Context
 
@@ -382,20 +378,69 @@ Pull as much as possible from the data you already have — only ask the user fo
 
 ### What to infer from account data
 
-| Field | Source |
-|-------|--------|
-| `business_name` | `getAccountInfo` |
-| `services` | Campaign and ad group names, keyword themes |
-| `locations` | Campaign geo-targeting, location extensions |
-| `brand_voice` | Existing ad copy tone and word choices |
-| `keyword_landscape.high_intent_terms` | Top-converting keywords |
-| `keyword_landscape.competitive_terms` | Low impression share keywords with high CPC |
-| `keyword_landscape.long_tail_opportunities` | Converting search terms not yet added as keywords |
-| `website` | Ad final URLs (extract root domain from `listAds` data) |
+All fields below derive from the audit response already collected in Phase 1.
 
-### Website crawl + extraction
+| Field | Audit field |
+|-------|-------------|
+| `business_name` | `account.name` |
+| `services` | `campaigns[].name`, `campaigns[].adGroups[].name`, `campaigns[].topKeywords` |
+| `locations` | `campaigns[].geoTargetType` + supplemental geo GAQL (if you ran it) |
+| `brand_voice` | `campaigns[].topAds[]` (headlines/descriptions) |
+| `keyword_landscape.high_intent_terms` | Converting keywords in `campaigns[].topKeywords` with conversions > 0 |
+| `keyword_landscape.competitive_terms` | Keywords in campaigns where `isMatrix !== "healthy"` and `rankLostIS > 0.3` |
+| `keyword_landscape.long_tail_opportunities` | `findings.miningOpportunities` |
+| `website` | Apex domain from `campaigns[].topAds[].finalUrl` or `findings.landingPages[].url` |
 
-Read `references/business-context.md` for the full crawl procedure (URL resolution, page list, fallbacks, extraction fields). The crawl was kicked off after Phase 1B — results should be ready by now.
+### Website crawl (kicked off right after the audit call, results used here)
+
+The crawl starts in the background immediately after `audit` returns (see Phase 1, "After the audit call"). By the time you reach Phase 3, results should be ready.
+
+**Step 1: Resolve the website URL**
+
+Find the website URL from the audit response, in priority order:
+1. `campaigns[].topAds[].finalUrl` — extract the root domain (e.g., `https://example.com`). Normalize to the apex domain (strip `www.` and subdomain prefixes) before frequency-counting across all ads. Use the most common domain.
+2. Fall back to `findings.landingPages[].url` (same normalization) if topAds are sparse.
+3. If no URL found, ask the user: "What's your website URL?"
+
+**Step 2: Crawl the website**
+
+Issue all `WebFetch` calls in a single tool-use turn so they run in parallel. If any individual fetch fails (404, timeout, blocked), skip that page and continue.
+
+| Page | URL pattern | Why |
+|------|-------------|-----|
+| Homepage | `{root_url}` | Services overview, hero messaging, trust signals, brand voice |
+| About page | `{root_url}/about` | Differentiators, history, team, social proof |
+| Services page | `{root_url}/services` | Full service list, service descriptions |
+| Top ad landing pages | Up to 3 unique final URLs from ads, **excluding any URL that matches the homepage, about, or services pages already being fetched** | What the ads actually link to — offers, CTAs, messaging |
+
+**Fallback if `/about` or `/services` return 404:** Try one fallback each:
+- About: try `/about-us` (most common variant)
+- Services: try `/our-services` (most common variant)
+
+If the fallback also 404s, move on — don't spider the site.
+
+**Detecting unusable pages:** If a fetched page has fewer than 50 words of visible text (excluding HTML tags, scripts, and navigation), or if the primary content is a login/auth form (email/password fields, "Sign In" as the main heading), treat it as a failed fetch and skip it for extraction.
+
+**Step 3: Extract business context from crawled pages**
+
+Scan the fetched page content for these signals. Merge with what you already inferred from account data — website data fills gaps, account data confirms what's active.
+
+| Field | What to look for on the website |
+|-------|-------------------------------|
+| `services` | Service names from navigation, headings, service cards. **Merge** with services inferred from campaigns — the website may list services not yet advertised |
+| `differentiators` | "Why choose us" sections, hero subheadings, unique value claims (e.g., "Family-owned since 1998", "Same-day service guaranteed") |
+| `social_proof` | Review counts, star ratings, award badges, "As seen in" logos, certifications, years in business, number of customers served |
+| `offers_or_promotions` | Banner offers, hero CTAs with discounts, seasonal promotions, "Free estimate" or "X% off" |
+| `brand_voice` | Tone of headlines and body copy — professional vs casual, technical vs approachable. Capture 3-5 literal phrases from the site that exemplify the tone |
+| `target_audience` | Who the site speaks to — homeowners vs businesses, specific industries, demographic cues |
+| `locations` | Footer addresses, "Areas we serve" pages, location-specific content |
+| `landing_pages` | Map each ad final URL to a summary of what's on that page (headline, primary CTA, offer if any) |
+| `industry` | What the business clearly does — confirm or refine what campaign names suggest |
+| `competitors` | Look for comparison tables or "vs" pages linked from the nav |
+
+**Important:** Only extract from pages you actually retrieved with usable content. If the homepage is all you got, that's fine — it usually has the most signal. Extract in the site's original language — downstream skills handle translation when generating English ad copy.
+
+**If all pages failed or returned no usable content**, skip website extraction entirely and proceed to the full question set below (do not skip any questions).
 
 ### What to ask the user
 
@@ -415,155 +460,91 @@ Present what you inferred from **both** account data and the website crawl, then
 
 ### Save the context
 
-Write to `{data_dir}/business-context.json` using the schema in `references/business-context.md`. Include `audit_date` (today's date) and `account_id` so future skills know when this was last refreshed.
-
-## Phase 4: Deliver the Audit Report
-
-The report uses the **3-pass structure** — organized by what the user should do, not by what dimension was analyzed. Lead with the three pulse metrics (each self-narrating), then the three passes, then Quick Wins, personas, and questions.
-
-**The #1 rule: no duplication.** Each finding appears in exactly one place.
-**The #2 rule: no artificial ratings.** No letter grades. No emoji verdict labels. No severity buckets. Every finding carries its dollar impact and `time_to_fix`; the pulse metrics carry their top contributor and a pass pointer. That's all the prioritization signal the user needs — and it can't invert on dollars.
-
-### Annotating every finding
-
-Each Pass 1/2/3 finding must carry two fields (and only two):
-
-- `dollar_impact_usd`: the monthly dollar value of the waste / opportunity. Use margin-aware framing when `business-context.json.unit_economics.aov_usd` and `profit_margin` are available (see `../shared/ppc-math.md`); fall back to account-average heuristics otherwise. Never mix framings in one report.
-- `time_to_fix`: descriptive only — `<5min` | `<15min` | `<30min` | `<2h` | `>2h`. How long the fix takes, not how important it is.
-
-Findings that can't be dollar-denominated (tracking broken, policy risk, missing consent mode) use `dollar_impact_usd: "blocker"` instead of a number. Blockers always float to the top of their pass and always qualify for Quick Wins regardless of fix time.
-
-Sort findings within each pass by `dollar_impact_usd` descending. Blockers first. No severity label, no priority label — the dollar number IS the priority.
-
-### Annotating the pulse metrics
-
-Each pulse metric line is a self-contained finding. It states the raw number, names the single biggest contributor, and points to the pass that fixes it. Rules in `references/account-health-scoring.md` → "Pulse Metrics — The Only Scoreboard":
-
-1. **Waste** — `$X/mo (Y% of spend) · top: "[keyword/term/campaign]" $Z/mo · → Pass 1`
-   Signal override: if conversion tracking is broken, replace `$X/mo (Y%)` with `⚠️ Cannot compute — conversion tracking broken` and point to the tracking fix.
-2. **Demand captured** — `X% · top opportunity: "[campaign]" ~$Y/mo headroom · → Pass 2`
-   Relevance override: if rank-lost IS > 30% on a campaign, point to Pass 3 and explicitly say "fix relevance first — more budget won't help."
-3. **CPA** — `$X · vs [industry $Y–$Z OR break-even $Y] · [trend or top structural driver] · → Pass 3 or "healthy — no action"`
-
-**On re-audits**, diff each metric line against the previous `audit-history.json` entry and append `_(was $Y/mo — [what changed])_` when the delta is >5%. When the delta is <5%, say `_(unchanged)_`. No bucket-flipping, no emoji verdict swaps — just three numbers moving (or not).
-
-### Pulse Metrics
-
-Track 3 objective metrics — one per pass. Each has a clear "better" direction and is denominated in something the user already understands.
-
-| Metric | What it measures | Maps to | Better = | How to calculate |
-|--------|-----------------|---------|----------|-----------------|
-| **Waste rate** | % of spend on zero-conversion entities | Pass 1 | Lower | See **Wasted Spend Calculation** in `references/account-health-scoring.md` (3-component formula: keyword + search term + structural waste) |
-| **Demand captured** | Weighted avg impression share on profitable campaigns | Pass 2 | Higher | `avg(search_impression_share)` across campaigns with at least 1 conversion in the period, weighted by spend. If the account has explicit CPA/ROAS targets (from business-context.json), use CPA <= 1.5x target as the profitability filter instead |
-| **CPA** | Cost per conversion | Pass 3 | Lower or stable | `total spend / total conversions` for the period |
-
-Each number means something specific. "Waste dropped from 18% to 11%" tells you Pass 1 actions worked. Each number points to a pass. They're in the user's language — dollars and percentages, not arbitrary scales.
-
-### History persistence
-
-After each audit, append a snapshot to `{data_dir}/audit-history.json`:
+Write the complete business context to `{data_dir}/business-context.json`:
 
 ```json
 {
-  "history": [
-    {
-      "date": "2026-04-11",
-      "date_range": "2026-03-12 to 2026-04-11",
-      "account_id": "7521406707",
-      "mode": "full",
-      "total_spend": 14320.00,
-      "total_conversions": 72,
-      "metrics": {
-        "waste": {
-          "usd_per_month": 1240,
-          "pct_of_spend": 8.7,
-          "top_contributor": "keyword 'free dog food' — $340/mo",
-          "tracking_blocker": false
-        },
-        "demand_captured": {
-          "pct": 42.7,
-          "top_opportunity": "Tukwila Search — ~$2,100/mo headroom at 35% budget-lost IS",
-          "rank_lost_blocker": false
-        },
-        "cpa": {
-          "usd": 19.88,
-          "benchmark_low": 25,
-          "benchmark_high": 65,
-          "break_even": 72,
-          "trend_vs_last": -2.14
-        }
-      },
-      "top_actions": [
-        "Paused 'free dog food' keyword ($120 waste)",
-        "Budget-lost IS 40% on Tukwila Search at $14 CPA"
-      ],
-      "next_milestone": null
-    }
-  ]
+  "business_name": "",
+  "industry": "",
+  "website": "",
+  "services": [],
+  "locations": [],
+  "target_audience": "",
+  "brand_voice": {
+    "tone": "",
+    "words_to_avoid": [],
+    "words_to_use": []
+  },
+  "differentiators": [],
+  "competitors": [],
+  "seasonality": {
+    "peak_months": [],
+    "slow_months": [],
+    "seasonal_hooks": []
+  },
+  "keyword_landscape": {
+    "high_intent_terms": [],
+    "competitive_terms": [],
+    "long_tail_opportunities": []
+  },
+  "social_proof": [],
+  "offers_or_promotions": [],
+  "landing_pages": {},
+  "notes": "",
+  "audit_date": "",
+  "account_id": ""
 }
 ```
 
-For launch-mode audits, set `"mode": "launch"`, mark each metric with `"low_data": true`, and populate `next_milestone` with the conversion/spend/date thresholds that graduate the next audit to full mode.
+Include `audit_date` (today's date) and `account_id` so future skills know when this was last refreshed.
 
-**On first audit:** Create the file. Show raw values with no comparison.
+## Phase 4: Deliver the Audit Report
 
-**On subsequent audits:** Load the previous entry and compute trends:
-- Improved (moved in "better" direction by >5% relative) = show improvement with previous value
-- Unchanged (moved <5% either way) = stable
-- Worsened (moved in wrong direction by >5%) = flag with warning
+The report follows an **onion structure** — lead with the verdict, then actions, then evidence. The reader should get the full picture in the first 10 lines, and only needs to keep reading if they want the supporting data.
+
+**The #1 rule: no duplication.** Each finding appears in exactly one place. The scorecard summarizes, the actions tell you what to do, the evidence shows why. If something is in the scorecard's "Key Finding" column, don't repeat it in the evidence section.
 
 ### Report structure
 
 ```
 # [Business Name] — Ads Audit
-[Date range] · $X,XXX spent · XX conversions · Last 30 days
+**[Score]/100 · $X,XXX spent (30d) · XX conversions at $XX CPA**
 [If scoped] Scoped to: [description]
-[If unit_economics.source == "inferred_from_template"]
-_Profitability estimates use industry defaults — confirm your actual AOV and margin for sharper recommendations._
 
-**Waste: $X/mo (Y% of spend)** — top: "[keyword/term/campaign]" $Z/mo · → Pass 1
-[if re-audit] _(was $A/mo — [what changed])_ or _(unchanged)_
+[2-3 sentence verdict. What's working, what's broken, and the single biggest
+opportunity in dollar terms. This paragraph should be enough for someone who
+won't read further.]
 
-**Demand captured: X%** — top opportunity: "[campaign]" ~$Y/mo headroom · → Pass 2
-[if rank-lost IS > 30% on a campaign: "Rank-lost IS X% on [campaign] — fix relevance first, more budget won't help · → Pass 3"]
-[if re-audit] _(was Y% — [what changed])_ or _(unchanged)_
+## What to Fix (in order)
 
-**CPA: $X** — vs [industry $Y–$Z OR break-even $Y] · [trend or top driver] · → Pass 3 or "healthy — no action"
-[if re-audit] _(was $Y — [what changed])_ or _(unchanged)_
-
-[If conversion tracking is broken, the Waste line is replaced with:]
-**Waste: ⚠️ Cannot compute — conversion tracking broken** · → Pass 1 (fix tracking first)
-
-## Stop Wasting (Pass 1)
-1. **[Action]** — saves $X/mo · `<15min`
-2. **[Action]** — saves $X/mo · `<30min`
-3. **[Action]** — saves $X/mo · `<2h`
-
-## Capture More (Pass 2)
-1. **[Action]** — est. +$X/mo revenue (+Y conv at $Z CPA) · `<30min`
-2. **[Action]** — est. +$X/mo · `<2h`
-3. **[Action]** — est. +$X/mo · `<2h`
-
-## Fix Fundamentals (Pass 3)
-1. **[Action]** — est. $X/mo CPC savings on $Y/mo spend · `>2h`
-2. **[Action]** — [impact in $/mo] · `<2h`
-3. **[Action]** — [impact in $/mo] · `<30min`
-
-Findings are sorted by dollar impact within each pass. Blockers (tracking,
-policy, consent) appear at the top of their pass regardless of dollar value
-because they unblock measurement.
-
-## Quick Wins
-[Auto-generated: findings where dollar_impact_usd >= 200 AND
-time_to_fix IN ('<5min','<15min'), sorted by $ impact desc, max 5.
-Blockers (tracking/policy fixes) are pinned at the top regardless of
-dollar figure. Each item must include the exact /ads command where
-applicable. If none qualify, omit this section entirely — don't fabricate.]
-
-1. [Action] — saves ~$X/mo (`<5min`) · `/ads [command]`
-2. [Action] — saves ~$X/mo (`<15min`) · `/ads [command]`
+1. **[Specific action]** — [1-line why + expected dollar/conversion impact]
+2. **[Specific action]** — [1-line why + expected impact]
+3. **[Specific action]** — [1-line why + expected impact]
 
 Run `/ads` to execute any of these.
+
+## Scorecard
+
+| Dimension | Score | Key Finding |
+|-----------|-------|-------------|
+| Conversion tracking | X/5 | [one line] |
+| Campaign structure | X/5 | [one line] |
+| Keyword health | X/5 | [one line] |
+| Search term quality | X/5 | [one line] |
+| Ad copy | X/5 | [one line] |
+| Impression share | X/5 | [one line] |
+| Spend efficiency | X/5 | [one line] |
+
+## Evidence
+
+[Only include dimensions scoring 0-2. Each dimension gets ONE compact block.
+Do NOT repeat what's already in the scorecard or actions — add the supporting
+data that explains the score.]
+
+### [Dimension] (X/5)
+[2-4 lines of data: the specific keywords, search terms, or metrics that
+drove the score. Top 3 examples max — not exhaustive lists. End with the
+fix if it wasn't already an action item above.]
 
 ## Personas
 
@@ -577,52 +558,24 @@ Run `/ads` to execute any of these.
 Max 2-3 questions. Don't ask what you can infer from the data.]
 ```
 
-**Launch-mode report variant** (total spend < $500 OR total conversions < 10):
-
-```
-# [Business Name] — Ads Launch Check
-**Launch mode** · [Date range] · $XXX spent · X conversions
-_Too little data to compute waste or headroom in dollars — come back after the milestone below._
-[If scoped] Scoped to: [description]
-
-[2-3 sentences describing setup quality and readiness — what's configured,
-what's missing, what should happen before the next milestone. No optimization
-claims, no dollar impact, no score.]
-
-## Readiness Checklist
-- ✅ / ⚠️ / 🚫 Conversion tracking — [what's set up or missing]
-- ✅ / ⚠️ / 🚫 Campaign structure — [organization quality]
-- ✅ / ⚠️ / 🚫 Ad copy completeness — [RSA count, asset coverage]
-- ✅ / ⚠️ / 🚫 Targeting — [geo, network, language]
-- ✅ / ⚠️ / 🚫 Industry red flags — [from industry-templates.json]
-
-## Fix Before Next Milestone
-1. [Blocker or needs-fix item] — `/ads` command or manual step
-2. ...
-
-## Next Milestone
-Come back for a full audit when **any** of these hits:
-- 📈 **XX conversions** (currently X)
-- 💵 **$X,000 spent** (currently $XXX)
-- 📅 **[date 30 days out]**
-
-I'll remember the milestone — next `/ads-audit` run will auto-upgrade to a full audit.
-```
-
 ### What makes a good action item
 
 - **Specific:** "Pause keyword 'free dog food' — $847 spent, 0 conversions" not "Review underperforming keywords"
 - **Quantified:** Include the spend, impressions, or conversions at stake
+- **Prioritized:** Highest-impact items first. Stopping waste > starting new things
+- **Actionable with /ads:** Every recommendation should be something the user can execute immediately using the `/ads` skill
 - **Dollar-denominated:** Express impact as "save $X/month" or "gain X conversions/month at $Y CPA"
-- **Actionable with /ads:** Every recommendation should be executable via `/ads`
 
 ### Output discipline
 
-1. **Empty passes are fine.** If a pass finds no issues, show "No issues found" and move on. Don't fabricate findings.
-2. **Max 3 items per pass.** If you found 10 things, pick the top 3 by dollar impact. The user can re-audit after fixing those.
-3. **Max 3 examples per finding.** Show the top 3 by spend, not an exhaustive list.
-4. **No standalone analysis sections.** Don't create separate "Wasted Spend Analysis" or "Impression Share Analysis" sections. Findings belong in their pass.
-5. **The entire report should fit in ~60-80 lines of markdown.** If you're over 100 lines, you're duplicating or over-explaining.
+These rules prevent the bloated, repetitive reports that make audits hard to read:
+
+1. **No standalone "Key Numbers" section.** The headline already has spend, conversions, and CPA. Don't repeat them.
+2. **No standalone "Wasted Spend Analysis" section.** Waste data belongs in the relevant Evidence dimension (keyword health or search term quality). Mention the total in the verdict paragraph.
+3. **No standalone "Impression Share Analysis" section.** The diagnosis belongs in the scorecard line + Evidence block if IS scored 0-2.
+4. **Max 3 examples per finding.** Show the top 3 by spend, not an exhaustive list. The user can drill deeper with `/ads`.
+5. **Evidence sections are for data, not narrative.** Don't explain what QS is or how impression share works — just show the numbers that matter.
+6. **The entire report should fit in ~60-80 lines of markdown.** If you're over 100 lines, you're duplicating or over-explaining.
 
 ### Conditional handoff (pick the single most relevant one)
 
@@ -630,24 +583,21 @@ After the report, add ONE handoff based on the biggest issue found:
 
 | Condition | Handoff |
 |-----------|---------|
-| Ad copy issues dominate Pass 3 | Suggest `/ads-copy` for RSA variants |
-| Rank-lost IS > 30% | Suggest `/ads` for QS and relevance improvements (not budget) |
-| Budget-lost IS > 20% on profitable campaigns | Suggest `/ads` for budget optimization |
+| Ad copy scored 0-2 | Suggest `/ads-copy` for RSA variants |
+| Impression share scored 0-2 | Suggest `/ads` for bid optimization |
 | 3+ converting search terms not yet keywords | Offer to add them via `/ads` |
-| Waste rate > 15% | Offer to pause/negative via `/ads` |
-| Brand >60% of conversions | Flag brand dependency risk; suggest non-brand strategy |
-| High CTR but low conversion rate | Suggest `/ads-landing` to score the landing page |
-| Any ad group with CTR > account avg AND CVR < 50% of account avg | Suggest `/ads-landing` for that landing page |
+| Wasted spend > 15% | Offer to pause/negative via `/ads` |
+| High CTR but low conversion rate | Suggest landing page audit |
 
 Don't list all possible handoffs — pick the one that matches the #1 action item.
 
 ## Rules
 
-1. **Data first, questions second.** Pull all account data before asking the user anything. Show up informed.
+1. **Data first, questions second.** Call `audit` (one tool call) before asking the user anything. Show up informed.
 2. **Infer before asking.** Don't ask "what industry are you in?" if the campaigns clearly say "plumbing services."
 3. **Be specific.** Name the campaigns, keywords, and dollar amounts. Vague advice is useless.
 4. **Prioritize by money.** The biggest waste or biggest opportunity comes first.
 5. **Save the context.** Always write `business-context.json` — this is the handoff to every other ads skill.
 6. **Don't fix things here.** This skill diagnoses and recommends. The user executes fixes with `/ads`. Offer to switch to `/ads` for implementation.
-7. **Track progress.** Always compute and persist pulse metrics. On re-audits, show trends.
+7. **Score everything.** Every dimension gets a 0-5 score. The overall health score gives the user a single number to track over time. Re-auditing in 30 days should show improvement.
 8. **Name names.** Every finding should reference specific campaigns, keywords, ad groups, or search terms. "Some keywords are underperforming" is not an audit finding — "$423 spent on 'free plumbing advice' with 0 conversions" is.
