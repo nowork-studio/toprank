@@ -50,6 +50,29 @@ You:    Do it all.
         Done. All changes are reversible within 7 days.
 ```
 
+**Weekly review** — ask any time, or set it up as a recurring Coworker task:
+
+```
+You:    /toprank:ads — "review last week's changes"
+
+Claude: 12 changes in the last 7 days. 9 matured enough to judge.
+
+        Wins (4):
+        - Paused "cheap seo services" → CTR +18%, conversions +2
+        - Added "free" as negative → wasted spend -$84/wk
+        - Bid +15% on "b2b crm software" → conversions +3, CPA flat
+        - New RSA on "MyStore Brand" ad group → CTR +24%
+
+        Losses (2):
+        - Bid +20% on "enterprise saas" → cost +$210, conversions flat
+        - Paused "project management tool" → lost 4 conversions/wk
+
+        Too new to judge (3) — check back in 5 days.
+
+        Note: 2 changes had other edits on the same campaign within
+        7 days, so their direction is low-confidence.
+```
+
 ### SEO
 
 ```
@@ -130,7 +153,7 @@ Add the marketplace and enable the plugin in `~/.claude/settings.json`:
 | Skill | What it does |
 |-------|-------------|
 | [`ads-audit`](google-ads/ads-audit/) | Account audit + business context setup. Run this first. Scores 7 health dimensions, identifies wasted spend, builds business profile. |
-| [`ads`](google-ads/ads/) | Campaign management. Read performance, optimize keywords, adjust bids/budgets, add negatives, create campaigns. |
+| [`ads`](google-ads/ads/) | Campaign management. Read performance, optimize keywords, adjust bids/budgets, add negatives, create campaigns. Ask for a **weekly review** and Claude scores every recent change (wins, losses, too-new-to-judge) — perfect for a Monday-morning Coworker task. |
 | [`ads-copy`](google-ads/ads-copy/) | RSA copy generator + A/B testing. Data-driven headlines and descriptions with character counts and pin positions. |
 
 ### SEO
