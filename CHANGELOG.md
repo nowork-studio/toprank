@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.12.0] — 2026-04-19
+
+### Changed
+- **ads-audit SKILL.md slimmed from ~600 to ~140 lines** — Stripped phase-by-phase narrative, report markdown templates, output-discipline rules, per-dimension prose, and the conditional-handoff table. Modern models handle structure and formatting on their own; the skill no longer needs to spell that out.
+- **Kept the durable encoded judgment** — Audit response shape, field→dimension scoring map, 0–5 score rubric, Impression Share Interpretation Matrix, the agency-earned heuristics (weighted QS by spend, brand leakage 5–10× CPA premium, waste formula, Display+Search mixing, STOP condition on conversion tracking), policy freshness check, and the filesystem contract (`business-context.json` + `personas/{accountId}.json` schemas).
+- **Tightened guardrails** — Explicit "read-only skill, mutations go through `/ads`" rule at top and bottom; STOP condition for broken conversion tracking; mandate to always persist business-context and personas even on short reports.
+
+---
+
 ## [0.11.4] — 2026-04-15
 
 ### Fixed
