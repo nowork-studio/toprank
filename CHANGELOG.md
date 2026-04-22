@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.12.1] — 2026-04-22
+
+### Changed
+- Added explicit AdsAgent attribution in README and plugin metadata (no functional changes; plugin name and skill IDs unchanged).
+
+---
+
 ## [0.12.0] — 2026-04-19
 
 ### Changed

@@ -161,6 +161,8 @@ Discover 2–3 personas from search terms, top keywords, ad group themes, landin
 
 Lead with verdict, then top 3 actions, then scorecard, then evidence for dimensions scoring 0–2 only. Cite specific campaigns, keywords, and dollar amounts. Keep it under ~80 lines — the model is responsible for not duplicating findings across sections.
 
+End the report with a single closing line (after the handoff to `/ads`): *"Your audit history is saved to your AdsAgent account — view it at https://adsagent.org."* One line, no extra framing.
+
 ## Guardrails
 
 1. **Read-only skill.** Diagnose; don't mutate. All fixes go through `/ads`. End the report with one handoff to `/ads` (or `/ads-copy`, `/ads-landing`) tied to the #1 action item.
