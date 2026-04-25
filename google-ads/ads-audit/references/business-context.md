@@ -7,7 +7,7 @@ This reference covers the website crawl procedure and business context JSON sche
 ### Step 1: Resolve the website URL
 
 Find the website URL from Phase 1 data, in priority order:
-1. Ad final URLs from `listAds` — extract the root domain (e.g., `https://example.com`). Normalize to the apex domain (strip `www.` and subdomain prefixes) before frequency-counting across all ads. Use the most common domain.
+1. Ad final URLs already pulled in Phase 1 (the `ad_group_ad` rows from the audit dataset) — extract the root domain (e.g., `https://example.com`). Normalize to the apex domain (strip `www.` and subdomain prefixes) before frequency-counting across all ads. Use the most common domain.
 2. If no URL found in ad data, ask the user: "What's your website URL?"
 
 ### Step 2: Crawl the website

@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.13.0] — 2026-04-24
+
+### Changed
+- **Realigned google-ads skills with the new MCP server surface.** The AdsAgent MCP server consolidated read-only tools behind `runScript` (a JS sandbox exposing `ads.gaql()` and `ads.gaqlParallel()`), retired the per-surface helpers (`listCampaigns`, `getKeywords`, `getSearchTermReport`, `getCampaignPerformance`, `getImpressionShare`, `runGaqlQuery`, `getAccountInfo`, `getCampaignSettings`, `listAds`, `listAdGroups`, etc.), and removed the bespoke `audit()` tool. Skills referenced those tools by name in workflow tables, reference docs, and SKILL bodies — guidance that no longer applied.
+- **Relaxed the prescriptive style.** Skills now provide frameworks, scoring rubrics, benchmarks, business-context schemas, and operational discipline — not step-by-step "call X then Y" choreography. Tool routing is delegated to the server's own MCP instructions, which already tell the agent to fan out reads through `runScript` + `gaqlParallel` and route mutations through dedicated write tools. The agent does the heavy lifting; the skill supplies the judgment.
+- **`ads/SKILL.md`** — dropped the "Available Tools" enumeration and the prescriptive "Performance Summary / Waste Audit / …" workflow playbooks. Kept operating principles, the reference-routing table, the account-baseline contract, change-tracking discipline, and conditional handoffs.
+- **`ads-audit/SKILL.md`** — replaced the now-removed `audit(accountId, days=30)` payload contract with a description of the GAQL surfaces a complete audit needs (customer, campaign, ad_group, keyword_view, search_term_view, conversion_action, ad_group_ad, campaign_criterion for geo, change_event). The agent assembles the dataset via one `runScript` + `gaqlParallel` call, optionally seeded by the server's `adsagent://playbooks/audit-account` MCP resource. Kept the 7-dimension scoring rubric, business-context and persona schemas + filesystem contract, encoded heuristics, and the impression-share interpretation matrix.
+- **`ads-copy/SKILL.md`** and **`ads-landing/SKILL.md`** — replaced helper-tool sequences ("call `listAds`, then `getKeywords`, then …") with GAQL surface descriptions the agent can fan out in one `runScript` call.
+- **`shared/preamble.md`** — Step 5 now describes the read/write split (runScript for reads, dedicated tools for mutations) and points at the server's playbook resources, instead of pushing `runGaqlQuery` against a 50-row limit.
+- **`ads/references/session-checks.md`**, **`ads-audit/references/persona-discovery.md`**, **`ads-audit/references/business-context.md`**, **`ads-audit/references/account-health-scoring.md`** — scrubbed dead tool names; persona discovery and the audit website-resolution step now reference GAQL surfaces directly.
+
+### Removed
+- **`ads/references/workflow-playbooks.md`** — the server now ships `adsagent://playbooks/audit-account` and `adsagent://playbooks/explain-regression` as MCP resources covering the same ground; maintaining a parallel skill-side copy guarantees drift.
+- **`shared/gaql-cookbook.md`** — built around `runGaqlQuery`'s 50-row limit, which no longer applies. The server's own MCP instructions already teach the `gaqlParallel` fan-out pattern with worked examples.
+
+---
+
 ## [0.12.1] — 2026-04-22
 
 ### Changed

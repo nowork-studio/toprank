@@ -4,15 +4,15 @@ Discover 2-3 customer personas from the ad data. This runs in parallel with busi
 
 ## Data Sources for Persona Construction
 
-| Source | What it reveals | How to access |
+| Source | What it reveals | Where it lives in the audit dataset |
 |--------|----------------|---------------|
-| Search terms | What customers actually search for — their language, pain points, urgency | `getSearchTermReport` from Phase 1 |
-| Converting keywords | What they buy — the terms that lead to conversions reveal purchase intent | `getKeywords` filtered to converting |
-| Ad group themes | How the business segments its services — each theme may serve a different persona | Ad group data from Phase 1 |
-| Landing page URLs | Where they land — different pages suggest different customer journeys | `listAds` final URLs from Phase 1 |
-| Geographic data | Where they are — metro vs rural, specific cities | `getCampaignSettings` location targets |
-| Device split | How they search — mobile-heavy suggests on-the-go/urgent need | Infer from ad performance patterns |
-| Time-of-day patterns | When they search — business hours vs evenings vs weekends | `getCampaignPerformance` daily data |
+| Search terms | What customers actually search for — their language, pain points, urgency | `search_term_view` rows |
+| Converting keywords | What they buy — terms that lead to conversions reveal purchase intent | `keyword_view` rows filtered to `metrics.conversions > 0` |
+| Ad-group themes | How the business segments services — each theme may serve a different persona | `ad_group.name` distribution |
+| Landing page URLs | Where they land — different pages suggest different customer journeys | `ad_group_ad.ad.final_urls` |
+| Geographic data | Where they are — metro vs rural, specific cities | `campaign_criterion` LOCATION + PROXIMITY rows |
+| Device split | How they search — mobile-heavy suggests on-the-go / urgent need | Segment any `metrics.*` query by `segments.device` |
+| Time-of-day patterns | When they search — business hours vs. evenings vs. weekends | Segment by `segments.day_of_week` and `segments.hour` |
 
 ## Persona Template
 

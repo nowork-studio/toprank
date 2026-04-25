@@ -6,102 +6,69 @@ argument-hint: "<account name or 'audit my ads'>"
 
 # Google Ads Audit
 
-Diagnose account health and persist business context for downstream skills (`/ads`, `/ads-copy`, `/ads-landing`). Diagnose only — never mutate the account from this skill. The user runs `/ads` to execute fixes.
+Diagnose account health and persist business context for downstream skills (`/ads`, `/ads-copy`, `/ads-landing`). **Read-only** — never mutates the account. The user runs `/ads` to execute fixes you recommend.
 
 ## Setup
 
-Follow `../shared/preamble.md` for MCP detection, token, and account selection.
+Follow `../shared/preamble.md` — MCP detection, API key, account selection.
 
 ## Filesystem contract (MUST persist)
 
 | Artifact | Path | When |
 |---|---|---|
-| Business context | `{data_dir}/business-context.json` | First full audit, or refresh if `audit_date` > 90 days old. Skip on scoped audits if file is fresh. |
+| Business context | `{data_dir}/business-context.json` | First full audit, or refresh when `audit_date` is >90 days old. Skip on scoped audits if file is fresh. |
 | Personas | `{data_dir}/personas/{accountId}.json` | Every full audit. |
 
-These files are the handoff to every other ads skill. If they're missing, downstream skills break — write them even if the report itself is short.
+These are the handoff to every other ads skill — write them even if the report itself is short. Otherwise `/ads-copy` and `/ads-landing` operate without business context and produce generic output.
 
 **business-context.json schema:** `business_name, industry, website, services[], locations[], target_audience, brand_voice{tone, words_to_use[], words_to_avoid[]}, differentiators[], competitors[], seasonality{peak_months[], slow_months[], seasonal_hooks[]}, keyword_landscape{high_intent_terms[], competitive_terms[], long_tail_opportunities[]}, social_proof[], offers_or_promotions[], landing_pages{}, notes, audit_date, account_id`.
 
-**personas JSON schema:** `{account_id, saved_at, personas: [{name, demographics, primary_goal, pain_points[], search_terms[], decision_trigger, value}]}`. See `references/persona-discovery.md` for derivation rules.
+**personas JSON schema:** `{account_id, saved_at, personas: [{name, demographics, primary_goal, pain_points[], search_terms[], decision_trigger, value}]}`. See `references/persona-discovery.md`.
 
-## Policy freshness check (run before audit)
+## Policy freshness check (run first)
 
 Read `../shared/policy-registry.json`. For each entry where `last_verified + stale_after_days < today`:
-- **High-volatility:** WebSearch the `area` for recent Google Ads changes; compare to `assumption`. If drift, banner the report and suggest registry update.
-- **Moderate-volatility:** Add a one-line "may warrant a check" note in the report.
-- **Stable:** Skip.
+- **High-volatility** → WebSearch the `area` for recent Google Ads changes; compare to `assumption`. If drift, banner the report and suggest registry update.
+- **Moderate-volatility** → one-line "may warrant a check" note.
+- **Stable** → skip silently.
 
-If nothing is stale, no output.
+## Phase 1 — Pull the audit dataset
 
-## Data pull
+Use a single `runScript` call with `ads.gaqlParallel` to fan out the queries an audit needs. The server's `adsagent://playbooks/audit-account` resource has a battle-tested baseline; extend it with what this rubric needs that isn't already there.
 
-Call `audit(accountId, days=30)` (max 90, capped by impression-share data limit). One call returns the full payload:
+A complete audit needs at minimum:
 
-```
-{
-  account: { name, currency, timezone, autoTagging, trackingTemplate },
-  summary: { totalSpend, totalConversions, totalConversionValue, totalClicks,
-             totalImpressions, cpa, ctr, conversionRate, roas, activeCampaigns },
-  pulse: { wasteRate, wasteUsd, demandCaptured, cpa },
-  campaigns: [{ id, name, type, status, spend, conversions, cpa, ctr,
-                impressionShare, budgetLostIS, rankLostIS,
-                isMatrix,  // "healthy" | "capital_problem" | "relevance_problem" | "structural_problem"
-                biddingStrategy, targetCpa, searchPartners, displayNetwork,
-                weightedQS, lowQSSpendPct, negativeKeywordCount,
-                adGroups[], topAds[], topKeywords[], deviceBreakdown{} }],
-  findings: { wastedKeywords[], wastedSearchTerms[], brandLeakage{},
-              miningOpportunities[], budgetConstrainedWinners[], negativeConflicts[],
-              hasAudienceSegments, conversionActions, matchTypeDistribution,
-              assetCoverage, landingPages },
-  errors?: []
-}
-```
+- **Account / customer-level metrics** (`customer` resource) — totalSpend, conversions, conv-value, clicks, impressions for the audit window.
+- **Campaign-level performance** (`campaign`) — id, name, status, advertising_channel_type, bidding_strategy_type, network settings, search/top/abs-top impression share, budget-lost-IS, rank-lost-IS, status-rich metrics. Cap window at 90 days (impression-share data limit).
+- **Ad-group performance** (`ad_group`) — to attach top-line metrics under each campaign.
+- **Keyword performance with QS** (`keyword_view`) — text, match type, status, quality score (and components if needed), cost, clicks, conversions. Surfaces zombie keywords (0 impressions 30d), low-QS-with-spend, zero-converters.
+- **Search terms** (`search_term_view`) — for waste detection (clicks > 10, conv = 0) and brand-leakage detection (brand terms triggered by non-brand campaigns).
+- **Negative keywords** (`campaign_criterion` where `type='KEYWORD'` and `negative=TRUE`) — for negative-conflict detection and coverage.
+- **Conversion actions** (`conversion_action`) — count, status, primary-vs-secondary, counting type. STOP-condition input.
+- **Ad assets** (`ad_group_ad`) — RSA headlines/descriptions for asset-coverage scoring and topAds extraction.
+- **Geo targeting** (`campaign_criterion` where `type IN ('LOCATION','PROXIMITY')`) — for multi-location structure scoring. `radius_units`: 0=meters, 1=km, 2=miles.
+- **Recent change events** (`change_event`, max 30 days) — to flag recent edits that might explain regressions.
 
-If `audit` errors out, surface and stop — don't fall back to helper tools.
+Compute aggregates **in the script**, return summarized JSON. Don't return all rows — rank, slice, summarize. The agent narrates the result, the script does the math.
 
-**Geo data is not in the audit payload.** If structure scoring needs it (multi-location accounts), run in parallel with scoring:
+`getRecommendations` is a useful cross-check for Google's own recommendation surface — call it as a separate tool after the runScript pass if you want to compare your findings to Google's.
 
-```
-SELECT campaign.id, campaign.name, campaign_criterion.type,
-       campaign_criterion.negative, campaign_criterion.location.geo_target_constant,
-       campaign_criterion.proximity.radius, campaign_criterion.proximity.radius_units
-FROM campaign_criterion
-WHERE campaign.id IN (<in-scope ids>)
-  AND campaign_criterion.type IN ('LOCATION', 'PROXIMITY')
-```
-`radius_units`: 0=meters, 1=km, 2=miles.
+If a critical query errors out (auth, schema), surface the error and stop — don't fall back to a degraded audit.
 
-**Skip scoring if** `summary.activeCampaigns == 0` or `summary.totalSpend == 0` — go straight to business context.
+**Skip scoring entirely if** `totalSpend == 0` or `activeCampaigns == 0`. Go straight to business context.
 
-## Scope handling
+## Phase 2 — Scope handling
 
 If the user narrows the audit ("focus on grooming", "campaign X", "just check waste"):
+
 - Match campaign names by case-insensitive substring. If no match, list available campaigns and ask.
-- Filter `campaigns[]` and `findings.*` arrays in memory before scoring — no extra API calls.
-- `summary.*` and `pulse.*` stay account-wide; note "Scoped to: X" in the report.
-- Conversion tracking is account-level regardless of scope.
-- Skip Phase 3 (business context refresh) on scoped audits if `business-context.json` is fresh.
+- Filter the in-memory dataset before scoring — no extra API calls.
+- Account-level dimensions (conversion tracking) stay account-wide. Note "Scoped to: X" in the report.
+- Skip Phase 4 (business context refresh) on scoped audits if `business-context.json` is fresh.
 
-## Audit field → dimension map
+## Phase 3 — Score
 
-Use pre-computed fields before re-deriving anything:
-
-| Dimension | Primary fields |
-|-----------|---------------|
-| Conversion tracking | `account.autoTagging`, `findings.conversionActions`, `summary.totalConversions` |
-| Campaign structure | `campaigns[].name` (brand split), `campaigns[].adGroups[]`, `findings.matchTypeDistribution`, `campaigns[].negativeKeywordCount` |
-| Keyword health | `campaigns[].weightedQS`, `campaigns[].lowQSSpendPct`, `findings.wastedKeywords`, `pulse.wasteRate` |
-| Search term quality | `findings.wastedSearchTerms`, `findings.miningOpportunities`, `findings.brandLeakage`, `findings.negativeConflicts` |
-| Ad copy | `campaigns[].topAds[]`, `findings.assetCoverage` |
-| Impression share | `campaigns[].impressionShare`, `budgetLostIS`, `rankLostIS`, `isMatrix` (already classified) |
-| Spend efficiency | `pulse.wasteRate`, `pulse.wasteUsd`, `summary.cpa`, `campaigns[].cpa`, `findings.budgetConstrainedWinners` |
-
-Trust `isMatrix` and `pulse.*` as authoritative. Don't recompute.
-
-## Scoring
-
-Score each of the 7 dimensions 0–5 using `references/account-health-scoring.md`. Overall = round(sum × 100/35).
+Score each of the 7 dimensions 0–5 using `references/account-health-scoring.md`. Overall = `round(sum × 100 / 35)`.
 
 | Score | Label | Meaning |
 |---|---|---|
@@ -112,60 +79,60 @@ Score each of the 7 dimensions 0–5 using `references/account-health-scoring.md
 | 4 | Good | Well-managed, minor opportunities |
 | 5 | Excellent | Best-practice |
 
-Scope-aware: campaign-level dimensions reflect in-scope data only; account-level dimensions (conversion tracking) score account-wide with notes on scope impact.
+Scope-aware: campaign-level dimensions reflect in-scope data; account-level dimensions (conversion tracking) score account-wide with a note on scope impact.
 
-## Encoded heuristics (these aren't obvious — apply them)
+### Encoded heuristics — apply these, they aren't obvious
 
-- **Weighted QS by spend, not by keyword count.** A QS-3 keyword burning $2k/mo matters infinitely more than a QS-3 keyword burning $5/mo.
-- **Brand leakage premium:** when brand campaigns are paused, brand traffic leaks to non-brand at 5–10× higher CPA. Always flag `findings.brandLeakage.detected`.
-- **Waste formula:** `pulse.wasteUsd` already = keyword waste (clicks > 10, conv = 0) + search-term waste. Report it directly; don't recompute.
-- **Display + Search mixed in one campaign:** structurally broken — Display traffic dilutes Search metrics and burns budget on unintended placements. Flag any campaign with `displayNetwork === true`.
-- **Zombie keywords:** 0 impressions for 30+ days clutter the account; recommend pause.
-- **Match type counting=Every vs One:** lead-gen should use One; e-commerce should use Every. Duplicates inflate conversion counts.
-- **STOP condition:** if conversion tracking scores 0–1, recommend pausing spend until tracking is fixed. Everything else is downstream of measurement.
+- **Weighted QS by spend, not by keyword count.** A QS-3 keyword burning $2,000/mo matters infinitely more than ten QS-3 keywords burning $5/mo combined.
+- **Brand-leakage premium.** When brand campaigns are paused or starved, brand traffic leaks to non-brand at 5–10× higher CPA. Always check whether brand terms appear in non-brand campaigns' search-term reports.
+- **Waste formula.** Keyword waste = clicks > 10 AND conversions = 0 AND cost > 0. Search-term waste = same, applied to actual queries. Sum them — that's the recoverable spend.
+- **Display + Search mixed in one campaign** is structurally broken — Display dilutes Search metrics and burns budget on unintended placements. Flag any campaign where `network_settings.target_content_network = TRUE` for a SEARCH channel campaign.
+- **Zombie keywords** (0 impressions for 30+ days) clutter reporting and confuse Google's ML — recommend pause.
+- **Counting type matters.** Lead-gen should use `ONE` per click; e-commerce should use `EVERY`. Wrong setting silently inflates or deflates conversions.
+- **STOP condition.** If conversion tracking scores 0–1, recommend pausing spend until tracking is fixed. Everything downstream of measurement is unreliable.
 
-## Impression Share Interpretation Matrix
-
-`isMatrix` already encodes the diagnosis per campaign, but use this when explaining root cause:
+### Impression Share Interpretation Matrix
 
 | | Rank-Lost < 30% | Rank-Lost 30–50% | Rank-Lost > 50% |
 |---|---|---|---|
-| **Budget-Lost < 20%** | Healthy | QS/Bid problem | Quality crisis |
+| **Budget-Lost < 20%** | Healthy | QS / bid problem | Quality crisis |
 | **Budget-Lost 20–40%** | Budget problem | Mixed (fix quality first) | Structural — too-competitive keywords |
-| **Budget-Lost > 40%** | Severe budget gap (highest-ROI fix if CPA is good) | Fix rank, then add budget | Fundamental misalignment — pause and restructure |
+| **Budget-Lost > 40%** | Severe budget gap (highest-ROI fix if CPA is good) | Fix rank first, then add budget | Fundamental misalignment — pause and restructure |
 
-## Business context
+## Phase 4 — Business context
 
-After scoring, derive what you can from the audit payload:
+Derive what you can from the data already pulled:
 
 | Field | Source |
 |---|---|
-| `business_name` | `account.name` |
-| `services` | campaign + ad group names, top keywords |
-| `locations` | `campaigns[].geoTargetType` + supplemental geo GAQL |
-| `brand_voice` | `campaigns[].topAds[]` headlines/descriptions |
-| `keyword_landscape.high_intent_terms` | converting keywords in `topKeywords` |
-| `keyword_landscape.competitive_terms` | keywords in campaigns where `isMatrix !== "healthy"` and `rankLostIS > 0.3` |
-| `keyword_landscape.long_tail_opportunities` | `findings.miningOpportunities` |
-| `website` | apex domain from ad final URLs |
+| `business_name` | Account name (from `customer.descriptive_name`) |
+| `services` | Campaign + ad-group names, top converting keywords |
+| `locations` | `campaign_criterion` LOCATION + PROXIMITY |
+| `brand_voice` | Top-performing RSA headlines / descriptions |
+| `keyword_landscape.high_intent_terms` | Converting keywords with strong CVR |
+| `keyword_landscape.competitive_terms` | Keywords in campaigns with high rank-lost-IS |
+| `keyword_landscape.long_tail_opportunities` | Converting search terms not yet promoted to keywords |
+| `website` | Apex domain from ad final URLs |
 
 Then crawl the website (homepage + about + services + top 3 ad landing pages, parallel `WebFetch`) and merge into the schema. See `references/business-context.md` for the full crawl procedure.
 
-Always ask the user (rarely on websites): differentiators, competitors, seasonality. Ask everything else only if missing.
+Always ask the user (it's faster than guessing): differentiators, competitors, seasonality. Ask for everything else only if the data + crawl can't answer it.
 
-## Personas
+## Phase 5 — Personas
 
-Discover 2–3 personas from search terms, top keywords, ad group themes, landing pages, geo, and device split — all from the audit payload. Persist to `{data_dir}/personas/{accountId}.json`. Each persona must be grounded in 5+ actual search terms; if not, drop it. See `references/persona-discovery.md`.
+Discover 2–3 personas from search terms, top keywords, ad-group themes, landing pages, geo, and device split — all from the dataset already in memory. Persist to `{data_dir}/personas/{accountId}.json`. Each persona must be grounded in **5+ actual search terms**; if not, drop it. See `references/persona-discovery.md`.
 
-## Report
+## Phase 6 — Report
 
-Lead with verdict, then top 3 actions, then scorecard, then evidence for dimensions scoring 0–2 only. Cite specific campaigns, keywords, and dollar amounts. Keep it under ~80 lines — the model is responsible for not duplicating findings across sections.
+Lead with the verdict, then the top 3 actions (with dollar impact when possible), then the scorecard, then evidence for dimensions scoring 0–2 only. Cite specific campaigns, keywords, and dollar amounts. Cap at ~80 lines.
 
-End the report with a single closing line (after the handoff to `/ads`): *"Your audit history is saved to your AdsAgent account — view it at https://adsagent.org."* One line, no extra framing.
+End with a single closing line after the handoff to `/ads`:
+
+> *Your audit history is saved to your AdsAgent account — view it at https://adsagent.org.*
 
 ## Guardrails
 
-1. **Read-only skill.** Diagnose; don't mutate. All fixes go through `/ads`. End the report with one handoff to `/ads` (or `/ads-copy`, `/ads-landing`) tied to the #1 action item.
-2. **STOP condition:** if conversion tracking scores 0–1, recommend pausing spend until fixed before recommending anything else.
-3. **Always persist** `business-context.json` and `personas/{accountId}.json` even if the report is short — downstream skills depend on them.
-4. **Name names:** every finding references specific campaigns/keywords/search terms with dollar amounts. "Some keywords are underperforming" is not a finding.
+1. **Read-only skill.** Diagnose; don't mutate. Every fix routes through `/ads` (or `/ads-copy`, `/ads-landing`). End the report with one handoff tied to the #1 action.
+2. **STOP condition** — if conversion tracking scores 0–1, recommend pausing spend until it's fixed before recommending anything else. Everything downstream is meaningless without measurement.
+3. **Always persist** `business-context.json` and `personas/{accountId}.json` even if the report itself is short — downstream skills depend on them.
+4. **Name names.** Every finding cites specific campaigns, keywords, search terms, and dollar amounts. "Some keywords are underperforming" is not a finding.

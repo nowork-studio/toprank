@@ -129,7 +129,7 @@ In the RSA + Smart Bidding era, creative variety is how Google's ML finds the ri
 
 ## Impression Share
 
-**Data limit:** `getImpressionShare` supports max 90 days (not 365 like other tools). For GAQL impression share queries, the same 90-day practical limit applies. Do not use `LAST_365_DAYS` for impression share data.
+**Data limit:** Impression-share metrics (`metrics.search_impression_share`, `metrics.search_top_impression_share`, `metrics.search_absolute_top_impression_share`, `metrics.search_budget_lost_impression_share`, `metrics.search_rank_lost_impression_share`) only return up to 90 days of history in GAQL. Do not use `LAST_365_DAYS` for any query that selects them.
 
 *Diagnosed across two layers:*
 - **Lost IS (Rank)** = Layer 2 relevance problem. The auction is telling you your Ad Rank is low. Fix with better ads, tighter themes, better landing pages — not more money.

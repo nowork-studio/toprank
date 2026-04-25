@@ -123,8 +123,14 @@ Use whichever MCP server prefix was detected in Step 3:
 
 Always call tools under the exact prefix detected in Step 3 — do not hardcode `mcp__adsagent__`. Pass `accountId` from the resolved config (Step 2) to every tool call (except `listConnectedAccounts`).
 
-### Prefer GAQL for multi-campaign reads
+### Reads vs. writes
 
-When a workflow needs data from 2+ campaigns, use `runGaqlQuery` with bulk queries instead of per-campaign helper calls. See `../shared/gaql-cookbook.md` for ready-to-use query patterns. This typically reduces API calls from `N × data_types` to just the number of data types (e.g., 7 queries instead of 30+). Fall back to per-campaign helpers if GAQL errors or you need >50 rows for a single campaign.
+The MCP server's own instructions are the canonical guide and are surfaced to the agent automatically:
+
+- **Read-only questions** (analytics, audits, dashboards, diagnostics) go through `runScript`, which exposes `ads.gaql(query)` and `ads.gaqlParallel([queries])`. Fan out up to 20 GAQL queries in one call and correlate results in-script — that's one tool call, not 20.
+- **Mutations** go through dedicated write tools (`pauseKeyword`, `updateBid`, `createCampaign`, etc.). Never wrap a mutation in `runScript`.
+- **Schema discovery** (`getResourceMetadata`, `listQueryableResources`) is the right call before writing GAQL against an unfamiliar resource.
+
+The server also publishes ready-to-use playbooks as MCP resources — `adsagent://playbooks/audit-account` and `adsagent://playbooks/explain-regression`. Fetch them when the user asks the matching question rather than rediscovering the query shape.
 
 Config is loaded. Hand control back to the invoking skill.

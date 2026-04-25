@@ -127,158 +127,67 @@ Based on the competitive landscape, choose the strongest angle:
 | Unique service offering | The specific feature itself | "Same-Day Emergency Visits" |
 | Crowded market, no clear advantage | Speed, convenience, or customer experience | "Book Online — Arrive in 1hr" |
 
-## Workflow
+## What to pull before writing
 
-### 1. Understand the brief
+Copy should be grounded in what converts, not guesses. One `runScript` call with `ads.gaqlParallel` covers everything you need for almost any copy job — fan out the surfaces below in parallel:
 
-Detect or ask:
-- What product/service is this ad for?
-- Target audience or segment?
-- Which campaign/ad group? (pull with `listCampaigns` → `listAdGroups`)
-- Landing page URL?
-- Any geographic targeting?
+- **Existing ads** (`ad_group_ad`) — current headlines, descriptions, ad-strength, per-ad clicks / CTR / conversions. The baseline to beat.
+- **Keywords with quality info** (`keyword_view`) — what's already converting and which QS components are hurting.
+- **Search terms** (`search_term_view`) — the actual phrases real customers are typing. The single best source of language for headlines.
+- **Campaign-level CTR / CVR** (`campaign`) — the benchmark each variant has to beat.
 
-Cross-reference against the business context — if the user says "write copy for boarding" and context has boarding details, you already know the angles.
+For brand-wide rewrites, correlate everything in one fan-out. For a single ad group, add `WHERE ad_group.id = …` to each query — the marginal cost is zero. If the user has a database with lead / conversion outcome data, mine it: customer language > marketing language.
 
-### 2. Research what's working
+Layer on the seasonality and keyword-landscape context from `business-context.json`. Peak months call for urgency, slow months for evergreen value props. Highly competitive heads need sharper differentiation; long-tail tails need closer intent match.
 
-Pull data before writing — copy should be grounded in what converts, not guesses.
+## RSA mechanics
 
-**Current ad performance (use GAQL for multi-campaign research, see `../shared/gaql-cookbook.md`):**
+Google RSA: up to **15 headlines (30 chars max)** and **4 descriptions (90 chars max)**. A single character over = rejected. Always count.
 
-If the user specified a single campaign/ad group, use helper tools directly. If researching across campaigns (common for brand-wide copy refresh), use GAQL:
-- GAQL "Ad copy" query → existing headlines/descriptions and their metrics across all campaigns
-- GAQL "Keywords with QS" query → active keywords and what's converting
-- GAQL "Search terms" query → actual user queries (reveals real language and intent)
-- GAQL "Impression share" query → CTR/conversion benchmarks to beat
+The headline formula table (27 formulas across 8 categories) and description formula table (5 formulas) live in `references/rsa-best-practices.md` — that file is the source of truth for what to actually write.
 
-For single-campaign work, the per-campaign helpers are simpler:
-- `listAds(campaignId)` — existing headlines/descriptions
-- `getKeywords(campaignId)` — active keywords
-- `getSearchTermReport(campaignId)` — actual user queries
-- `getCampaignPerformance(campaignId)` — CTR benchmarks
+**Pinning strategy:**
 
-**Use seasonality context.** If business context shows peak months, factor that into copy urgency. During slow months, lean on evergreen value props. During peaks, lean on scarcity and timeliness.
-
-**Use keyword landscape context.** For competitive terms (high CPC, many bidders), copy must differentiate harder — lead with what's unique, not what everyone says. For long-tail terms, match the specific intent closely.
-
-**If the user has a database with lead/conversion data**, query it to find which keywords and messaging actually convert. The language paying customers use is the language your ads should mirror.
-
-### 3. Generate RSA components
-
-Google RSA: up to **15 headlines** (30 chars max) and **4 descriptions** (90 chars max). Google's AI mixes and matches them.
-
-**Always count characters. Flag any that exceed limits. A single character over = rejected by Google.**
-
-#### Headline & Description Formulas
-
-See `references/rsa-best-practices.md` — Headline Formula Table (27 formulas across 8 categories) and Description Formula Table (5 formulas). Use those as the source of truth for all copy generation.
-
-**Headline selection rules:**
-- Generate 3-4 headlines per category for a total of 12-15
 - Pin 1 Service+Location headline to Position 1 (highest relevance impact)
-- Pin 1 CTA headline to Position 3 (Google shows H3 less often — make it count when shown)
-- Leave Position 2 unpinned to let Google test Value Prop, Trust, and Differentiator headlines
-- Never pin more than 3 headlines total — over-pinning reduces Google's optimization ability
+- Pin 1 CTA headline to Position 3 (Google shows H3 less often — make it count)
+- Leave Position 2 unpinned for Google to test value-prop, trust, and differentiator headlines
+- Never pin more than 3 total — over-pinning kneecaps Google's optimization
 
-**Description selection rules:**
-- Always generate 4 descriptions (the RSA maximum)
-- D1 should be the strongest all-around description (core value + location) — it shows most often
-- D2 should emphasize the primary differentiator
-- D3 should lead with trust/social proof
-- D4 should be seasonal or offer-based (swap this out when promotions change)
-- Every description must end with a CTA verb: Call, Book, Get, Schedule, Request, Visit, Contact
-- Character count is STRICT: 90 chars max. Measure before finalizing. It's better to be 85 chars and punchy than 90 chars and cramped
+**Description ordering:**
 
-### 4. Present variants
+- D1 = strongest all-around (core value + location). Shows most often.
+- D2 = primary differentiator
+- D3 = trust / social proof
+- D4 = seasonal or offer-based (the slot you swap out when promotions change)
+- Every description ends with a CTA verb: Call, Book, Get, Schedule, Request, Visit, Contact
+- Punchy at 85 chars beats cramped at 90
 
-Show 2-3 variants, each with a distinct messaging angle. Name the angle so it's clear what's being tested.
+## A/B testing
 
-```
-VARIANT A: "[Angle Name — e.g., Trust & Experience]"
-  Target persona: [persona name from {data_dir}/personas/]
-  H1 [Pin 1]: [Service] in [Location]       (XX chars)
-  H2: [Value prop headline]                  (XX chars)
-  H3: [Trust headline]                       (XX chars)
-  H4: [CTA headline]                         (XX chars)
-  ... (up to 15 headlines)
-  D1: [Core value + location — max 90 chars] (XX chars)
-  D2: [Differentiator + CTA — max 90 chars]  (XX chars)
-  D3: [Trust + proof — max 90 chars]         (XX chars)
-  D4: [Urgency/offer — max 90 chars]         (XX chars)
+When the user wants to test, deploy variants as separate ads in the same ad group (paused, then enabled together). Each variant must test a **meaningfully different angle** — not word swaps. "Trust & Expertise" vs. "Speed & Convenience" vs. "Price & Value" is a real test; "Call Today" vs. "Call Now" is noise. If the account has multiple personas, create one variant per persona.
 
-VARIANT B: "[Different Angle — e.g., Price & Value]"
-  Target persona: [persona name]
-  H1 [Pin 1]: ...
-  ...
-```
+**Statistical significance thresholds (apply when calling winners):**
 
-Always show character counts. Always show pin positions. Always name the target persona.
+- <100 clicks per variant → too early to call. Wait.
+- 100–200 clicks per variant, <20% relative CTR/CVR difference → functionally equivalent; pick on conversion rate or run a bolder test
+- ≥20% relative CTR or CVR delta → real winner
+- Either variant with 2× the other's conversion rate → call it immediately, don't wait
 
-**Variant differentiation rules:**
-- Each variant must test a meaningfully different angle — not minor word swaps
-- Good test: "Trust & Expertise" vs "Speed & Convenience" vs "Price & Value"
-- Bad test: "Call Today" vs "Call Now" vs "Call Us" (not different enough to learn from)
-- If the account has multiple personas, create one variant per persona
+**Result interpretation matrix:**
 
-### 5. Deploy
-
-After user approves a variant, push it live:
-
-- **New ad:** `createAd` — create the RSA in the target ad group (created paused)
-- **Update existing:** `updateAdAssets` — replace headlines/descriptions on a live ad
-- **Enable when ready:** `enableAd`
-
-Always confirm before any write operation. Note the `changeId` returned — user can undo within 7 days (if the entity hasn't been modified since) via `undoChange`.
-
-(Call tools under the MCP prefix detected by the shared preamble — do not hardcode `mcp__adsagent__`.)
-
-### 6. A/B test (if running one)
-
-1. **Identify the variable** — messaging angle, CTA style, emotional vs. practical
-2. **Deploy both variants** as separate ads in the same ad group (both paused, enable together)
-3. **Minimum run:** 2 weeks or 100 clicks per variant, whichever comes first
-4. **Success metric:** CTR for awareness campaigns, conversion rate for bottom-funnel
-
-**Statistical significance rules:**
-- Do not call a winner with <100 clicks per variant — the data isn't reliable
-- A "winner" needs at least 20% relative CTR or conversion rate difference to be meaningful
-- If the difference is <20% after 200+ clicks each, the variants are functionally equivalent — pick the one with better conversion rate, or run a bolder test
-- If one variant has 2x+ the conversion rate, call it immediately — don't wait for click minimums
-
-### 7. Check results
-
-After the test period, pull results:
-
-```
-listAds → compare metrics for each variant
-```
-
-| Variant | Impressions | Clicks | CTR | Conversions | Conv Rate | CPA | Winner? |
-|---------|------------|--------|-----|-------------|-----------|-----|---------|
-| A       |            |        |     |             |           |     |         |
-| B       |            |        |     |             |           |     |         |
-
-**Interpretation matrix:**
-
-| CTR | Conv Rate | Diagnosis | Action |
+| CTR | Conv rate | Diagnosis | Action |
 |-----|-----------|-----------|--------|
 | A higher | A higher | Clear winner | Pause B. Iterate on A's angle with fresh headlines |
-| A higher | B higher | A attracts more clicks but B converts better | Keep B as primary. Test A's headlines on B's landing page — the click-through message may need landing page alignment. Offer `/ads-landing` |
-| Similar | Similar | No meaningful difference | Need a bolder test — the variants were too similar. Change the core messaging angle, not just word choice |
-| Both low | Both low | Neither variant works | The problem isn't A vs B — it's the overall approach. Check: keyword intent match, landing page quality, offer strength. May need `/ads-audit` to diagnose |
+| A higher | B higher | A pulls clicks, B converts | Keep B; test A's headlines on B's landing page — message-match may need work. Offer `/ads-landing` |
+| Similar | Similar | No meaningful difference | Variants too similar — change the core angle, not the wording |
+| Both low | Both low | Neither works | Problem isn't A vs B — keyword intent, landing page, or offer is broken. Suggest `/ads-audit` |
 
-After deciding a winner: pause the loser with `pauseAd`, keep the winner running. Then create a new variant to test against the winner — continuous improvement, never stop testing.
+After a winner is called: pause the loser, then create a new variant to test against the winner. Never stop testing.
 
-## Rules
+## Operating principles
 
-1. **Business context first.** Read `{data_dir}/business-context.json` before doing anything. If it doesn't exist, build it.
-2. **Research before writing.** Always pull current performance data. Don't write copy in a vacuum.
-3. **Character limits are hard.** Count every headline (<=30) and description (<=90). No exceptions. When in doubt, count again.
-4. **Never deploy without confirmation.** Show the exact copy, get a yes, then create/update.
-5. **Note changeIds.** Every write returns one. Tell the user they can undo within 7 days (if the entity hasn't been modified since).
-6. **Ground copy in conversion data.** If conversion data is available, use the language that converts. Customer language > marketing language.
-7. **Seasonal awareness.** Check the business context for peak/slow months. Adjust urgency and messaging accordingly.
-8. **Defer to /ads for account management.** This skill writes copy and deploys ads. For bid/budget/keyword work, use `/ads`.
-9. **Personas over guesses.** If personas exist, every headline should trace back to a persona's language or triggers. If they don't exist, recommend `/ads-audit` to build them.
-10. **Differentiate, don't imitate.** Read the competitors field and write copy that stands apart. Generic copy that could belong to any competitor is a waste of an ad slot.
+1. **Business context is non-negotiable.** Read `{data_dir}/business-context.json` and `{data_dir}/personas/{accountId}.json` first. If they don't exist or are stale, recommend `/ads-audit` before writing anything generic.
+2. **Confirm before deploying.** Show the exact copy, character counts per asset, and pin positions. Get a yes, then push.
+3. **Every write returns a `changeId`.** Tell the user it's undoable within 7 days via `undoChange` (assuming the entity hasn't been modified since).
+4. **Differentiate, don't imitate.** Read the `competitors` field. Generic copy that could belong to any competitor is a wasted ad slot.
+5. **Defer to `/ads` for account management.** This skill writes copy and deploys RSAs; bid / budget / keyword work belongs in `/ads`.
