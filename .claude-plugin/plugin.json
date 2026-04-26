@@ -1,7 +1,7 @@
 {
   "name": "toprank",
-  "version": "0.13.1",
-  "description": "The official Google Ads + SEO plugin from AdsAgent. SEO analysis, Google Ads management, keyword research, content optimization, and schema markup tools powered by Google Search Console and Google Ads APIs.",
+  "version": "0.13.2",
+  "description": "The official Google Ads + SEO plugin from AdsAgent. SEO analysis, Google Ads management, keyword research, content optimization, schema markup tools, broken link checker, and single-page deep audit powered by Google Search Console and Google Ads APIs.",
   "author": {
     "name": "AdsAgent",
     "url": "https://adsagent.org"
@@ -17,6 +17,8 @@
     "./seo/meta-tags-optimizer",
     "./seo/schema-markup-generator",
     "./seo/setup-cms",
+    "./seo/seo-page",
+    "./seo/broken-link-checker",
     "./toprank-upgrade-skill",
     "./gemini"
   ]

@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.13.2] — 2026-04-26
+
+### Added
+- **New SEO Skill: `broken-link-checker`** — Scans websites to find broken internal and external links (404s, 5xx errors). Provides a detailed report with source pages and status codes.
+- **`CONTRIBUTING.md`** — A guide for community contributors on how to add new skills, fix bugs, and follow the project's quality standards.
+
+---
+
 ## [0.13.1] — 2026-04-25
 
 ### Fixed
