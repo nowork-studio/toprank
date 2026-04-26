@@ -39,10 +39,12 @@ Each skill lives in its own folder under a category directory (e.g., `seo/`, `go
 2.  **Clone your fork**: `git clone https://github.com/YOUR_USERNAME/toprank.git`
 3.  **Create a branch**: `git checkout -b feature/your-feature-name`
 4.  **Make your changes**.
-5.  **Run tests**: We use `pytest` for tests. Ensure your changes don't break existing functionality.
+5.  **Run tests**: We use `pytest` for the main test suite, but `unittest` is also used for script-specific unit tests. Ensure your changes don't break existing functionality.
     ```bash
     pip install -r requirements-test.txt
     pytest
+    # or run specific unit tests
+    python3 test/unit/test_your_script.py
     ```
 6.  **Commit and push**: Use descriptive commit messages.
 7.  **Open a Pull Request**: Provide a clear description of your changes and why they are beneficial.

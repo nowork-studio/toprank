@@ -36,3 +36,6 @@ service-account*.json
 # Git worktrees and Claude worktrees
 .git/worktrees/
 .claude/worktrees/
+
+# Logs
+log/

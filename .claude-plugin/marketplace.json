@@ -11,7 +11,7 @@
     {
       "name": "toprank",
       "source": "./",
-      "description": "The official Google Ads + SEO plugin from AdsAgent. SEO analysis, Google Ads management, keyword research, content optimization, schema markup, meta tags optimization, and broken link checker.",
+      "description": "The official Google Ads + SEO plugin from AdsAgent. SEO analysis, Google Ads management, keyword research, content optimization, schema markup, meta tags optimization, broken link checker, and single-page deep audit.",
       "version": "0.13.2",
       "author": {
         "name": "AdsAgent",
