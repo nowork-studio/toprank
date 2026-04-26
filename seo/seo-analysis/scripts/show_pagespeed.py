@@ -14,6 +14,8 @@ import os
 import sys
 import tempfile
 
+from _uid import portable_uid
+
 
 def rating_indicator(rating):
     """Return a visual indicator for CrUX rating."""
@@ -205,7 +207,7 @@ def print_result(result):
 
 def main():
     parser = argparse.ArgumentParser()
-    _default_in = os.path.join(tempfile.gettempdir(), f"pagespeed_{os.getuid()}.json")
+    _default_in = os.path.join(tempfile.gettempdir(), f"pagespeed_{portable_uid()}.json")
     parser.add_argument("--input", default=_default_in, help="Input JSON file")
     args = parser.parse_args()
 

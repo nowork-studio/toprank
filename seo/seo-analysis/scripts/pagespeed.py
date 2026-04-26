@@ -20,6 +20,8 @@ import urllib.request
 import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from _uid import portable_uid, secure_write_json
+
 
 PSI_API = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
 
@@ -262,7 +264,7 @@ def main():
                         help="Run both mobile and desktop")
     parser.add_argument("--api-key", default=os.environ.get("PAGESPEED_API_KEY", ""),
                         help="Google API key (optional, increases rate limits)")
-    _default_out = os.path.join(tempfile.gettempdir(), f"pagespeed_{os.getuid()}.json")
+    _default_out = os.path.join(tempfile.gettempdir(), f"pagespeed_{portable_uid()}.json")
     parser.add_argument("--output", default=_default_out, help="Output file")
     args = parser.parse_args()
 
@@ -324,8 +326,7 @@ def main():
         "results": results,
     }
 
-    with open(args.output, "w") as f:
-        json.dump(output, f, indent=2)
+    secure_write_json(args.output, output)
 
     print(f"\nDone. Results saved to {args.output}", file=sys.stderr)
     if summary["avg_performance_score"] is not None:

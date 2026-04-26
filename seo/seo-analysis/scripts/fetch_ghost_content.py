@@ -33,6 +33,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from _uid import portable_uid, secure_write_json
+
 
 PAGE_SIZE = 100  # Ghost supports up to at least 100 per request
 _RETRY_CODES = {429, 502, 503, 504}
@@ -369,20 +371,10 @@ def main():
 
     if args.output:
         out_path = args.output
-        out_dir = os.path.dirname(out_path) or "."
     else:
-        out_dir = tempfile.gettempdir()
-        out_path = os.path.join(out_dir, f"cms_content_{os.getuid()}.json")
+        out_path = os.path.join(tempfile.gettempdir(), f"cms_content_{portable_uid()}.json")
 
-    fd, tmp_path = tempfile.mkstemp(dir=out_dir, suffix=".json.tmp")
-    try:
-        os.chmod(tmp_path, 0o600)
-        with os.fdopen(fd, "w") as f:
-            json.dump(result, f, indent=2)
-        os.replace(tmp_path, out_path)
-    except Exception:
-        os.unlink(tmp_path)
-        raise
+    secure_write_json(out_path, result)
 
     print(f"\nDone. {len(entries)} entries saved to {out_path}", file=sys.stderr)
     print(

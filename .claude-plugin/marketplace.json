@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "The official Google Ads + SEO plugin from AdsAgent. SEO and Google Ads skills for Claude Code.",
-    "version": "0.13.0"
+    "version": "0.13.1"
   },
   "plugins": [
     {
       "name": "toprank",
       "source": "./",
       "description": "The official Google Ads + SEO plugin from AdsAgent. SEO analysis, Google Ads management, keyword research, content optimization, schema markup, and meta tags optimization.",
-      "version": "0.13.0",
+      "version": "0.13.1",
       "author": {
         "name": "AdsAgent",
         "url": "https://adsagent.org"

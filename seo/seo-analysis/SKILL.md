@@ -337,8 +337,7 @@ CMS_DETECT_EXIT=$?
 ### Run preflight and fetch
 
 ```bash
-UID_STR=$(python3 -c "import os; print(os.getuid())")
-CMS_CONTENT_FILE="/tmp/cms_content_${UID_STR}.json"
+CMS_CONTENT_FILE=$(SKILL_SCRIPTS="$SKILL_SCRIPTS" python3 -c "import os, sys, tempfile; sys.path.insert(0, os.environ['SKILL_SCRIPTS']); from _uid import portable_uid; print(os.path.join(tempfile.gettempdir(), f'cms_content_{portable_uid()}.json'))")
 
 case "$CMS_TYPE" in
   strapi)

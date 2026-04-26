@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.13.1] — 2026-04-25
+
+### Fixed
+- **Windows portability** — replaced POSIX-only `os.getuid()` with a portable `_uid.portable_uid()` helper across the seo-analysis scripts (`pagespeed.py`, `analyze_gsc.py`, `list_gsc_sites.py`, `url_inspection.py`, `show_gsc.py`, `show_pagespeed.py`, all four `fetch_*_content.py` CMS connectors) and the `SKILL.md` CMS heredoc. Native CPython on Windows has no `os.getuid()`, which crashed the entire SEO analysis flow with `AttributeError`. Reported in #44 — thanks @seo4pymesjesus-ux. The new helper returns the same numeric uid on POSIX (preserving existing tmp filenames) and falls back to a sanitized username on Windows.
+
+### Security
+- **Hardened tmp-file writes against symlink attacks.** `pagespeed.py`, `analyze_gsc.py`, `list_gsc_sites.py`, and `url_inspection.py` previously wrote results to predictable paths in the system tempdir using direct `open(path, "w")` — exploitable on shared `/tmp` by pre-creating the destination as a symlink. They now use `_uid.secure_write_json()`, which writes via `tempfile.mkstemp()` + `chmod 0600` + atomic `os.replace()` (the same pattern the CMS fetchers already used). Files are also now created with mode 0600 instead of the umask default, preventing other users on shared hosts from reading cached GSC analytics or CMS content.
+- **Sanitize Windows username** before interpolating into a tmp path, defending against env-var-driven path traversal in privilege-separation contexts.
+
+### Internal
+- **Repaired the unit test suite.** `test/unit/test_analyze_gsc.py`, `test_cms_scripts.py`, `test_strapi_scripts.py`, and `test_url_inspection.py` referenced a `skills/seo-analysis/scripts/` path that no longer exists (the directory was renamed to `seo/seo-analysis/scripts/`). The tests had been failing to even collect. Paths corrected and the loaders now insert the scripts directory into `sys.path` so `from _uid import …` resolves under `importlib.util.spec_from_file_location`. 255 unit tests pass.
+
+---
+
 ## [0.13.0] — 2026-04-24
 
 ### Changed
