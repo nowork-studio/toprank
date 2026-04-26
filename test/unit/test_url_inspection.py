@@ -11,9 +11,12 @@ import sys
 import unittest
 
 # Load url_inspection.py as a module without executing main()
-_SCRIPT_PATH = os.path.join(
-    os.path.dirname(__file__), '..', '..', 'skills', 'seo-analysis', 'scripts', 'url_inspection.py'
+_SCRIPTS_DIR = os.path.join(
+    os.path.dirname(__file__), '..', '..', 'seo', 'seo-analysis', 'scripts'
 )
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPTS_DIR)
+_SCRIPT_PATH = os.path.join(_SCRIPTS_DIR, 'url_inspection.py')
 spec = importlib.util.spec_from_file_location('url_inspection', _SCRIPT_PATH)
 ui = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ui)

@@ -21,6 +21,8 @@ import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 
+from _uid import portable_uid, secure_write_json
+
 
 DEFAULT_PAGE_GROUPS = [
     ("blog",         r"/blog/"),
@@ -506,7 +508,7 @@ def main():
     parser.add_argument("--days", type=int, default=90, help="Days of data to pull")
     parser.add_argument("--brand-terms", default="",
                         help="Comma-separated brand names for branded vs non-branded split, e.g. 'Acme,AcmeCorp'")
-    _default_out = os.path.join(tempfile.gettempdir(), f"gsc_analysis_{os.getuid()}.json")
+    _default_out = os.path.join(tempfile.gettempdir(), f"gsc_analysis_{portable_uid()}.json")
     parser.add_argument("--output", default=_default_out, help="Output file")
     args = parser.parse_args()
     brand_terms = [t.strip() for t in args.brand_terms.split(",") if t.strip()]
@@ -590,8 +592,7 @@ def main():
         "page_groups": page_groups
     }
 
-    with open(args.output, "w") as f:
-        json.dump(result, f, indent=2)
+    secure_write_json(args.output, result)
 
     print(f"\nDone. Results saved to {args.output}", file=sys.stderr)
     print(f"\nSummary: {summary['clicks']:,} clicks | {summary['impressions']:,} impressions | "

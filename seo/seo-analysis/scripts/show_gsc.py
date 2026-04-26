@@ -13,7 +13,9 @@ import os
 import sys
 import tempfile
 
-DEFAULT_PATH = os.path.join(tempfile.gettempdir(), f"gsc_analysis_{os.getuid()}.json")
+from _uid import portable_uid
+
+DEFAULT_PATH = os.path.join(tempfile.gettempdir(), f"gsc_analysis_{portable_uid()}.json")
 
 
 def fmt_ctr(ctr):

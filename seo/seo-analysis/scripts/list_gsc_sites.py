@@ -9,6 +9,8 @@ import tempfile
 import urllib.request
 import urllib.error
 
+from _uid import portable_uid, secure_write_json
+
 
 def get_quota_project():
     """Return the quota_project_id from the ADC JSON file, or None."""
@@ -92,9 +94,8 @@ def main():
         print(f"     Type: {ptype} | Permission: {level}")
 
     # Also output as JSON for machine parsing
-    sites_path = os.path.join(tempfile.gettempdir(), f"gsc_sites_{os.getuid()}.json")
-    with open(sites_path, "w") as f:
-        json.dump(sites, f, indent=2)
+    sites_path = os.path.join(tempfile.gettempdir(), f"gsc_sites_{portable_uid()}.json")
+    secure_write_json(sites_path, sites)
     print(f"\n(Full list saved to {sites_path})")
 
 

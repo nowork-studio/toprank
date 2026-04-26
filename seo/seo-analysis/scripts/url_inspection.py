@@ -33,6 +33,8 @@ import urllib.request
 import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from _uid import portable_uid, secure_write_json
+
 
 def get_quota_project():
     """Return the quota_project_id from the ADC JSON file, or None."""
@@ -246,7 +248,7 @@ def main():
     parser.add_argument("--max-urls", type=int, default=5,
                         help="Maximum number of URLs to inspect (API limit: 2000/day). Default: 5")
     _default_out = os.path.join(tempfile.gettempdir(),
-                                f"url_inspection_{os.getuid()}.json")
+                                f"url_inspection_{portable_uid()}.json")
     parser.add_argument("--output", default=_default_out,
                         help="Output JSON file path")
     parser.add_argument("--delay", type=float, default=0.1,
@@ -337,8 +339,7 @@ def main():
         "errors": errors
     }
 
-    with open(args.output, "w") as f:
-        json.dump(output, f, indent=2)
+    secure_write_json(args.output, output)
 
     print(f"\nDone. Results saved to {args.output}", file=sys.stderr)
     print(f"Summary: {summary['total_urls_inspected']} inspected | "

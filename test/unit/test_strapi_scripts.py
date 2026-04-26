@@ -16,10 +16,17 @@ import unittest
 
 # ── Load scripts without executing main() ────────────────────────────────────
 
+_SCRIPTS_DIR = os.path.join(
+    os.path.dirname(__file__), '..', '..', 'seo', 'seo-analysis', 'scripts'
+)
+# Match how Python's direct script invocation populates sys.path so the
+# scripts' `from _uid import …` resolves during importlib loading too.
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPTS_DIR)
+
+
 def _load(name):
-    path = os.path.join(
-        os.path.dirname(__file__), '..', '..', 'skills', 'seo-analysis', 'scripts', name
-    )
+    path = os.path.join(_SCRIPTS_DIR, name)
     spec = importlib.util.spec_from_file_location(name.replace('.py', ''), path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
