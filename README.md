@@ -1,5 +1,7 @@
 # Toprank
 
+> 💬 **Join the community on [Discord](https://discord.gg/gVJCRczpps)** — share wins, get help, and shape the roadmap.
+
 > 🚀 **We're live on Product Hunt today!** AdsAgent — the Google Ads Claude Connector that powers Toprank's ads skills — is launching. If Toprank has saved you time or ad spend, an upvote would mean the world. [**→ Support us on Product Hunt**](https://www.producthunt.com/products/adsagent-google-ads-claude-connector?utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-adsagent-google-ads-claude-connector)
 >
 > <a href="https://www.producthunt.com/products/adsagent-google-ads-claude-connector?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-adsagent-google-ads-claude-connector" target="_blank"><img alt="AdsAgent - Google Ads Claude Connector - Let Claude run your Google Ads — fix, measure, iterate. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1129319&theme=light&t=1776841517852" /></a>
