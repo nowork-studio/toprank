@@ -1,6 +1,6 @@
 # Toprank
 
-> 💬 **Join the community on [Discord](https://discord.gg/gVJCRczpps)** — share wins, get help, and shape the roadmap.
+[![Discord](https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/gVJCRczpps)
 
 > 🚀 **We're live on Product Hunt today!** AdsAgent — the Google Ads Claude Connector that powers Toprank's ads skills — is launching. If Toprank has saved you time or ad spend, an upvote would mean the world. [**→ Support us on Product Hunt**](https://www.producthunt.com/products/adsagent-google-ads-claude-connector?utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-adsagent-google-ads-claude-connector)
 >
